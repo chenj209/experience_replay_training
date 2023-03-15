@@ -101,7 +101,10 @@ def main(args):
         assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
         model.load_state_dict(checkpoint['state_dict'])
-        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        model.train()
+        #logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_r2',  'train time', 'val time'])
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_r2',  'train time', 'val time'])
