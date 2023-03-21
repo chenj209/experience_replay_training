@@ -64,7 +64,6 @@ def buffer_lock(file, timeout=True):
             if timeout and cur_time - start_time > MAX_TIMEOUT:
               return cur_time - start_time
             continue
-    
 
 def parse_config(config):
 
@@ -86,29 +85,29 @@ def parse_config(config):
     if "online_data_path" not in config:
         opath = []
         if "case_no" not in config:
-          for model_type in KEY_MODEL_TYPES:
+            for model_type in KEY_MODEL_TYPES:
 
               # check if each key model config exists
-              if model_type not in config:
-                  raise Exception(f"Missing necessary {model_type} ckpt config")
+                if model_type not in config:
+                    raise Exception(f"Missing necessary {model_type} ckpt config")
 
-              # use model_type_ckpt_name if ckpt_name is provided, e.g. "0-29_ckpt_name": "test_ckpt"
-              if f"{model_type}_ckpt_name" in config:
-                  opath.append(model_config["ckpt_name"])
-                  continue
+                # use model_type_ckpt_name if ckpt_name is provided, e.g. "0-29_ckpt_name": "test_ckpt"
+                if f"{model_type}_ckpt_name" in config:
+                    opath.append(model_config["ckpt_name"])
+                    continue
 
 
-              # generate ckpt_name based on model_config
-              model_config = config[model_type]
-              if "training_dataset" in model_config:
-                  opath.append(f"{model_type}_{config[model_type]['training_dataset']}" \
-                      + f"_noise{config[model_type]['noise_level']}" \
-                      + f"_ep{config[model_type]['epoch']}")
-              else:
-                  raise Exception(f"{model_type} cannot be converted to str")
+                # generate ckpt_name based on model_config
+                model_config = config[model_type]
+                if "training_dataset" in model_config:
+                    opath.append(f"{model_type}_{config[model_type]['training_dataset']}" \
+                        + f"_noise{config[model_type]['noise_level']}" \
+                        + f"_ep{config[model_type]['epoch']}")
+                else:
+                    raise Exception(f"{model_type} cannot be converted to str")
         else:
-          opath.append(config["date"])
-          opath.append(f"case{config['case_no']}")
+            opath.append(config["date"])
+            opath.append(f"case{config['case_no']}")
 
         config["online_data_path"] = ONLINE_DATA_BASE + "_".join(opath)
         if config["qtend[:10]=0.0"]:
@@ -193,9 +192,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             buffer_flag_1 = False
             skip_first = False
         else:
-          if buffer_flag_1 >= MAX_TIMEOUT:
-            print(f"kill for {buffer_flag_1}")
-            break
+            if buffer_flag_1 >= MAX_TIMEOUT:
+              print(f"kill for {buffer_flag_1}")
+              break
 
 
 
@@ -340,8 +339,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # write back to bin file
         print("Writing back to data_buffer(.bin file)...")
         if skip_first:
-          skip_first = False
-          last_time = time.time()
+            skip_first = False
+            last_time = time.time()
         time_start = time.time()
 
         qtend = y_1.reshape(144,96,30).transpose((2,1,0)).astype('>f8')
@@ -463,8 +462,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs, data_y = outputs)
                 dQ_crm = None
         
-        if (step < 10240):
-            np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
+#   if (step < 10240):
+#       np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
 
         step = step + 1
         print("Step", step, "integration\n")
@@ -485,11 +484,26 @@ def cleanup():
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate() 
     while True:
-      bashCommand = "squeue -u chenj209"
-      process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-      output, error = process.communicate() 
-      if (len(output.split(b"\n")) == 2):
-        break
+        bashCommand = "squeue -u chenj209"
+        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate() 
+        if (len(output.split(b"\n")) == 2):
+          break
+
+def online_training(models, args):
+    # Define loss and optimizer
+    criterion = nn.MSELoss()
+    if args.optim == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif args.optim == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+    else:
+        optimizer = None
+
+    lr_scheduler = {'coslr': tools.cosine_lr,
+                    'constant': tools.constant}
+
+
 
 
 if __name__ == "__main__":
@@ -536,50 +550,51 @@ if __name__ == "__main__":
             configs = json.load(f)
 
     for i,config in enumerate(configs):
-      parsed_config = parse_config(config)
+        parsed_config = parse_config(config)
 
-      # check all checkpoint file paths are valid
-      for model_type in MODEL_TYPES:
-          if not os.path.isfile(parsed_config[model_type]["ckpt_path"]):
-              raise Exception(f"Parsed path {parsed_config[model_type]['ckpt_path']} does not exist")
+        # check all checkpoint file paths are valid
+        for model_type in MODEL_TYPES:
+            if not os.path.isfile(parsed_config[model_type]["ckpt_path"]):
+                raise Exception(f"Parsed path {parsed_config[model_type]['ckpt_path']} does not exist")
 
-      # define post process flag to use 
-      qtend_post_process = parsed_config["qtend[:10]=0.0"]
+        # define post process flag to use 
+        qtend_post_process = parsed_config["qtend[:10]=0.0"]
 
-      # check running environment: databuffer empty, online folder empty
+        # check running environment: databuffer empty, online folder empty
 
-      parsed_config = parse_config(config)
+        parsed_config = parse_config(config)
 
-      # print configuration
-      print_config(parsed_config)
+        # print configuration
+        print_config(parsed_config)
 
 
-      # ask for input prompt
-      if i==0:
-        proceed = input("Proceed? (y/n)\n")
-        if proceed != "y":
-            raise Exception("Abort")
-          
-      online_data_path = parsed_config["online_data_path"]
-      data_buffer_path = parsed_config["data_buffer_path"]
-      if not os.path.isdir(online_data_path):
-          os.mkdir(online_data_path)
-      for filename in os.listdir(data_buffer_path):
-          os.remove(data_buffer_path + "/" + filename)
-      assert(os.listdir(online_data_path) == [])
-      assert(os.listdir(data_buffer_path) == [])
+        # ask for input prompt
+        if i==0:
+            proceed = input("Proceed? (y/n)\n")
+            if proceed != "y":
+                raise Exception("Abort")
+              
+        online_data_path = parsed_config["online_data_path"]
+        data_buffer_path = parsed_config["data_buffer_path"]
+        if not os.path.isdir(online_data_path):
+            os.mkdir(online_data_path)
+        for filename in os.listdir(data_buffer_path):
+            os.remove(data_buffer_path + "/" + filename)
+        assert(os.listdir(online_data_path) == [])
+        assert(os.listdir(data_buffer_path) == [])
 
-      # generate config file from running configuration into online data path
-      generate_config(parsed_config, online_data_path)
+        # generate config file from running configuration into online data path
+        generate_config(parsed_config, online_data_path)
 
-      # load checkpoints
-      all_models = load_ckpts_manual(
-                     model029=parsed_config["0-29"]["ckpt_path"],
-                     model3059=parsed_config["30-59"]["ckpt_path"],
-                     model6164=parsed_config["61-64"]["ckpt_path"],
-                     model6165=parsed_config["61-65"]["ckpt_path"],
-                   )
-      # run experiment
-      # run_cesm()
-      run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process)
-      # cleanup()
+        # load checkpoints
+        all_models = load_ckpts_manual(
+                       model029=parsed_config["0-29"]["ckpt_path"],
+                       model3059=parsed_config["30-59"]["ckpt_path"],
+                       model6164=parsed_config["61-64"]["ckpt_path"],
+                       model6165=parsed_config["61-65"]["ckpt_path"],
+                     )
+
+        # run experiment
+        # run_cesm()
+        run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process)
+        # cleanup()
