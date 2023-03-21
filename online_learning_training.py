@@ -33,6 +33,7 @@ import argparse
 import shutil
 from copy import deepcopy
 
+M = 16 #  Online training frequency
 MAX_TIMEOUT = 30
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
 GW_DS_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_ds.npy"
@@ -168,7 +169,7 @@ def parse_config(config):
 
 
 
-def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process):
+def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args):
     print("qtend post process: ", qtend_post_process)
     inverse = {}
     inverse['0_29']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
@@ -392,17 +393,17 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if qtend_post_process:
             qtend[:10] = 0.0 
 
-        if step >= 10 and step < 20:
+        #if step >= 10 and step < 20:
         # chenj209(20230301): let spcam run the first 10 step
         #if step < 10:
-            add_data = np.load(GW_PATH)
-            add_ds_data = np.load(GW_DS_PATH)
-            print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
-            # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
-            filter_mask = np.zeros(add_data.shape)
-            filter_mask[:,53:57,26:30] = 4
-            qtend += add_data*filter_mask
-            stend += add_ds_data*filter_mask
+        #    add_data = np.load(GW_PATH)
+        #    add_ds_data = np.load(GW_DS_PATH)
+        #    print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
+        #    # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
+        #    filter_mask = np.zeros(add_data.shape)
+        #    filter_mask[:,53:57,26:30] = 4
+        #    qtend += add_data*filter_mask
+        #    stend += add_ds_data*filter_mask
 
         # test new post processing
         #data = qtend
@@ -477,6 +478,13 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
                 np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs, data_y = outputs)
                 dQ_crm = None
+
+            # Online training logic
+            if step > 0 and step % M == 0:
+                #def online_training(all_models, args, M, step, online_data_path):
+                online_training(all_models, args, M, step, online_data_path)
+
+
         
 #   if (step < 10240):
 #       np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
@@ -506,7 +514,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(all_models, args, M, step, online_data_path):
+def online_training(all_models, args, M, step, online_data_path, args):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -578,18 +586,36 @@ def online_training(all_models, args, M, step, online_data_path):
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-
-
-
-
-
-
+        if (step / M) % 10 == 0:
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_iter'+str(epoch+1)+'.pth.tar')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file_path", type=str)
     parser.add_argument("-l", action="store_true")
+
+    parser.add_argument("--noise_std", type=float)
+    parser.add_argument("--train-batch", type=int)
+    parser.add_argument("--lr-strategy", type=str)
+    parser.add_argument("--wd", type=float)
+    parser.add_argument("--checkpoint", type=str)
     args = parser.parse_args()
+    print(args)
+#    commands = f"CUDA_VISIBLE_DEVICES=1 python online_training.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
+#               '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
+#               '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
+#               '--checkpoint online_ckpt/{} --resume {}'.format(str(noise_std),
+
+    if args.manualSeed is None:
+        args.manualSeed = 1
+    random.seed(args.manualSeed)
+    torch.manual_seed(args.manualSeed)
+    np.random.seed(args.manualSeed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.manualSeed)
+    if not os.path.isdir(args.checkpoint):
+        mkdir_p(args.checkpoint)
+
     # load config
     """
     Configuration format:
@@ -675,5 +701,5 @@ if __name__ == "__main__":
 
         # run experiment
         # run_cesm()
-        run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process)
+        run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
         # cleanup()
