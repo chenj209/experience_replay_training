@@ -551,6 +551,8 @@ def online_training(all_models, args, M, step, online_data_path, args):
             file_step = filename_to_idx(m.group(0))
             if start_step <= file_step <= step: 
                 training_files.append(fn)
+    print("[Online Learning] Loading train files:")
+    print(train_files))
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     models_to_train = ["0_29", "30_59", "61_65"]
@@ -587,7 +589,8 @@ def online_training(all_models, args, M, step, online_data_path, args):
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if (step / M) % 10 == 0:
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_iter'+str(epoch+1)+'.pth.tar')
+            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
