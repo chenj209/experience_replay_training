@@ -16,6 +16,15 @@ from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
 
 from atm_log_process.parse_config import config_to_path
 
+# online learning training related
+import torch
+import torch.nn as nn
+import torch.nn.parallel
+import torch.backends.cudnn as cudnn
+import torch.optim as optim
+from dataloader_subset_files import Dataset
+from torch.utils import data
+
 os.environ["CUDA_VISIBLE_DEVICES"] = '0, 1, 2, 3'
 
 import glob
@@ -181,11 +190,6 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
     skip_first = True
 
-    # set all models to eval model for inference
-    all_models["0_29"].eval()
-    all_models["30_59"].eval()
-    all_models["61_64"].eval()
-    all_models["61_65"].eval()
 
     while 1:
         # check if cam has gen the data_buffer.bin
@@ -333,6 +337,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # Inference
         print("Inferencing...")
         time_start = time.time()
+        # set all models to eval model for inference
+        all_models["0_29"].eval()
+        all_models["30_59"].eval()
+        all_models["61_64"].eval()
+        all_models["61_65"].eval()
 
         with torch.no_grad():
             y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1).detach().cpu().numpy())
@@ -497,7 +506,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(models, args, M, step):
+def online_training(all_models, args, M, step, online_data_path):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -523,12 +532,55 @@ def online_training(models, args, M, step):
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
 
-    model["0_29"].train()
-    model["30_59"].train()
-    #model["
     # Load M step data
+    # load crm_output from last M step
+    crm_file_pattern = "(crm).*\d{5}\.npz"
+    start_step = step - M + 1
+    train_files = []
+    for fn in os.listdir(online_data_path):
+        m = re.match(crm_file_pattern, fn) 
+        if m is not None:
+            file_step = filename_to_idx(m.group(0))
+            if start_step <= file_step <= step: 
+                training_files.append(fn)
+    training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
+    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
+    models_to_train = ["0_29", "30_59", "61_65"]
 
-    # One pass
+    # One pass for all the models
+    for model_type in models_to_train:
+        model = all_models[model_type]
+
+        # set models to train mode
+        model.train()
+
+
+        #train_losses = AverageMeter()
+        #train_time_begin = time.time()
+
+        current_iters = 0
+        for iter, batch in enumerate(trainloader):
+
+            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+            if model_type == '0-29':
+                batch[1] = batch[1][:, :30]
+            if model_type = '30-59':
+                batch[1] = batch[1][:, 30:60]
+            if model_type == '60':
+                batch[1] = batch[1][:, 60:61]
+            if model_type == '61-65':
+                batch[1] = batch[1][:, 61:66]
+    #             if args.output_type == '61-65':
+    #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
+    #             else:
+            train_mse = tools.train(batch, model, criterion, optimizer)
+            #train_losses.update(train_mse, batch[0].size(0))
+            current_iters += 1
+            print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
+            #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
+
+
+
 
 
 
