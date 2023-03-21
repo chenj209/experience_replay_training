@@ -180,6 +180,13 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     step = 0
 
     skip_first = True
+
+    # set all models to eval model for inference
+    all_models["0_29"].eval()
+    all_models["30_59"].eval()
+    all_models["61_64"].eval()
+    all_models["61_65"].eval()
+
     while 1:
         # check if cam has gen the data_buffer.bin
         print("\n\033[1;35mWaiting for Fortran2Python...\033[0m\n")
@@ -490,7 +497,20 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(models, args):
+def online_training(models, args, M, step):
+    """
+    Train current models with past M labels from CRM with one pass
+
+    Parameters:
+        models:
+            model to be trained
+        args:
+            options to be used
+        M: int
+            Online learning training frequency
+        step: int
+            Current online learning step
+    """
     # Define loss and optimizer
     criterion = nn.MSELoss()
     if args.optim == 'sgd':
@@ -502,6 +522,13 @@ def online_training(models, args):
 
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
+
+    model["0_29"].train()
+    model["30_59"].train()
+    #model["
+    # Load M step data
+
+    # One pass
 
 
 
