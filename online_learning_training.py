@@ -39,6 +39,7 @@ from copy import deepcopy
 import re
 
 M = 1 #  Online training frequency
+CKPT_FREQ = 5 # Save online ckpt frequency
 MAX_TIMEOUT = 30
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
 GW_DS_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_ds.npy"
@@ -485,7 +486,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 dQ_crm = None
 
             # Online training logic
-            if step > 0 and step % M == 0:
+            if step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
                 online_training(all_models, step, online_data_path, args)
 
@@ -549,11 +550,10 @@ def online_training(all_models, step, online_data_path, args):
     print(train_files)
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
-    models_to_train = ["0_29", "30_59", "61_65"]
     gpus_to_use = [0, 1, 3]
 
     # One pass for all the models
-    for mi, model_type in enumerate(models_to_train):
+    for mi, model_type in enumerate(KEY_MODEL_TYPES):
         model = all_models[model_type]
 
         # Define loss and optimizer
@@ -595,7 +595,7 @@ def online_training(all_models, step, online_data_path, args):
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-        if (step / M) % 10 == 0:
+        if (step / M) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
 
@@ -684,7 +684,8 @@ if __name__ == "__main__":
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(args.manualSeed)
         if not os.path.isdir(args.checkpoint):
-            mkdir_p(args.checkpoint)
+            for model_type in KEY_MODEL_TYPES:
+                mkdir_p(args.checkpoint + "/" + model_type)
 
         # check all checkpoint file paths are valid
         for model_type in MODEL_TYPES:

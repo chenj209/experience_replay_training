@@ -17,7 +17,7 @@ def train(batch, model, criterion, optimizer, device):
     model.train()
 
     points_x, points_y = batch
-    points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda(device)
+    points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
     
     
 #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
