@@ -38,7 +38,7 @@ import shutil
 from copy import deepcopy
 import re
 
-M = 1 #  Online training frequency
+M = 100 #  Online training frequency
 CKPT_FREQ = 5 # Save online ckpt frequency
 MODELS_TO_TRAIN = ["0_29", "30_59", "61_65"]
 MAX_TIMEOUT = 30
@@ -400,18 +400,18 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if qtend_post_process:
             qtend[:10] = 0.0 
 
-        if step >= 10 and step < 20:
+        #if step >= 10 and step < 20:
         # chenj209(20230301): let spcam run the first 10 step
         #if step < 10:
-            add_data = np.load(GW_PATH)
-            add_ds_data = np.load(GW_DS_PATH)
-            print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
-            # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
-            filter_mask = np.zeros(add_data.shape)
-            filter_mask[:,53:57,26:30] = 4
-            qtend += add_data*filter_mask
-            stend += add_ds_data*filter_mask
-
+        #    add_data = np.load(GW_PATH)
+        #    add_ds_data = np.load(GW_DS_PATH)
+        #    print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
+        #    # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
+        #    filter_mask = np.zeros(add_data.shape)
+        #    filter_mask[:,53:57,26:30] = 4
+        #    qtend += add_data*filter_mask
+#            stend += add_ds_data*filter_mask
+#
         # test new post processing
         #data = qtend
         #q99 = np.quantile(data.reshape(-1),0.99)
