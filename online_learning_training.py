@@ -16,6 +16,7 @@ from tools import load_ckpts, load_ckpts_manual
 from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
 
 from atm_log_process.parse_config import config_to_path
+from nncam_data_explore.src.utility import filename_to_idx
 
 # online learning training related
 import torch
@@ -35,8 +36,9 @@ import json
 import argparse
 import shutil
 from copy import deepcopy
+import re
 
-M = 16 #  Online training frequency
+M = 1 #  Online training frequency
 MAX_TIMEOUT = 30
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
 GW_DS_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_ds.npy"
@@ -531,17 +533,6 @@ def online_training(all_models, step, online_data_path, args):
         step: int
             Current online learning step
     """
-    # Define loss and optimizer
-    criterion = nn.MSELoss()
-    if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
-    else:
-        optimizer = None
-
-    lr_scheduler = {'coslr': train_tools.cosine_lr,
-                    'constant': train_tools.constant}
 
     # Load M step data
     # load crm_output from last M step
@@ -553,7 +544,7 @@ def online_training(all_models, step, online_data_path, args):
         if m is not None:
             file_step = filename_to_idx(m.group(0))
             if start_step <= file_step <= step: 
-                training_files.append(fn)
+                train_files.append(online_data_path + "/" + fn)
     print("[Online Learning] Loading train files:")
     print(train_files)
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
@@ -563,6 +554,18 @@ def online_training(all_models, step, online_data_path, args):
     # One pass for all the models
     for model_type in models_to_train:
         model = all_models[model_type]
+
+        # Define loss and optimizer
+        criterion = nn.MSELoss()
+        if args.optim == 'sgd':
+            optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        elif args.optim == 'adam':
+            optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        else:
+            optimizer = None
+
+        lr_scheduler = {'coslr': train_tools.cosine_lr,
+                        'constant': train_tools.constant}
 
         # set models to train mode
         model.train()
@@ -655,7 +658,19 @@ if __name__ == "__main__":
         #parser.add_argument("--wd", type=float)
         #parser.add_argument("--checkpoint", type=str)
         # change online learning related args to json values
-        ol_args = ["optim", "noise_std", "train_batch", "lr_strategy", "wd", "checkpoint", "manualSeed"]
+        ol_args = [
+                "optim", 
+                "noise_std", 
+                "train_batch", 
+                "lr_strategy", 
+                "weight_decay", 
+                "checkpoint", 
+                "manualSeed", 
+                "workers", 
+                "lr", 
+                "momentum", 
+                "epoch"
+                ]
         for arg in ol_args:
             args.__dict__[arg] = parsed_config[arg]
         print("[Online Learning] Args:\n", args)
