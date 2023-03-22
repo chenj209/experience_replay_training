@@ -550,9 +550,10 @@ def online_training(all_models, step, online_data_path, args):
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     models_to_train = ["0_29", "30_59", "61_65"]
+    gpus_to_use = [0, 1, 3]
 
     # One pass for all the models
-    for model_type in models_to_train:
+    for mi, model_type in enumerate(models_to_train):
         model = all_models[model_type]
 
         # Define loss and optimizer
@@ -578,18 +579,18 @@ def online_training(all_models, step, online_data_path, args):
         for iter, batch in enumerate(trainloader):
 
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            if model_type == '0-29':
+            if model_type == '0_29':
                 batch[1] = batch[1][:, :30]
-            if model_type == '30-59':
+            if model_type == '30_59':
                 batch[1] = batch[1][:, 30:60]
             if model_type == '60':
                 batch[1] = batch[1][:, 60:61]
-            if model_type == '61-65':
+            if model_type == '61_65':
                 batch[1] = batch[1][:, 61:66]
     #             if args.output_type == '61-65':
     #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
     #             else:
-            train_mse = train_tools.train(batch, model, criterion, optimizer)
+            train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
             #train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
