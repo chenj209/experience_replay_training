@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import json
 import subprocess
+import random
 
 sys.path.append("/cust_users/chenj209/prog_val_mod/src.baseline/") 
 
@@ -24,6 +25,8 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 from dataloader_subset_files import Dataset
 from torch.utils import data
+import train_tools
+from utils import mkdir_p
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0, 1, 2, 3'
 
@@ -393,17 +396,17 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if qtend_post_process:
             qtend[:10] = 0.0 
 
-        #if step >= 10 and step < 20:
+        if step >= 10 and step < 20:
         # chenj209(20230301): let spcam run the first 10 step
         #if step < 10:
-        #    add_data = np.load(GW_PATH)
-        #    add_ds_data = np.load(GW_DS_PATH)
-        #    print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
-        #    # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
-        #    filter_mask = np.zeros(add_data.shape)
-        #    filter_mask[:,53:57,26:30] = 4
-        #    qtend += add_data*filter_mask
-        #    stend += add_ds_data*filter_mask
+            add_data = np.load(GW_PATH)
+            add_ds_data = np.load(GW_DS_PATH)
+            print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
+            # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
+            filter_mask = np.zeros(add_data.shape)
+            filter_mask[:,53:57,26:30] = 4
+            qtend += add_data*filter_mask
+            stend += add_ds_data*filter_mask
 
         # test new post processing
         #data = qtend
@@ -482,7 +485,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             # Online training logic
             if step > 0 and step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
-                online_training(all_models, args, M, step, online_data_path)
+                online_training(all_models, step, online_data_path, args)
 
 
         
@@ -514,7 +517,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(all_models, args, M, step, online_data_path, args):
+def online_training(all_models, step, online_data_path, args):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -537,8 +540,8 @@ def online_training(all_models, args, M, step, online_data_path, args):
     else:
         optimizer = None
 
-    lr_scheduler = {'coslr': tools.cosine_lr,
-                    'constant': tools.constant}
+    lr_scheduler = {'coslr': train_tools.cosine_lr,
+                    'constant': train_tools.constant}
 
     # Load M step data
     # load crm_output from last M step
@@ -552,7 +555,7 @@ def online_training(all_models, args, M, step, online_data_path, args):
             if start_step <= file_step <= step: 
                 training_files.append(fn)
     print("[Online Learning] Loading train files:")
-    print(train_files))
+    print(train_files)
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     models_to_train = ["0_29", "30_59", "61_65"]
@@ -574,50 +577,31 @@ def online_training(all_models, args, M, step, online_data_path, args):
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if model_type == '0-29':
                 batch[1] = batch[1][:, :30]
-            if model_type = '30-59':
+            if model_type == '30-59':
                 batch[1] = batch[1][:, 30:60]
             if model_type == '60':
                 batch[1] = batch[1][:, 60:61]
             if model_type == '61-65':
                 batch[1] = batch[1][:, 61:66]
     #             if args.output_type == '61-65':
-    #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
+    #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
     #             else:
-            train_mse = tools.train(batch, model, criterion, optimizer)
+            train_mse = train_tools.train(batch, model, criterion, optimizer)
             #train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if (step / M) % 10 == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file_path", type=str)
     parser.add_argument("-l", action="store_true")
 
-    parser.add_argument("--noise_std", type=float)
-    parser.add_argument("--train-batch", type=int)
-    parser.add_argument("--lr-strategy", type=str)
-    parser.add_argument("--wd", type=float)
-    parser.add_argument("--checkpoint", type=str)
     args = parser.parse_args()
     print(args)
-#    commands = f"CUDA_VISIBLE_DEVICES=1 python online_training.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
-#               '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
-#               '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-#               '--checkpoint online_ckpt/{} --resume {}'.format(str(noise_std),
-
-    if args.manualSeed is None:
-        args.manualSeed = 1
-    random.seed(args.manualSeed)
-    torch.manual_seed(args.manualSeed)
-    np.random.seed(args.manualSeed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(args.manualSeed)
-    if not os.path.isdir(args.checkpoint):
-        mkdir_p(args.checkpoint)
 
     # load config
     """
@@ -659,6 +643,32 @@ if __name__ == "__main__":
 
     for i,config in enumerate(configs):
         parsed_config = parse_config(config)
+
+    #    commands = f"CUDA_VISIBLE_DEVICES=1 python online_training.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
+    #               '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
+    #               '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
+    #               '--checkpoint online_ckpt/{} --resume {}'.format(str(noise_std),
+        #parser.add_argument("--optim", type=str)
+        #parser.add_argument("--noise_std", type=float)
+        #parser.add_argument("--train-batch", type=int)
+        #parser.add_argument("--lr-strategy", type=str)
+        #parser.add_argument("--wd", type=float)
+        #parser.add_argument("--checkpoint", type=str)
+        # change online learning related args to json values
+        ol_args = ["optim", "noise_std", "train_batch", "lr_strategy", "wd", "checkpoint", "manualSeed"]
+        for arg in ol_args:
+            args.__dict__[arg] = parsed_config[arg]
+        print("[Online Learning] Args:\n", args)
+
+        if args.manualSeed is None:
+            args.manualSeed = 1
+        random.seed(args.manualSeed)
+        torch.manual_seed(args.manualSeed)
+        np.random.seed(args.manualSeed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(args.manualSeed)
+        if not os.path.isdir(args.checkpoint):
+            mkdir_p(args.checkpoint)
 
         # check all checkpoint file paths are valid
         for model_type in MODEL_TYPES:
