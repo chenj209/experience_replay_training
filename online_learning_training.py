@@ -486,7 +486,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 dQ_crm = None
 
             # Online training logic
-            if step % M == 0:
+            if step > 0 and step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
                 online_training(all_models, step, online_data_path, args)
 
@@ -595,7 +595,7 @@ def online_training(all_models, step, online_data_path, args):
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-        if (step / M) % CKPT_FREQ == 0:
+        if ((step-1) / M) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
 
