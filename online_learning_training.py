@@ -454,29 +454,29 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # Generate Prognostic Validation results (npz) by Wang Xin on 2021-11-29
         # 仅分析使用
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
-            if step > 0 and step <= 10:
-                # chenj209(20230301): from step 1 to step 10, read CRM output
-                # CRM output is generated after every step
-                dQ = np.fromfile(f"{data_buffer_path}/qtend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
-                dQ = dQ.astype(np.float64)
-                dQ = dQ.reshape(30,96,144)
-
-                dS = np.fromfile(f"{data_buffer_path}/stend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
-                dS = dS.astype(np.float64)
-                dS = dS.reshape(30,96,144)
-                outputs = gen_outputs(dQ, dS, y_3, y_4)
-                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
+#            if step > 0 and step <= 10:
+#                # chenj209(20230301): from step 1 to step 10, read CRM output
+#                # CRM output is generated after every step
+#                dQ = np.fromfile(f"{data_buffer_path}/qtend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian# 的 double
+#                dQ = dQ.astype(np.float64)
+#                dQ = dQ.reshape(30,96,144)
+#
+#                dS = np.fromfile(f"{data_buffer_path}/stend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian# 的 double
+#                dS = dS.astype(np.float64)
+#                dS = dS.reshape(30,96,144)
+#                outputs = gen_outputs(dQ, dS, y_3, y_4)
+#                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
 
         
-            if step >= 10:
+#            if step >= 10:
                 # chenj209(20230301): save python output after 10 step
-                outputs = gen_outputs(qtend, stend, y_3, y_4)
-        #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
-                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
-            else:
-                # chenj209(20230301): still save not used qtend stend for diagnostic
-                outputs = gen_outputs(qtend, stend, y_3, y_4)
-                np.savez(online_data_path +  '/diag_prog-val_'  + "%005d"%(step+1), data_x = inputs, data_y = outputs)
+            outputs = gen_outputs(qtend, stend, y_3, y_4)
+    #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
+            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
+#            else:
+#                # chenj209(20230301): still save not used qtend stend for diagnostic
+#                outputs = gen_outputs(qtend, stend, y_3, y_4)
+#                np.savez(online_data_path +  '/diag_prog-val_'  + "%005d"%(step+1), data_x = inputs, data_y = outputs)
 
             if step > 0 and dQ_crm is not None:
                 # save crm outputs for online labels
