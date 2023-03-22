@@ -38,7 +38,7 @@ import shutil
 from copy import deepcopy
 import re
 
-M = 100 #  Online training frequency
+M = 1 #  Online training frequency
 CKPT_FREQ = 5 # Save online ckpt frequency
 MODELS_TO_TRAIN = ["0_29", "30_59", "61_65"]
 MAX_TIMEOUT = 30
