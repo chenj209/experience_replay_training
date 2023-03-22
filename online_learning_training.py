@@ -40,6 +40,7 @@ import re
 
 M = 1 #  Online training frequency
 CKPT_FREQ = 5 # Save online ckpt frequency
+MODELS_TO_TRAIN = ["0_29", "30_59", "61_65"]
 MAX_TIMEOUT = 30
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
 GW_DS_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_ds.npy"
@@ -553,7 +554,7 @@ def online_training(all_models, step, online_data_path, args):
     gpus_to_use = [0, 1, 3]
 
     # One pass for all the models
-    for mi, model_type in enumerate(KEY_MODEL_TYPES):
+    for mi, model_type in enumerate(MODELS_TO_TRAIN):
         model = all_models[model_type]
 
         # Define loss and optimizer
@@ -683,8 +684,8 @@ if __name__ == "__main__":
         np.random.seed(args.manualSeed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(args.manualSeed)
-        if not os.path.isdir(args.checkpoint):
-            for model_type in KEY_MODEL_TYPES:
+        for model_type in MODELS_TO_TRAIN:
+            if not os.path.isdir(args.checkpoint + "/" + model_type):
                 mkdir_p(args.checkpoint + "/" + model_type)
 
         # check all checkpoint file paths are valid
