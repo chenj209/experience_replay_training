@@ -39,6 +39,7 @@ import shutil
 from copy import deepcopy
 import re
 
+BASE_EPOCH = 0
 M = 16 #  Online training frequency
 CKPT_FREQ = 5 # Save online ckpt frequency
 MODELS_TO_TRAIN = ["0_29", "30_59", "61_65"]
@@ -591,7 +592,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
-    save_log = [step / M]
+    save_log = [step / M + BASE_EPOCH]
     lrs = []
     mses = []
     criterion = nn.MSELoss()
@@ -657,7 +658,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if ((step) / M - 1) % CKPT_FREQ == 0:
-            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
+            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M + BASE_EPOCH}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
@@ -792,6 +793,22 @@ if __name__ == "__main__":
         # generate config file from running configuration into online data path
         generate_config(parsed_config, online_data_path)
 
+        ckpt_pattern = "checkpoint_iter(\d+)\.pth".
+        if os.path.isdir(args.checkpoint + "/0_29"):
+            resume_ckpt_paths = {}
+            for model_type in MODELS_TO_TRAIN:
+                all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
+                max_iter = BASE_EPOCH
+                max_ckpt = ""
+                for ckpt in all_ckpts:
+                    m = re.search(ckpt_pattern, ckpt)
+                    if m is not None and int(m.group(1)) > max_iter:
+                        max_iter = int(m.group(1))
+                        max_ckpt = ckpt
+                        # TODO: find max ckpt and resume training
+
+            
+        
         # load checkpoints
         all_models = load_ckpts_manual(
                        model029=parsed_config["0-29"]["ckpt_path"],
