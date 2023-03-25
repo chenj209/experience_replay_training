@@ -205,11 +205,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     criterion = nn.MSELoss()
     if args.optim == 'sgd':
         for model_type in MODELS_TO_TRAIN:
-            optimizers[model_type] = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+            optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
     elif args.optim == 'adam':
         for model_type in MODELS_TO_TRAIN:
-            optimizers[model_type] = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+            optimizers[model_type] = optim.Adam(all_models[model_type].parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
     else:
         optimizers = None
