@@ -654,7 +654,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             train_losses.update(train_mse, batch[0].size(0))
             #train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
-            print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
+            print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if ((step) / M - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
