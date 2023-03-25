@@ -63,6 +63,8 @@ class Logger(object):
         for index, num in enumerate(numbers):
             if isinstance(num, int):
                 self.file.write("{}".format(num))
+            elif isinstance(num, str):
+                self.file.write(num)
             else:
                 self.file.write("{0:.6f}".format(num))
             self.file.write('\t')
