@@ -38,7 +38,7 @@ import shutil
 from copy import deepcopy
 import re
 
-M = 8 #  Online training frequency
+M = 16 #  Online training frequency
 CKPT_FREQ = 5 # Save online ckpt frequency
 MODELS_TO_TRAIN = ["0_29", "30_59", "61_65"]
 MAX_TIMEOUT = 30
@@ -596,7 +596,7 @@ def online_training(all_models, step, online_data_path, args):
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-        if ((step-1) / M) % CKPT_FREQ == 0:
+        if ((step) / M - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
 
