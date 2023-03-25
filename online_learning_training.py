@@ -28,7 +28,7 @@ from torch.optim import lr_scheduler
 from dataloader_subset_files import Dataset
 from torch.utils import data
 import train_tools
-from utils import mkdir_p
+from utils import mkdir_p, Logger, AverageMeter
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0, 1, 2, 3'
 
