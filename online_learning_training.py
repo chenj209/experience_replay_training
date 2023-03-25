@@ -436,7 +436,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if qtend_post_process:
             qtend[:10] = 0.0 
 
-        #if step >= 10 and step < 20:
+        #if 4tep >= 10 and step < 20:
         # chenj209(20230301): let spcam run the first 10 step
         #if step < 10:
         #    add_data = np.load(GW_PATH)
@@ -654,13 +654,13 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             train_losses.update(train_mse, batch[0].size(0))
             #train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
-            print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
+            print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if ((step) / M - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
         lr_scheduler.step()
-        lrs.append(lr_scheduler.get_last_lr()[0])
+        lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
         mses.append(train_losses.avg)
     save_log.extend(lrs)
     save_log.extend(mses)
