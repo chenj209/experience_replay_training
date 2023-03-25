@@ -24,6 +24,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+from torch.optim import lr_scheduler
 from dataloader_subset_files import Dataset
 from torch.utils import data
 import train_tools
@@ -197,6 +198,42 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     step = 0
 
     skip_first = True
+    
+    # Setup training optimizer
+    optimizers = {}
+    lr_schedulers = {}
+    criterion = nn.MSELoss()
+    if args.optim == 'sgd':
+        for model_type in MODELS_TO_TRAIN:
+            optimizers[model_type] = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+            lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
+    elif args.optim == 'adam':
+        for model_type in MODELS_TO_TRAIN:
+            optimizers[model_type] = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+            lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
+    else:
+        optimizers = None
+
+    #lr_scheduler = {'coslr': train_tools.cosine_lr,
+    #                'constant': train_tools.constant}
+
+
+    # setup Logger
+    #if args.resume:
+        # Load checkpoint.
+    #    print('==> Resuming from checkpoint..')
+    #    assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
+    #    checkpoint = torch.load(args.resume)
+    #    model.load_state_dict(checkpoint['state_dict'])
+    #    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+    #else:
+    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+    logger.set_names([
+        'Epoch',
+        *[model_type+' LR' for model_type in MODELS_TO_TRAIN], 
+        *[model_type+' train mse' for model_type in MODELS_TO_TRAIN]
+        ])
+
 
 
     while 1:
@@ -489,7 +526,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             # Online training logic
             if step > 0 and step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
-                online_training(all_models, step, online_data_path, args)
+                online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args)
 
 
         
@@ -521,7 +558,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(all_models, step, online_data_path, args):
+def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, curr_iters, args):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -535,6 +572,10 @@ def online_training(all_models, step, online_data_path, args):
         step: int
             Current online learning step
     """
+    if args.M:
+        M = args.M
+
+    print(f"[Online Training] Loading past {M} steps") 
 
     # Load M step data
     # load crm_output from last M step
@@ -553,21 +594,17 @@ def online_training(all_models, step, online_data_path, args):
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
+    save_log = [step / M]
+    lrs = []
+    mses = []
     # One pass for all the models
     for mi, model_type in enumerate(MODELS_TO_TRAIN):
         model = all_models[model_type]
 
         # Define loss and optimizer
-        criterion = nn.MSELoss()
-        if args.optim == 'sgd':
-            optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-        elif args.optim == 'adam':
-            optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
-        else:
-            optimizer = None
+        optimizer = optimizers[model_type]
+        lr_scheduler = lr_schedulers[model_type]
 
-        lr_scheduler = {'coslr': train_tools.cosine_lr,
-                        'constant': train_tools.constant}
 
         # set models to train mode
         model.train()
@@ -576,10 +613,12 @@ def online_training(all_models, step, online_data_path, args):
         #train_losses = AverageMeter()
         #train_time_begin = time.time()
 
-        current_iters = 0
+        train_losses = AverageMeter()
+        current_iters = curr_iters
         for iter, batch in enumerate(trainloader):
 
-            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+            # Dont' use lr scheduler for now
+            # lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if model_type == '0_29':
                 batch[1] = batch[1][:, :30]
             if model_type == '30_59':
@@ -591,7 +630,30 @@ def online_training(all_models, step, online_data_path, args):
     #             if args.output_type == '61-65':
     #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
     #             else:
-            train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
+            #train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
+            model.train()
+            device = gpus_to_use[mi]
+
+            points_x, points_y = batch
+            points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
+            
+            
+        #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+
+            # compute output
+            outputs_y = model(points_x)
+            # print(outputs_y.size(), points_y.size())
+            loss = criterion(outputs_y, points_y)
+
+            # print(points_y)
+            # print(torch.min(points_y))
+            # compute gradient and do SGD step
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            train_mse = loss.item()
+            train_losses.update(train_mse, batch[0].size(0))
             #train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr, train_mse))
@@ -599,6 +661,13 @@ def online_training(all_models, step, online_data_path, args):
         if ((step) / M - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
+        lr_scheduler.step()
+        lrs.append(lr_scheduler.get_last_lr()[0])
+        mses.append(train_losses.avg)
+    save_log.extend(lrs)
+    save_log.extend(mses)
+    logger.append(save_log)
+    return current_iters
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -671,7 +740,9 @@ if __name__ == "__main__":
                 "workers", 
                 "lr", 
                 "momentum", 
-                "epoch"
+                "epoch",
+                "M",
+                "lr_step_size"
                 ]
         for arg in ol_args:
             args.__dict__[arg] = parsed_config[arg]
