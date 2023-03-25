@@ -540,24 +540,50 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         file = open(f"{data_buffer_path}/buffer_flag_2.log","w")
         file.close()
 
-def run_cesm():
-    cur_dir = os.getcwd()
-    os.chdir("/cust_users/chenj209/neuroGCM/scripts/reproduce_cases/")
-    bashCommand = "./reproduce_cases.submit"
-    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    output, error = process.communicate() 
-    os.chdir(cur_dir)
+#def run_cesm():
+#    cur_dir = os.getcwd()
+#    #os.chdir("/cust_users/chenj209/neuroGCM/scripts/reproduce_cases/")
+#    os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_startup0322_checked/")
+#    bashCommand = "./online_startup0322_checked.submit"
+#    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+#    output, error = process.communicate() 
+#    os.chdir(cur_dir)
 
-def cleanup():
-    bashCommand = "scancel -u chenj209"
+def run_cesm():
+    pattern = "job (\d+)"
+    cur_dir = os.getcwd()
+#    os.chdir("/cust_users/chenj209/neuroGCM/scripts/reproduce_cases/")
+#    bashCommand = "./reproduce_cases.submit"
+    os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_startup0322_checked/")
+    bashCommand = "./online_startup0322_checked.submit"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-    output, error = process.communicate() 
+    output, error = process.communicate()
+    m = re.search(pattern, output.decode())
+    os.chdir(cur_dir)
+    return m.group(1)
+
+
+#def cleanup():
+#    bashCommand = "scancel -u chenj209"
+#    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+#    output, error = process.communicate() 
+#    while True:
+#        bashCommand = "squeue -u chenj209"
+#        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+#        output, error = process.communicate() 
+#        if (len(output.split(b"\n")) == 2):
+#          break
+def cleanup(case_no):
+    bashCommand = "scancel " + case_no
+    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
     while True:
-        bashCommand = "squeue -u chenj209"
+        bashCommand = "squeue --job " + case_no
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-        output, error = process.communicate() 
+        output, error = process.communicate()
         if (len(output.split(b"\n")) == 2):
           break
+
 
 def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=False):
     """
@@ -664,11 +690,11 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if ((step) / M - 1) % CKPT_FREQ == 0:
-            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int(step/M))+'.pth.tar')
+            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {int(step / M) + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int(step/M+BASE_EPOCH))+'.pth.tar')
         if force_save:
-            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step / M + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step // M + 1 + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1+BASE_EPOCH)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
         mses.append(train_losses.avg)
@@ -736,37 +762,6 @@ if __name__ == "__main__":
         #parser.add_argument("--wd", type=float)
         #parser.add_argument("--checkpoint", type=str)
         # change online learning related args to json values
-        ol_args = [
-                "optim", 
-                "noise_std", 
-                "train_batch", 
-                "lr_strategy", 
-                "weight_decay", 
-                "checkpoint", 
-                "manualSeed", 
-                "workers", 
-                "lr", 
-                "momentum", 
-                "epoch",
-                "M",
-                "lr_step_size"
-                ]
-        for arg in ol_args:
-            args.__dict__[arg] = parsed_config[arg]
-        print("[Online Learning] Args:\n", args)
-
-        if args.manualSeed is None:
-            args.manualSeed = 1
-        random.seed(args.manualSeed)
-        torch.manual_seed(args.manualSeed)
-        np.random.seed(args.manualSeed)
-        if args.M:
-            M = args.M
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(args.manualSeed)
-        for model_type in MODELS_TO_TRAIN:
-            if not os.path.isdir(args.checkpoint + "/" + model_type):
-                mkdir_p(args.checkpoint + "/" + model_type)
 
         # check all checkpoint file paths are valid
         for model_type in MODEL_TYPES:
@@ -790,55 +785,89 @@ if __name__ == "__main__":
             if proceed != "y":
                 raise Exception("Abort")
 
-        ckpt_pattern = "checkpoint_iter(\d+)\.pth"
-        if os.path.isdir(args.checkpoint + "/0_29") and len(os.listdir(args.checkpoint + "/0_29")) > 0:
-            resume_ckpt_paths = {}
-            max_iter = BASE_EPOCH
+        while True:
+            # load online training configs
+            ol_args = [
+                    "optim", 
+                    "noise_std", 
+                    "train_batch", 
+                    "lr_strategy", 
+                    "weight_decay", 
+                    "checkpoint", 
+                    "manualSeed", 
+                    "workers", 
+                    "lr", 
+                    "momentum", 
+                    "epoch",
+                    "M",
+                    "lr_step_size"
+                    ]
+            for arg in ol_args:
+                args.__dict__[arg] = parsed_config[arg]
+            print("[Online Learning] Args:\n", args)
+
+            if args.manualSeed is None:
+                args.manualSeed = 1
+            random.seed(args.manualSeed)
+            torch.manual_seed(args.manualSeed)
+            np.random.seed(args.manualSeed)
+            if args.M:
+                M = args.M
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(args.manualSeed)
             for model_type in MODELS_TO_TRAIN:
-                all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
-                max_ckpt = ""
-                for ckpt in all_ckpts:
-                    m = re.search(ckpt_pattern, ckpt)
-                    if m is not None and int(m.group(1)) >= max_iter:
-                        max_iter = int(m.group(1))
-                        max_ckpt = ckpt
-                resume_ckpt_paths[model_type] = args.checkpoint + "/" + model_type + "/"  + max_ckpt
-            BASE_EPOCH = max_iter
-            print(f"[Online Learning] Resuming from BASE_EPOCH {BASE_EPOCH}:\n{resume_ckpt_paths}")
+                if not os.path.isdir(args.checkpoint + "/" + model_type):
+                    mkdir_p(args.checkpoint + "/" + model_type)
 
-            all_models = load_ckpts_manual(
-                           model029=resume_ckpt_paths["0_29"],
-                           model3059=resume_ckpt_paths["30_59"],
-                           model6164=parsed_config["61-64"]["ckpt_path"],
-                           model6165=resume_ckpt_paths["61_65"],
-                         )
-        else:
-            # load checkpoints
-            all_models = load_ckpts_manual(
-                           model029=parsed_config["0-29"]["ckpt_path"],
-                           model3059=parsed_config["30-59"]["ckpt_path"],
-                           model6164=parsed_config["61-64"]["ckpt_path"],
-                           model6165=parsed_config["61-65"]["ckpt_path"],
-                         )
-              
-        #online_data_path = parsed_config["online_data_path"]
-        online_data_path = parsed_config["online_data_path"]
-        if online_data_path[-1] == "/":
-            online_data_path = online_data_path[:-1]
-        online_data_path += f"BASE{BASE_EPOCH}"
-        data_buffer_path = parsed_config["data_buffer_path"]
-        if not os.path.isdir(online_data_path):
-            os.mkdir(online_data_path)
-        for filename in os.listdir(data_buffer_path):
-            os.remove(data_buffer_path + "/" + filename)
-        assert(os.listdir(online_data_path) == [])
-        assert(os.listdir(data_buffer_path) == [])
+            ckpt_pattern = "checkpoint_iter(\d+)\.pth"
+            if os.path.isdir(args.checkpoint + "/0_29") and len(os.listdir(args.checkpoint + "/0_29")) > 0:
+                resume_ckpt_paths = {}
+                max_iter = BASE_EPOCH
+                for model_type in MODELS_TO_TRAIN:
+                    all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
+                    max_ckpt = ""
+                    for ckpt in all_ckpts:
+                        m = re.search(ckpt_pattern, ckpt)
+                        if m is not None and int(m.group(1)) >= max_iter:
+                            max_iter = int(m.group(1))
+                            max_ckpt = ckpt
+                    resume_ckpt_paths[model_type] = args.checkpoint + "/" + model_type + "/"  + max_ckpt
+                BASE_EPOCH = max_iter
+                print(f"[Online Learning] Resuming from BASE_EPOCH {BASE_EPOCH}:\n{resume_ckpt_paths}")
 
-        # generate config file from running configuration into online data path
-        generate_config(parsed_config, online_data_path)
+                all_models = load_ckpts_manual(
+                               model029=resume_ckpt_paths["0_29"],
+                               model3059=resume_ckpt_paths["30_59"],
+                               model6164=parsed_config["61-64"]["ckpt_path"],
+                               model6165=resume_ckpt_paths["61_65"],
+                             )
+            else:
+                # load checkpoints
+                all_models = load_ckpts_manual(
+                               model029=parsed_config["0-29"]["ckpt_path"],
+                               model3059=parsed_config["30-59"]["ckpt_path"],
+                               model6164=parsed_config["61-64"]["ckpt_path"],
+                               model6165=parsed_config["61-65"]["ckpt_path"],
+                             )
+                  
+            #online_data_path = parsed_config["online_data_path"]
+            online_data_path = parsed_config["online_data_path"]
+            if online_data_path[-1] == "/":
+                online_data_path = online_data_path[:-1]
+            online_data_path += f"BASE{BASE_EPOCH}"
+            data_buffer_path = parsed_config["data_buffer_path"]
+            if not os.path.isdir(online_data_path):
+                os.mkdir(online_data_path)
+            for filename in os.listdir(data_buffer_path):
+                os.remove(data_buffer_path + "/" + filename)
+            assert(os.listdir(online_data_path) == [])
+            assert(os.listdir(data_buffer_path) == [])
+
+            # generate config file from running configuration into online data path
+            generate_config(parsed_config, online_data_path)
 
 
-        # run experiment
-        # run_cesm()
-        run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
-        # cleanup()
+            # run experiment
+            case_no = run_cesm()
+            run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
+            cleanup(case_no)
