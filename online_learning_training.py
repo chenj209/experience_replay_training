@@ -558,7 +558,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, curr_iters, args):
+def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -612,7 +612,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
         #train_time_begin = time.time()
 
         train_losses = AverageMeter()
-        current_iters = curr_iters
+        current_iters = 0
         for iter, batch in enumerate(trainloader):
 
             # Dont' use lr scheduler for now
@@ -665,7 +665,6 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     save_log.extend(lrs)
     save_log.extend(mses)
     logger.append(save_log)
-    return current_iters
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
