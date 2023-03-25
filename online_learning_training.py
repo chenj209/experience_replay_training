@@ -202,7 +202,6 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     # Setup training optimizer
     optimizers = {}
     lr_schedulers = {}
-    criterion = nn.MSELoss()
     if args.optim == 'sgd':
         for model_type in MODELS_TO_TRAIN:
             optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -595,6 +594,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     save_log = [step / M]
     lrs = []
     mses = []
+    criterion = nn.MSELoss()
     # One pass for all the models
     for mi, model_type in enumerate(MODELS_TO_TRAIN):
         model = all_models[model_type]
