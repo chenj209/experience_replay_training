@@ -227,7 +227,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     #    model.load_state_dict(checkpoint['state_dict'])
     #    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     #else:
-    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title='')
     logger.set_names([
         'Epoch',
         *[model_type+' LR' for model_type in MODELS_TO_TRAIN], 
@@ -572,8 +572,6 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
         step: int
             Current online learning step
     """
-    if args.M:
-        M = args.M
 
     print(f"[Online Training] Loading past {M} steps") 
 
@@ -753,6 +751,8 @@ if __name__ == "__main__":
         random.seed(args.manualSeed)
         torch.manual_seed(args.manualSeed)
         np.random.seed(args.manualSeed)
+        if args.M:
+            M = args.M
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(args.manualSeed)
         for model_type in MODELS_TO_TRAIN:
