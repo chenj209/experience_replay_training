@@ -780,8 +780,39 @@ if __name__ == "__main__":
             proceed = input("Proceed? (y/n)\n")
             if proceed != "y":
                 raise Exception("Abort")
+
+        ckpt_pattern = "checkpoint_iter(\d+)\.pth".
+        if os.path.isdir(args.checkpoint + "/0_29"):
+            resume_ckpt_paths = {}
+            max_iter = BASE_EPOCH
+            for model_type in MODELS_TO_TRAIN:
+                all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
+                max_ckpt = ""
+                for ckpt in all_ckpts:
+                    m = re.search(ckpt_pattern, ckpt)
+                    if m is not None and int(m.group(1)) >= max_iter:
+                        max_iter = int(m.group(1))
+                        max_ckpt = ckpt
+                resume_ckpt_paths[model_type] = max_ckpt
+            BASE_EPOCH = max_iter
+            print(f"[Online Learning] Resuming from BASE_EPOCH {BASE_EPOCH}:\n{resume_ckpt_paths}")
+
+            all_models = load_ckpts_manual(
+                           model029=resume_ckpt_paths["0_29"],
+                           model3059=resume_ckpt_paths["30_59"],
+                           model6164=parsed_config["61-64"]["ckpt_path"],
+                           model6165=resume_ckpt_paths["61_65"],
+                         )
+        else:
+            # load checkpoints
+            all_models = load_ckpts_manual(
+                           model029=parsed_config["0-29"]["ckpt_path"],
+                           model3059=parsed_config["30-59"]["ckpt_path"],
+                           model6164=parsed_config["61-64"]["ckpt_path"],
+                           model6165=parsed_config["61-65"]["ckpt_path"],
+                         )
               
-        online_data_path = parsed_config["online_data_path"]
+        online_data_path = parsed_config["online_data_path"].strip("/") + f"_Base{BASE_EPOCH}"
         data_buffer_path = parsed_config["data_buffer_path"]
         if not os.path.isdir(online_data_path):
             os.mkdir(online_data_path)
@@ -793,29 +824,6 @@ if __name__ == "__main__":
         # generate config file from running configuration into online data path
         generate_config(parsed_config, online_data_path)
 
-        ckpt_pattern = "checkpoint_iter(\d+)\.pth".
-        if os.path.isdir(args.checkpoint + "/0_29"):
-            resume_ckpt_paths = {}
-            for model_type in MODELS_TO_TRAIN:
-                all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
-                max_iter = BASE_EPOCH
-                max_ckpt = ""
-                for ckpt in all_ckpts:
-                    m = re.search(ckpt_pattern, ckpt)
-                    if m is not None and int(m.group(1)) > max_iter:
-                        max_iter = int(m.group(1))
-                        max_ckpt = ckpt
-                        # TODO: find max ckpt and resume training
-
-            
-        
-        # load checkpoints
-        all_models = load_ckpts_manual(
-                       model029=parsed_config["0-29"]["ckpt_path"],
-                       model3059=parsed_config["30-59"]["ckpt_path"],
-                       model6164=parsed_config["61-64"]["ckpt_path"],
-                       model6165=parsed_config["61-65"]["ckpt_path"],
-                     )
 
         # run experiment
         # run_cesm()
