@@ -250,6 +250,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         else:
             if buffer_flag_1 >= MAX_TIMEOUT:
               print(f"kill for {buffer_flag_1}")
+              online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True)
               break
 
 
@@ -558,7 +559,7 @@ def cleanup():
         if (len(output.split(b"\n")) == 2):
           break
 
-def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args):
+def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=False):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -579,6 +580,11 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     # load crm_output from last M step
     crm_file_pattern = "(crm).*\d{5}\.npz"
     start_step = step - M + 1
+    if force_save:
+        # force save happens when dynamics fails and there is less than M step run
+        # in this case, use all data starting after last checkpoint
+        last_checkpoint = (step // M) * M
+        start_step = last_checkpoint + 1
     train_files = []
     for fn in os.listdir(online_data_path):
         m = re.match(crm_file_pattern, fn) 
@@ -659,6 +665,9 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if ((step) / M - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {step / M + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int(step/M))+'.pth.tar')
+        if force_save:
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step / M + BASE_EPOCH}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
@@ -781,8 +790,8 @@ if __name__ == "__main__":
             if proceed != "y":
                 raise Exception("Abort")
 
-        ckpt_pattern = "checkpoint_iter(\d+)\.pth".
-        if os.path.isdir(args.checkpoint + "/0_29"):
+        ckpt_pattern = "checkpoint_iter(\d+)\.pth"
+        if os.path.isdir(args.checkpoint + "/0_29") and len(os.listdir(args.checkpoint + "/0_29")) > 0:
             resume_ckpt_paths = {}
             max_iter = BASE_EPOCH
             for model_type in MODELS_TO_TRAIN:
@@ -793,7 +802,7 @@ if __name__ == "__main__":
                     if m is not None and int(m.group(1)) >= max_iter:
                         max_iter = int(m.group(1))
                         max_ckpt = ckpt
-                resume_ckpt_paths[model_type] = max_ckpt
+                resume_ckpt_paths[model_type] = args.checkpoint + "/" + model_type + "/"  + max_ckpt
             BASE_EPOCH = max_iter
             print(f"[Online Learning] Resuming from BASE_EPOCH {BASE_EPOCH}:\n{resume_ckpt_paths}")
 
@@ -812,7 +821,11 @@ if __name__ == "__main__":
                            model6165=parsed_config["61-65"]["ckpt_path"],
                          )
               
-        online_data_path = parsed_config["online_data_path"].strip("/") + f"_Base{BASE_EPOCH}"
+        #online_data_path = parsed_config["online_data_path"]
+        online_data_path = parsed_config["online_data_path"]
+        if online_data_path[-1] == "/":
+            online_data_path = online_data_path[:-1]
+        online_data_path += f"BASE{BASE_EPOCH}"
         data_buffer_path = parsed_config["data_buffer_path"]
         if not os.path.isdir(online_data_path):
             os.mkdir(online_data_path)
