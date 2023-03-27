@@ -625,6 +625,9 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     print("[Online Learning] Loading train files:")
     print(train_files)
     if len(train_files) == 0:
+        if force_save:
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step // M + 1 + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1+BASE_EPOCH)+'.pth.tar')
         return
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
