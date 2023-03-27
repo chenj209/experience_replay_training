@@ -179,6 +179,7 @@ def parse_config(config):
 
 
 def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args):
+    curr_lr = None
     print("qtend post process: ", qtend_post_process)
     inverse = {}
     inverse['0_29']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
@@ -227,7 +228,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     #    model.load_state_dict(checkpoint['state_dict'])
     #    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     #else:
-    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title='')
+    logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title='',resume=BASE_EPOCH>0)
     logger.set_names([
         'Epoch',
         *[model_type+' LR' for model_type in MODELS_TO_TRAIN], 
@@ -250,7 +251,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         else:
             if buffer_flag_1 >= MAX_TIMEOUT:
               print(f"kill for {buffer_flag_1}")
-              online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True)
+              curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True))
               break
 
 
@@ -527,7 +528,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             # Online training logic
             if step > 0 and step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
-                online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args)
+                curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args))
 
 
         
@@ -539,6 +540,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         file = open(f"{data_buffer_path}/buffer_flag_2.log","w")
         file.close()
+        if curr_lr is not None and curr_lr <= 1e-9:
+            curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True))
+            return curr_lr
 
 #def run_cesm():
 #    cur_dir = os.getcwd()
@@ -620,6 +624,8 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
                 train_files.append(online_data_path + "/" + fn)
     print("[Online Learning] Loading train files:")
     print(train_files)
+    if len(train_files) == 0:
+        return
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
@@ -701,6 +707,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     save_log.extend(lrs)
     save_log.extend(mses)
     logger.append(save_log)
+    return lrs[0]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -748,6 +755,7 @@ if __name__ == "__main__":
         with open(args.config_file_path, "r") as f:
             configs = json.load(f)
 
+    print(configs)
     for i,config in enumerate(configs):
         parsed_config = parse_config(config)
 
@@ -869,5 +877,7 @@ if __name__ == "__main__":
 
             # run experiment
             case_no = run_cesm()
-            run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
+            curr_lr = run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
             cleanup(case_no)
+            #if float(curr_lr) <= 1e-9:
+            #    break
