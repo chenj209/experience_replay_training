@@ -622,6 +622,8 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     crm_file_pattern = "(crm).*\d{5}\.npz"
     start_step = step - M + 1
     if force_save:
+        if step < args.skip_first:
+            return -1
         # force save happens when dynamics fails and there is less than M step run
         # in this case, use all data starting after last checkpoint
         last_checkpoint = (get_iter(args,step,M)) * M
@@ -637,6 +639,8 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     print(train_files)
     if len(train_files) == 0:
         if force_save:
+            if step < args.skip_first:
+                return -1
             for model_type in KEY_MODEL_TYPES:
                 model = all_models[model_type]
                 optimizer = optimizers[model_type]
@@ -714,8 +718,10 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
         if (get_iter(args,step,M) - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH))+'.pth.tar')
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         if force_save:
+            if step < args.skip_first:
+                return -1
             print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         lr_scheduler.step()
@@ -901,5 +907,7 @@ if __name__ == "__main__":
             case_no = run_cesm(buffer2=buffer2_flag)
             curr_lr = run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
             cleanup(case_no)
+            if curr_lr == -1:
+                break
             #if float(curr_lr) <= 1e-9:
             #    break
