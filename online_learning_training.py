@@ -7,6 +7,7 @@ import torch
 import json
 import subprocess
 import random
+import math
 
 sys.path.append("/cust_users/chenj209/prog_val_mod/src.baseline/") 
 
@@ -83,6 +84,9 @@ def buffer_lock(file, timeout=True):
             if timeout and cur_time - start_time > MAX_TIMEOUT:
               return cur_time - start_time
             continue
+
+def get_iter(args,step,M):
+    return math.ceil((step-args.skip_first)/M)
 
 def parse_config(config):
 
@@ -620,7 +624,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     if force_save:
         # force save happens when dynamics fails and there is less than M step run
         # in this case, use all data starting after last checkpoint
-        last_checkpoint = ((step-args.skip_first) // M) * M
+        last_checkpoint = (get_iter(args,step,M)) * M
         start_step = last_checkpoint + 1
     train_files = []
     for fn in os.listdir(online_data_path):
@@ -636,14 +640,14 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             for model_type in KEY_MODEL_TYPES:
                 model = all_models[model_type]
                 optimizer = optimizers[model_type]
-                print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {(step-args.skip_first) // M + 1 + BASE_EPOCH}")
-                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str((step-args.skip_first)//M+1+BASE_EPOCH)+'.pth.tar')
+                print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
+                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         return
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
-    save_log = [(step-args.skip_first) / M + BASE_EPOCH]
+    save_log = [get_iter(args,step,M) + BASE_EPOCH]
     lrs = []
     mses = []
     criterion = nn.MSELoss()
@@ -708,12 +712,12 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-        if ((step-args.skip_first) / M - 1) % CKPT_FREQ == 0:
-            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {int((step-args.skip_first) / M) + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int((step-args.skip_first)/M+BASE_EPOCH))+'.pth.tar')
+        if (get_iter(args,step,M) - 1) % CKPT_FREQ == 0:
+            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH))+'.pth.tar')
         if force_save:
-            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {(step-args.skip_first)// M + 1 + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str((step-args.skip_first)//M+1+BASE_EPOCH)+'.pth.tar')
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
         mses.append(train_losses.avg)
