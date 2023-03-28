@@ -526,7 +526,10 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 dQ_crm = None
 
             # Online training logic
-            if step > 0 and step % M == 0:
+            train_step = step
+            if args.skip_first is not None:
+                train_step -= int(args.skip_first)
+            if train_step > 0 and train_step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
                 curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args))
 
@@ -553,13 +556,17 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 #    output, error = process.communicate() 
 #    os.chdir(cur_dir)
 
-def run_cesm():
+def run_cesm(buffer2=False):
     pattern = "job (\d+)"
     cur_dir = os.getcwd()
 #    os.chdir("/cust_users/chenj209/neuroGCM/scripts/reproduce_cases/")
 #    bashCommand = "./reproduce_cases.submit"
-    os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_startup0322_checked/")
-    bashCommand = "./online_startup0322_checked.submit"
+    if buffer2:
+        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_buffer2_0328//")
+        bashCommand = "./online_buffer2_0328.submit"
+    else:
+        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_startup0322_checked/")
+        bashCommand = "./online_startup0322_checked.submit"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
     m = re.search(pattern, output.decode())
@@ -613,7 +620,7 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     if force_save:
         # force save happens when dynamics fails and there is less than M step run
         # in this case, use all data starting after last checkpoint
-        last_checkpoint = (step // M) * M
+        last_checkpoint = ((step-args.skip_first) // M) * M
         start_step = last_checkpoint + 1
     train_files = []
     for fn in os.listdir(online_data_path):
@@ -626,14 +633,14 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
     print(train_files)
     if len(train_files) == 0:
         if force_save:
-            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step // M + 1 + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1+BASE_EPOCH)+'.pth.tar')
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {(step-args.skip_first) // M + 1 + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str((step-args.skip_first)//M+1+BASE_EPOCH)+'.pth.tar')
         return
     training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
-    save_log = [step / M + BASE_EPOCH]
+    save_log = [(step-args.skip_first) / M + BASE_EPOCH]
     lrs = []
     mses = []
     criterion = nn.MSELoss()
@@ -698,12 +705,12 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
             current_iters += 1
             print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
-        if ((step) / M - 1) % CKPT_FREQ == 0:
-            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {int(step / M) + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int(step/M+BASE_EPOCH))+'.pth.tar')
+        if ((step-args.skip_first) / M - 1) % CKPT_FREQ == 0:
+            print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {int((step-args.skip_first) / M) + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(int((step-args.skip_first)/M+BASE_EPOCH))+'.pth.tar')
         if force_save:
-            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {step // M + 1 + BASE_EPOCH}")
-            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(step//M+1+BASE_EPOCH)+'.pth.tar')
+            print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {(step-args.skip_first)// M + 1 + BASE_EPOCH}")
+            train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str((step-args.skip_first)//M+1+BASE_EPOCH)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
         mses.append(train_losses.avg)
@@ -792,6 +799,7 @@ if __name__ == "__main__":
 
         # ask for input prompt
         if i==0:
+            print(f"Running in {parsed_config['data_buffer_path'].split('/')[-2]}")
             proceed = input("Proceed? (y/n)\n")
             if proceed != "y":
                 raise Exception("Abort")
@@ -811,10 +819,13 @@ if __name__ == "__main__":
                     "momentum", 
                     "epoch",
                     "M",
-                    "lr_step_size"
+                    "lr_step_size",
+                    "skip_first"
                     ]
             for arg in ol_args:
-                args.__dict__[arg] = parsed_config[arg]
+                args.__dict__[arg] = parsed_config[arg] if arg in parsed_config else None
+            if args.skip_first is None:
+                args.__dict__["skip_first"] = 0
             print("[Online Learning] Args:\n", args)
 
             if args.manualSeed is None:
@@ -877,9 +888,10 @@ if __name__ == "__main__":
             # generate config file from running configuration into online data path
             generate_config(parsed_config, online_data_path)
 
-
+            buffer2_flag = ("data_buffer2" == parsed_config["data_buffer_path"].split("/")[-2])
+            print(f"Running in {parsed_config['data_buffer_path'].split('/')[-2]}")
             # run experiment
-            case_no = run_cesm()
+            case_no = run_cesm(buffer2=buffer2_flag)
             curr_lr = run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
             cleanup(case_no)
             #if float(curr_lr) <= 1e-9:
