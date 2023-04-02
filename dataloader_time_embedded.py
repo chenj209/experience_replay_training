@@ -3,6 +3,7 @@ import os
 import numpy as np
 import time
 import glob
+import re
 
 # norm_vec = np.load('norm_vec.npz')
 # channel_max_x = norm_vec['channel_max_x']
@@ -25,23 +26,31 @@ def normalization(data_x, data_y):
     x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1
     x[:,90:120,:,:] = (x[:,90:120,:,:] + 3.89e-3) / (3.89e-3*2) * 2 - 1
     x[:,120,:,:]    = (x[:,120,:,:] - 0)/ (1412 - 0)
-    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928) 
+    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928)
 
     # output data (target)
     y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1
     y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1
     y[:,60:61,:,:]    =  y[:,60:61,:,:] / (2.12e-6) * 2 - 1
-    
+
     y[:,61:62,:,:]    = (y[:,61:62,:,:] - 0) / (1412 - 0)
     y[:,62:63,:,:]    = (y[:,62:63,:,:] - 0) / (1412 - 0)
     y[:,63:64,:,:]    = (y[:,63:64,:,:] - 0) / (1412 - 0)
     y[:,64:65,:,:]    = (y[:,64:65,:,:] - 0) / (1412 - 0)
-    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)    
-    
-    
+    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)
+
+
     data_x_norm, data_y_norm = x,y
-    
+
     return data_x_norm, data_y_norm
+
+def filename_to_idx(filename):
+    data_pattern = ".*(\d{5})\.npz"
+    m = re.search(data_pattern, filename)
+    if m is None:
+        return -1
+    else:
+        return int(m.group(1))
 
 
 class Dataset(data.Dataset):
