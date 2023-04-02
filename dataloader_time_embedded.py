@@ -59,6 +59,7 @@ class Dataset(data.Dataset):
         ### load the data ###
         x = []
         y = []
+        file_names.sort(key=filename_to_idx)
         for idx, file_name in enumerate(file_names):
             _file = np.load(file_name)
             tx = _file["data_x"]
