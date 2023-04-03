@@ -37,9 +37,9 @@ def main(args):
     if args.network == 'resnet':
         model = models.ResNet(args.node_size, args.activation)
     elif args.network == 'resnet_output30':
-        model = models.ResNet_output30(args.node_size, args.activation, args.num_blocks)
+        model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
-        model = models.ResNet_output5(args.node_size, args.activation, args.num_blocks)
+        model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
         model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'mlp_output30':
@@ -74,9 +74,11 @@ def main(args):
                 all_files.remove(file_name)
     print('hahahahahah after file num:', len(all_files))
 
-    test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
-    test_files = [all_files[i] for i in test_idx]
-    train_files = [file_name for file_name in all_files if file_name not in test_files]
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #train_files = [file_name for file_name in all_files if file_name not in test_files]
+    test_files = all_files[-len(all_files)//10:]
+    train_files = [:-len(all_files)//10]
     # test_files = train_files
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 
@@ -109,10 +111,10 @@ def main(args):
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
 
-    training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
+    training_set = TimeDataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
-    testing_set = Dataset(file_names=test_files, is_train=False, noise_std=args.noise_std)
+    testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=args.noise_std)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=5,min_delta=0)
     # Train and test
