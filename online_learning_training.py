@@ -77,7 +77,8 @@ class EarlyStopper:
             self.min_validation_loss = float(validation_loss)
             self.counter = 0
         elif float(validation_loss) < self.prev_validation_loss:
-            self.counter = 0
+            if self.counter > 0:
+                self.counter -= 1
         #elif float(validation_loss) > (self.min_validation_loss + self.min_delta):
         elif float(validation_loss) > (self.prev_validation_loss + self.min_delta):
             self.counter += 1
