@@ -70,15 +70,20 @@ class EarlyStopper:
         self.min_delta = min_delta
         self.counter = 0
         self.min_validation_loss = np.inf
+        self.prev_validation_loss = np.inf
 
     def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
+        if float(validation_loss) < self.min_validation_loss:
+            self.min_validation_loss = float(validation_loss)
             self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
+        elif float(validation_loss) < self.prev_validation_loss:
+            self.counter = 0
+        #elif float(validation_loss) > (self.min_validation_loss + self.min_delta):
+        elif float(validation_loss) > (self.prev_validation_loss + self.min_delta):
             self.counter += 1
             if self.counter >= self.patience:
                 return True
+        self.prev_validation_loss = float(validation_loss)
         return False
 
     def reset(self):
@@ -204,12 +209,12 @@ def parse_config(config):
 def save_best_models(all_models, optimizers, best_models, model_perfs):
     if model_perfs is not None:
         for model_type in MODELS_TO_TRAIN:
-            if model_perfs[model_type][-1] < best_models[model_type][-1]: # compare test loss
-                best_models[model_type] = model_perf[model_type]
+            if float(model_perfs[model_type][-1]) < float(best_models[model_type][-1]): # compare test loss
+                best_models[model_type] = model_perfs[model_type]
                 model = all_models[model_type]
                 optimizer = optimizers[model_type]
-                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(model_perfs[0])+'.pth.tar')
-                print(f"Saving best model for {model_type}, test mse {model_perfs[model_type][-1]:4e}")
+                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(model_perfs[model_type][0])+'.pth.tar')
+                print(f"Saving best model for {model_type}, test mse {float(model_perfs[model_type][-1]):4e}")
 
 def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args, best_models):
     curr_lr = None
@@ -590,7 +595,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 save_best_models(all_models, optimizers, best_models, model_perfs)
                 ol_early_stop_flag = None
                 for model_type in MODELS_TO_TRAIN:
-                    if ol_early_stoppers[model_type].early_stop(model_perfs[model_type][-1]):
+                    if ol_early_stoppers[model_type].early_stop(float(model_perfs[model_type][-1])):
                         ol_early_stop_flag = model_type
                 if ol_early_stop_flag is not None:
                     print(f"Early stopping due to {ol_early_stop_flag} diverge")
@@ -779,7 +784,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
                 train_losses.update(train_mse, batch[0].size(0))
                 #train_losses.update(train_mse, batch[0].size(0))
                 current_iters += 1
-                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
+                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.4e} | train mse:{:.4e}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
             """
             testing
             """
@@ -817,7 +822,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
                 test_losses.update(test_mse, batch[0].size(0))
                 #train_losses.update(train_mse, batch[0].size(0))
                 current_iters += 1
-                print('testing- epoch:{}/{} | iters:{}/{} | {}_r2:{:.6f}|'.format(epoch, args.epoch, iter+1, len(testloader), model_type, test_mse))
+                print('testing- epoch:{}/{} | iters:{}/{} | {}_r2:{:.4e}|'.format(epoch, args.epoch, iter+1, len(testloader), model_type, test_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
             if early_stoppers[model_type].early_stop(test_losses.avg):
                 break
@@ -839,9 +844,9 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
     logger.append(save_log)
     cur_ol_epoch = get_iter(args,step,M)+BASE_EPOCH 
     return {
-            "0_29": (cur_ol_epoch, f"{args.checkpoint}/0_29/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[0], 
-            "30_59": (cur_ol_epoch, f"{args.checkpoint}/30_59/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[1], 
-            "61_65": (cur_ol_epoch, f"{args.checkpoint}/61_65/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[2]
+            "0_29": (cur_ol_epoch, f"{args.checkpoint}/0_29/checkpoint_iter{cur_ol_epoch}.pth.tar", float(test_mses[0])), 
+            "30_59": (cur_ol_epoch, f"{args.checkpoint}/30_59/checkpoint_iter{cur_ol_epoch}.pth.tar", float(test_mses[1])), 
+            "61_65": (cur_ol_epoch, f"{args.checkpoint}/61_65/checkpoint_iter{cur_ol_epoch}.pth.tar", float(test_mses[2]))
             }
 
 if __name__ == "__main__":
@@ -947,7 +952,8 @@ if __name__ == "__main__":
                     "epoch",
                     "M",
                     "lr_step_size",
-                    "skip_first"
+                    "skip_first",
+                    "base"
                     ]
             for arg in ol_args:
                 args.__dict__[arg] = parsed_config[arg] if arg in parsed_config else None
@@ -1005,9 +1011,9 @@ if __name__ == "__main__":
                                model6164=parsed_config["61-64"]["ckpt_path"],
                                model6165=parsed_config["61-65"]["ckpt_path"],
                              )
-                best_models["0_29"] = (-1,parsed_config["0_29"]["ckpt_path"], np.inf) # ol_epoch(old model be -1), path, test_mse
-                best_models["30_59"] = (-1,parsed_config["30_59"]["ckpt_path"], np.inf)
-                best_models["61_65"] = (-1,parsed_config["61_65"]["ckpt_path"], np.inf)
+                best_models["0_29"] = (-1,parsed_config["0-29"]["ckpt_path"], np.inf) # ol_epoch(old model be -1), path, test_mse
+                best_models["30_59"] = (-1,parsed_config["30-59"]["ckpt_path"], np.inf)
+                best_models["61_65"] = (-1,parsed_config["61-65"]["ckpt_path"], np.inf)
                   
             #online_data_path = parsed_config["online_data_path"]
             online_data_path = parsed_config["online_data_path"]
