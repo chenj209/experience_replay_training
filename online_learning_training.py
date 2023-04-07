@@ -81,6 +81,10 @@ class EarlyStopper:
                 return True
         return False
 
+    def reset(self):
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
 def print_config(config):
     print(json.dumps(parsed_config, sort_keys=True, indent=4))
 
@@ -197,8 +201,17 @@ def parse_config(config):
     return parsed_config
 
 
+def save_best_models(all_models, optimizers, best_models, model_perfs):
+    if model_perfs is not None:
+        for model_type in MODELS_TO_TRAIN:
+            if model_perfs[model_type][-1] < best_models[model_type][-1]: # compare test loss
+                best_models[model_type] = model_perf[model_type]
+                model = all_models[model_type]
+                optimizer = optimizers[model_type]
+                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(model_perfs[0])+'.pth.tar')
+                print(f"Saving best model for {model_type}, test mse {model_perfs[model_type][-1]:4e}")
 
-def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args):
+def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args, best_models):
     curr_lr = None
     print("qtend post process: ", qtend_post_process)
     inverse = {}
@@ -225,17 +238,20 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     optimizers = {}
     lr_schedulers = {}
     early_stoppers = {}
+    ol_early_stoppers = {}
     if args.optim == 'sgd':
-        for model_type in MODELS_TO_TRAIN:
-            optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        for i,model_type in enumerate(MODELS_TO_TRAIN):
+            optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr[i], momentum=args.momentum, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
             early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
+            ol_early_stoppers[model_type] = EarlyStopper(patience=5,min_delta=0)
 
     elif args.optim == 'adam':
-        for model_type in MODELS_TO_TRAIN:
-            optimizers[model_type] = optim.Adam(all_models[model_type].parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        for i,model_type in enumerate(MODELS_TO_TRAIN):
+            optimizers[model_type] = optim.Adam(all_models[model_type].parameters(), lr=args.lr[i], betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
             early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
+            ol_early_stoppers[model_type] = EarlyStopper(patience=5,min_delta=0)
     else:
         optimizers = None
 
@@ -276,7 +292,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         else:
             if buffer_flag_1 >= MAX_TIMEOUT:
               print(f"kill for {buffer_flag_1}")
-              curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers,logger, step, online_data_path, args, force_save=True))
+              model_perfs = online_training(all_models, optimizers, lr_schedulers, early_stoppers,logger, step, online_data_path, args, force_save=True)
+              save_best_models(all_models, optimizers, best_models, model_perfs)
               break
 
 
@@ -569,7 +586,15 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 train_step -= int(args.skip_first)
             if train_step > 0 and train_step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
-                curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args))
+                model_perfs = online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args)
+                save_best_models(all_models, optimizers, best_models, model_perfs)
+                ol_early_stop_flag = None
+                for model_type in MODELS_TO_TRAIN:
+                    if ol_early_stoppers[model_type].early_stop(model_perfs[model_type][-1]):
+                        ol_early_stop_flag = model_type
+                if ol_early_stop_flag is not None:
+                    print(f"Early stopping due to {ol_early_stop_flag} diverge")
+                    break
 
 
         
@@ -581,9 +606,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         file = open(f"{data_buffer_path}/buffer_flag_2.log","w")
         file.close()
-        if curr_lr is not None and curr_lr <= 1e-9:
-            curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args, force_save=True))
-            return curr_lr
+        #if curr_lr is not None and curr_lr <= 1e-9:
+        #    curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args, force_save=True))
+        #    return curr_lr
 
 #def run_cesm():
 #    cur_dir = os.getcwd()
@@ -657,7 +682,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
     start_step = step - M + 1
     if force_save:
         if step < args.skip_first:
-            return -1
+            return None
         # force save happens when dynamics fails and there is less than M step run
         # in this case, use all data starting after last checkpoint
         last_checkpoint = (get_iter(args,step,M)) * M
@@ -672,19 +697,19 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
     print("[Online Learning] Loading train files:")
     print(train_files)
     if len(train_files) == 0:
-        if force_save:
-            if step < args.skip_first:
-                return -1
-            for model_type in MODELS_TO_TRAIN:
-                model = all_models[model_type]
-                optimizer = optimizers[model_type]
-                print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
-                train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
-        return
+        #if force_save:
+        #    if step < args.skip_first:
+        #        return None
+        #    for model_type in MODELS_TO_TRAIN:
+        #        model = all_models[model_type]
+        #        optimizer = optimizers[model_type]
+        #        print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
+        #        train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
+        return None
     train_part = math.floor(len(train_files)*0.9)
     training_set = Dataset(file_names=train_files[:train_part], is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
-    teset_set = Dataset(file_names=train_files[train_part:], is_train=False, noise_std=args.noise_std)
+    test_set = Dataset(file_names=train_files[train_part:], is_train=False, noise_std=args.noise_std)
     testloader = data.DataLoader(test_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
@@ -700,6 +725,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
         # Define loss and optimizer
         optimizer = optimizers[model_type]
         lr_scheduler = lr_schedulers[model_type]
+        early_stoppers[model_type].reset()
 
 
         # set models to train mode
@@ -771,8 +797,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
                 if model_type == '61_65':
                     batch[1] = batch[1][:, 61:66]
         #             if args.output_type == '61-65':
-        #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
-        #             else:
+        #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer) #             else:
                 #train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
                 model.eval()
                 device = gpus_to_use[mi]
@@ -792,7 +817,7 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
                 test_losses.update(test_mse, batch[0].size(0))
                 #train_losses.update(train_mse, batch[0].size(0))
                 current_iters += 1
-                print('testing- epoch:{}/{} | iters:{}/{} | {model_type}_r2:{:.6f}|'.format(epoch, args.epoch, iter+1, len(testloader), test_mse))
+                print('testing- epoch:{}/{} | iters:{}/{} | {}_r2:{:.6f}|'.format(epoch, args.epoch, iter+1, len(testloader), model_type, test_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
             if early_stoppers[model_type].early_stop(test_losses.avg):
                 break
@@ -801,18 +826,23 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         if force_save:
             if step < args.skip_first:
-                return -1
+                return None
             print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
-        mses.append(train_losses.avg)
-        test_mses.append(test_losses.avg)
+        mses.append(f"{train_losses.avg:.4e}")
+        test_mses.append(f"{test_losses.avg:.4e}")
     save_log.extend(lrs)
     save_log.extend(mses)
     save_log.extend(test_mses)
     logger.append(save_log)
-    return lrs[0]
+    cur_ol_epoch = get_iter(args,step,M)+BASE_EPOCH 
+    return {
+            "0_29": (cur_ol_epoch, f"{args.checkpoint}/0_29/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[0], 
+            "30_59": (cur_ol_epoch, f"{args.checkpoint}/30_59/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[1], 
+            "61_65": (cur_ol_epoch, f"{args.checkpoint}/61_65/checkpoint_iter{cur_ol_epoch}.pth.tar", test_mses[2]
+            }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -899,6 +929,8 @@ if __name__ == "__main__":
             if proceed != "y":
                 raise Exception("Abort")
 
+        best_models = {}
+
         while True:
             # load online training configs
             ol_args = [
@@ -940,7 +972,7 @@ if __name__ == "__main__":
             if os.path.isdir(args.checkpoint + "/0_29") and len(os.listdir(args.checkpoint + "/0_29")) > 0:
                 resume_ckpt_paths = {}
                 max_iter = BASE_EPOCH
-                for model_type in MODELS_TO_TRAIN:
+                for i,model_type in enumerate(MODELS_TO_TRAIN):
                     all_ckpts = os.listdir(args.checkpoint + "/" + model_type)
                     max_ckpt = ""
                     for ckpt in all_ckpts:
@@ -949,6 +981,10 @@ if __name__ == "__main__":
                             max_iter = int(m.group(1))
                             max_ckpt = ckpt
                     resume_ckpt_paths[model_type] = args.checkpoint + "/" + model_type + "/"  + max_ckpt
+                    if args.base is not None:
+                        resume_ckpt_paths[model_type] = args.checkpoint + "/" + model_type + "/"  + f"checkpoint_iter{args.base[i]}.pth.tar"
+                    if "0_29" in best_models:
+                        resume_ckpt_paths[model_type] = best_models[model_type][1]
                 BASE_EPOCH = max_iter
                 print(f"[Online Learning] Resuming from BASE_EPOCH {BASE_EPOCH}:\n{resume_ckpt_paths}")
 
@@ -958,6 +994,9 @@ if __name__ == "__main__":
                                model6164=parsed_config["61-64"]["ckpt_path"],
                                model6165=resume_ckpt_paths["61_65"],
                              )
+                best_models["0_29"] = (BASE_EPOCH,resume_ckpt_paths["0_29"], np.inf) # ol_epoch, path, test_mse
+                best_models["30_59"] = (BASE_EPOCH,resume_ckpt_paths["30_59"], np.inf)
+                best_models["61_65"] = (BASE_EPOCH,resume_ckpt_paths["61_65"], np.inf)
             else:
                 # load checkpoints
                 all_models = load_ckpts_manual(
@@ -966,6 +1005,9 @@ if __name__ == "__main__":
                                model6164=parsed_config["61-64"]["ckpt_path"],
                                model6165=parsed_config["61-65"]["ckpt_path"],
                              )
+                best_models["0_29"] = (-1,parsed_config["0_29"]["ckpt_path"], np.inf) # ol_epoch(old model be -1), path, test_mse
+                best_models["30_59"] = (-1,parsed_config["30_59"]["ckpt_path"], np.inf)
+                best_models["61_65"] = (-1,parsed_config["61_65"]["ckpt_path"], np.inf)
                   
             #online_data_path = parsed_config["online_data_path"]
             online_data_path = parsed_config["online_data_path"]
@@ -987,9 +1029,9 @@ if __name__ == "__main__":
             print(f"Running in {parsed_config['data_buffer_path'].split('/')[-2]}")
             # run experiment
             case_no = run_cesm(buffer2=buffer2_flag)
-            curr_lr = run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args)
+            run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_process, args, best_models)
             cleanup(case_no)
-            if curr_lr == -1:
-                break
+            #if curr_lr == -1:
+            #    break
             #if float(curr_lr) <= 1e-9:
             #    break
