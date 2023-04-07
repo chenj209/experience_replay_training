@@ -208,14 +208,18 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     # Setup training optimizer
     optimizers = {}
     lr_schedulers = {}
+    early_stoppers = {}
     if args.optim == 'sgd':
         for model_type in MODELS_TO_TRAIN:
             optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
+            early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
+
     elif args.optim == 'adam':
         for model_type in MODELS_TO_TRAIN:
             optimizers[model_type] = optim.Adam(all_models[model_type].parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
+            early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
     else:
         optimizers = None
 
@@ -235,8 +239,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title='',resume=BASE_EPOCH>0)
     logger.set_names([
         'Epoch',
-        *[model_type+' LR' for model_type in MODELS_TO_TRAIN], 
-        *[model_type+' train mse' for model_type in MODELS_TO_TRAIN]
+        *[model_type+'_LR' for model_type in MODELS_TO_TRAIN], 
+        *[model_type+'_train_mse' for model_type in MODELS_TO_TRAIN],
+        *[model_type+'_test_loss' for model_type in MODELS_TO_TRAIN]
         ])
 
 
@@ -255,7 +260,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         else:
             if buffer_flag_1 >= MAX_TIMEOUT:
               print(f"kill for {buffer_flag_1}")
-              curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True))
+              curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers,logger, step, online_data_path, args, force_save=True))
               break
 
 
@@ -366,6 +371,17 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         dTls = dTls.astype(np.float64)
         dTls = dTls.reshape(30,96,144).transpose((2,1,0))
 
+        # 2023-04-05 chenj209: reading new ls field frm crm internal state
+        dqvls_crm = np.fromfile(f"{data_buffer_path}/dqvls_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
+        dqvls_crm = dqvls_crm.astype(np.float64)
+        dqvls_crm = dqvls_crm.reshape(30,96,144).transpose((2,1,0))
+
+        dTls_crm = np.fromfile(f"{data_buffer_path}/dTls_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
+        dTls_crm = dTls_crm.astype(np.float64)
+        dTls_crm = dTls_crm.reshape(30,96,144).transpose((2,1,0))
+        dqvls_crm = dqvls_crm.reshape(144*96,30)
+        dTls_crm  = dTls_crm.reshape(144*96,30)
+
         # xy拉成一维
         Q = Q.reshape(144*96,30)
         T = T.reshape(144*96,30)
@@ -379,6 +395,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # 仅分析使用
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
+        data_x_crm  = np.concatenate((Q, T, dqvls_crm, dTls_crm, solin, ps), axis = 1)
+        inputs_crm  = gen_inputs(data_x_crm) # get online data(inputs) by Wang Xin on 2021-09-02
 
         print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
 
@@ -526,7 +544,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 # save crm outputs for online labels
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs, data_y = outputs)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs_crm, data_y = outputs)
                 dQ_crm = None
 
             # Online training logic
@@ -535,7 +553,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 train_step -= int(args.skip_first)
             if train_step > 0 and train_step % M == 0:
                 #def online_training(all_models, args, M, step, online_data_path):
-                curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args))
+                curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args))
 
 
         
@@ -548,7 +566,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         file = open(f"{data_buffer_path}/buffer_flag_2.log","w")
         file.close()
         if curr_lr is not None and curr_lr <= 1e-9:
-            curr_lr = float(online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=True))
+            curr_lr = float(online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args, force_save=True))
             return curr_lr
 
 #def run_cesm():
@@ -569,8 +587,8 @@ def run_cesm(buffer2=False):
         os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_buffer2_0328//")
         bashCommand = "./online_buffer2_0328.submit"
     else:
-        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_startup0322_checked/")
-        bashCommand = "./online_startup0322_checked.submit"
+        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP/scripts/ol_fix_ls0406/")
+        bashCommand = "./ol_fix_ls0406.submit"
     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
     output, error = process.communicate()
     m = re.search(pattern, output.decode())
@@ -600,7 +618,7 @@ def cleanup(case_no):
           break
 
 
-def online_training(all_models, optimizers, lr_schedulers, logger, step, online_data_path, args, force_save=False):
+def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logger, step, online_data_path, args, force_save=False):
     """
     Train current models with past M labels from CRM with one pass
 
@@ -641,19 +659,23 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
         if force_save:
             if step < args.skip_first:
                 return -1
-            for model_type in KEY_MODEL_TYPES:
+            for model_type in MODELS_TO_TRAIN:
                 model = all_models[model_type]
                 optimizer = optimizers[model_type]
                 print(f"[Online Learning] Force Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
                 train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         return
-    training_set = Dataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
+    train_part = math.floor(len(train_files)*0.9)
+    training_set = Dataset(file_names=train_files[:train_part], is_train=True, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
+    teset_set = Dataset(file_names=train_files[train_part:], is_train=False, noise_std=args.noise_std)
+    testloader = data.DataLoader(test_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 
     save_log = [get_iter(args,step,M) + BASE_EPOCH]
     lrs = []
     mses = []
+    test_mses = []
     criterion = nn.MSELoss()
     # One pass for all the models
     for mi, model_type in enumerate(MODELS_TO_TRAIN):
@@ -673,49 +695,91 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
 
         train_losses = AverageMeter()
         current_iters = 0
-        for iter, batch in enumerate(trainloader):
+        for epoch in range(args.epoch):
+            for iter, batch in enumerate(trainloader):
 
-            # Dont' use lr scheduler for now
-            # lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            if model_type == '0_29':
-                batch[1] = batch[1][:, :30]
-            if model_type == '30_59':
-                batch[1] = batch[1][:, 30:60]
-            if model_type == '60':
-                batch[1] = batch[1][:, 60:61]
-            if model_type == '61_65':
-                batch[1] = batch[1][:, 61:66]
-    #             if args.output_type == '61-65':
-    #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
-    #             else:
-            #train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
-            model.train()
-            device = gpus_to_use[mi]
+                # Dont' use lr scheduler for now
+                # lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+                if model_type == '0_29':
+                    batch[1] = batch[1][:, :30]
+                if model_type == '30_59':
+                    batch[1] = batch[1][:, 30:60]
+                if model_type == '60':
+                    batch[1] = batch[1][:, 60:61]
+                if model_type == '61_65':
+                    batch[1] = batch[1][:, 61:66]
+        #             if args.output_type == '61-65':
+        #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
+        #             else:
+                #train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
+                model.train()
+                device = gpus_to_use[mi]
 
-            points_x, points_y = batch
-            points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
-            
-            
-        #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+                points_x, points_y = batch
+                points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
+                
+                
+            #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
 
-            # compute output
-            outputs_y = model(points_x)
-            # print(outputs_y.size(), points_y.size())
-            loss = criterion(outputs_y, points_y)
+                # compute output
+                outputs_y = model(points_x)
+                # print(outputs_y.size(), points_y.size())
+                loss = criterion(outputs_y, points_y)
 
-            # print(points_y)
-            # print(torch.min(points_y))
-            # compute gradient and do SGD step
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # print(points_y)
+                # print(torch.min(points_y))
+                # compute gradient and do SGD step
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-            train_mse = loss.item()
-            train_losses.update(train_mse, batch[0].size(0))
-            #train_losses.update(train_mse, batch[0].size(0))
-            current_iters += 1
-            print('training- | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
+                train_mse = loss.item()
+                train_losses.update(train_mse, batch[0].size(0))
+                #train_losses.update(train_mse, batch[0].size(0))
+                current_iters += 1
+                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.4e} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr_scheduler.get_last_lr()[0], train_mse))
+            """
+            testing
+            """
+            test_losses = AverageMeter()
+            for iter, batch in enumerate(testloader):
+
+                # Dont' use lr scheduler for now
+                # lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+                if model_type == '0_29':
+                    batch[1] = batch[1][:, :30]
+                if model_type == '30_59':
+                    batch[1] = batch[1][:, 30:60]
+                if model_type == '60':
+                    batch[1] = batch[1][:, 60:61]
+                if model_type == '61_65':
+                    batch[1] = batch[1][:, 61:66]
+        #             if args.output_type == '61-65':
+        #                 train_mse = train_tools.train_penalty(batch, model, criterion, optimizer)
+        #             else:
+                #train_mse = train_tools.train(batch, model, criterion, optimizer, gpus_to_use[mi])
+                model.eval()
+                device = gpus_to_use[mi]
+
+                points_x, points_y = batch
+                points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
+                
+                
+            #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+
+                # compute output
+                outputs_y = model(points_x)
+                # print(outputs_y.size(), points_y.size())
+                loss = criterion(outputs_y, points_y)
+
+                test_mse = loss.item()
+                test_losses.update(test_mse, batch[0].size(0))
+                #train_losses.update(train_mse, batch[0].size(0))
+                current_iters += 1
+                print('testing- epoch:{}/{} | iters:{}/{} | {model_type}_r2:{:.6f}|'.format(epoch, args.epoch, iter+1, len(testloader), test_mse))
             #print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
+            if early_stoppers[model_type].early_stop(test_losses.avg):
+                break
         if (get_iter(args,step,M) - 1) % CKPT_FREQ == 0:
             print(f"[Online Learning] Saving checkpoint for {model_type}, Iter {get_iter(args,step,M) + BASE_EPOCH}")
             train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
@@ -727,8 +791,10 @@ def online_training(all_models, optimizers, lr_schedulers, logger, step, online_
         lr_scheduler.step()
         lrs.append("{:.4e}".format(lr_scheduler.get_last_lr()[0]))
         mses.append(train_losses.avg)
+        test_mses.append(test_losses.avg)
     save_log.extend(lrs)
     save_log.extend(mses)
+    save_log.extend(test_mses)
     logger.append(save_log)
     return lrs[0]
 
