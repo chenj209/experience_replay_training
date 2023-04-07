@@ -90,6 +90,7 @@ class EarlyStopper:
     def reset(self):
         self.counter = 0
         self.min_validation_loss = np.inf
+        self.prev_validation_loss = np.inf
 
 def print_config(config):
     print(json.dumps(parsed_config, sort_keys=True, indent=4))
