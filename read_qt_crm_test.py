@@ -26,7 +26,8 @@ import shutil
 from copy import deepcopy
 
 M = 8
-READ_QT_PATH = "/data/nncam_data/image_set/"
+#READ_QT_PATH = "/data/nncam_data/image_set/"
+READ_QT_PATH = "/home/users/chenj209/nncam_online_data/pure_spcam_output/"
 #READ_QT_PATH = "/share1/neuroGCM/chenj209_temp/0-29_newdata_noise0_ep45_30-59_newdata_noise0_ep45_61-65_newdata_noise0_ep45/"
 MAX_TIMEOUT = 60
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
@@ -409,11 +410,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 #            stend += add_ds_data*filter_mask
 #            qtend.tofile(f"{data_buffer_path}/qtend.bin")
 #            stend.tofile(f"{data_buffer_path}/stend.bin")
-        if False and step % 8 == 0:
-            target_file = f"{READ_QT_PATH}/*{idx_to_filename(step+3)}"
+        if step % 8 == 0:
+            target_file = f"{READ_QT_PATH}/*{idx_to_filename(step+1)}"
             print(target_file)
-            print(glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+3)}"))
-            qt_file = glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+3)}")[0]
+            print(glob.glob(f"{READ_QT_PATH}/prog*{idx_to_filename(step+1)}"))
+            qt_file = glob.glob(f"{READ_QT_PATH}/prog*{idx_to_filename(step+1)}")[0]
             qt_data = np.load(qt_file)
             data_x = qt_data["data_x"].astype(">f8")
             q_data = data_x[:,:30,:,:].squeeze()
