@@ -283,7 +283,10 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         *[model_type+'_test_loss' for model_type in MODELS_TO_TRAIN]
         ])
 
-
+    prev_crm_inputs = None
+    prev_inputs = None
+    inputs = None
+    crm_inputs = None
 
     while 1:
         # check if cam has gen the data_buffer.bin
@@ -433,9 +436,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # input and extend input    
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
+        prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
         data_x_crm  = np.concatenate((Q, T, dqvls_crm, dTls_crm, solin, ps), axis = 1)
+        prev_crm_inputs = inputs_crm
         inputs_crm  = gen_inputs(data_x_crm) # get online data(inputs) by Wang Xin on 2021-09-02
 
         print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
@@ -584,7 +589,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 # save crm outputs for online labels
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs_crm, data_y = outputs)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_crm_inputs, data_y = outputs)
                 dQ_crm = None
 
             # Online training logic
