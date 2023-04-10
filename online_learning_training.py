@@ -283,10 +283,10 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         *[model_type+'_test_loss' for model_type in MODELS_TO_TRAIN]
         ])
 
-    prev_crm_inputs = None
+    prev_inputs_crm = None
     prev_inputs = None
     inputs = None
-    crm_inputs = None
+    inputs_crm = None
 
     while 1:
         # check if cam has gen the data_buffer.bin
@@ -589,7 +589,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 # save crm outputs for online labels
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_crm_inputs, data_y = outputs)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs_crm, data_y = outputs)
                 dQ_crm = None
 
             # Online training logic
