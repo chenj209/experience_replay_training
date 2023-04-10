@@ -251,14 +251,14 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             optimizers[model_type] = optim.SGD(all_models[model_type].parameters(), lr=args.lr[i], momentum=args.momentum, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
             early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
-            ol_early_stoppers[model_type] = EarlyStopper(patience=5,min_delta=0)
+            ol_early_stoppers[model_type] = EarlyStopper(patience=30,min_delta=0)
 
     elif args.optim == 'adam':
         for i,model_type in enumerate(MODELS_TO_TRAIN):
             optimizers[model_type] = optim.Adam(all_models[model_type].parameters(), lr=args.lr[i], betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
             lr_schedulers[model_type] = lr_scheduler.StepLR(optimizers[model_type], step_size=args.lr_step_size, gamma=0.1)
             early_stoppers[model_type] = EarlyStopper(patience=1,min_delta=0)
-            ol_early_stoppers[model_type] = EarlyStopper(patience=5,min_delta=0)
+            ol_early_stoppers[model_type] = EarlyStopper(patience=30,min_delta=0)
     else:
         optimizers = None
 
