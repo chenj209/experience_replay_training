@@ -26,8 +26,8 @@ import shutil
 from copy import deepcopy
 
 M = 8
-#READ_QT_PATH = "/data/nncam_data/image_set/"
-READ_QT_PATH = "/share1/neuroGCM/chenj209_temp/0-29_newdata_noise0_ep45_30-59_newdata_noise0_ep45_61-65_newdata_noise0_ep45/"
+READ_QT_PATH = "/data/nncam_data/image_set/"
+#READ_QT_PATH = "/share1/neuroGCM/chenj209_temp/0-29_newdata_noise0_ep45_30-59_newdata_noise0_ep45_61-65_newdata_noise0_ep45/"
 MAX_TIMEOUT = 60
 GW_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_dqv.npy"
 GW_DS_PATH = "/temp_share/stabilities.analysis/Gravity-waves/GW_ds.npy"
@@ -185,6 +185,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     step = 0
 
     skip_first = True
+    prev_inputs = None
     while 1:
         # check if cam has gen the data_buffer.bin
         print("\n\033[1;35mWaiting for Fortran2Python...\033[0m\n")
@@ -319,6 +320,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         # input and extend input    
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
+        if step > 0:
+            prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
 
@@ -406,15 +409,16 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 #            stend += add_ds_data*filter_mask
 #            qtend.tofile(f"{data_buffer_path}/qtend.bin")
 #            stend.tofile(f"{data_buffer_path}/stend.bin")
-        if step % 8 == 0:
-            target_file = f"{READ_QT_PATH}/*{idx_to_filename(step+1)}"
+        if False and step % 8 == 0:
+            target_file = f"{READ_QT_PATH}/*{idx_to_filename(step+3)}"
             print(target_file)
-            print(glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+1)}"))
-            qt_file = glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+1)}")[0]
+            print(glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+3)}"))
+            qt_file = glob.glob(f"{READ_QT_PATH}/*{idx_to_filename(step+3)}")[0]
             qt_data = np.load(qt_file)
-            q_data = qt_data["data_x"][:,:30,:,:].squeeze().astype(">f8")
-            t_data = qt_data["data_x"][:,30:60,:,:].squeeze().astype(">f8")
-            print(f"write back q_data {q_data.shape}, t_data {t_data.shape}")
+            data_x = qt_data["data_x"].astype(">f8")
+            q_data = data_x[:,:30,:,:].squeeze()
+            t_data = data_x[:,30:60,:,:].squeeze()
+            print(f"write back q_data {q_data.shape}, mean {q_data.mean()}, t_data {t_data.shape}, {t_data.mean()}")
             q_data.tofile(f"{data_buffer_path}/Q_nn.bin")
             t_data.tofile(f"{data_buffer_path}/T_nn.bin")
 
@@ -461,13 +465,14 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
             if step > 0:
                 outputs = gen_outputs(dQ, dS, y_3, y_4)
-        #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
-                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
+                #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
+                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
 
                 # Online learning: new crm outputs
+            if step > 0:
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs, data_y = outputs)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
 
         
         if (step < 10240):
