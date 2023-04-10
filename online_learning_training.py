@@ -440,7 +440,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
         data_x_crm  = np.concatenate((Q, T, dqvls_crm, dTls_crm, solin, ps), axis = 1)
-        prev_crm_inputs = inputs_crm
+        prev_inputs_crm = inputs_crm
         inputs_crm  = gen_inputs(data_x_crm) # get online data(inputs) by Wang Xin on 2021-09-02
 
         print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
