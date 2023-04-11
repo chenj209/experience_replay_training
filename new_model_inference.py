@@ -44,6 +44,25 @@ CKPT_CONFIG_DEFAULT = {
         "61-64": "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/61_64_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
 }
 
+def normalization_xy(data_x, data_y):
+    x = data_x
+    y = data_y
+    x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1
+    x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1
+    x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1
+    x[:,90:120,:,:] = (x[:,90:120,:,:] + 3.89e-3) / (3.89e-3*2) * 2 - 1
+    x[:,120,:,:]    = (x[:,120,:,:] - 0)/ (1412 - 0)
+    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928)
+    y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1
+    y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1
+    y[:,60:61,:,:]    =  y[:,60:61,:,:] / (2.12e-6) * 2 - 1
+    y[:,61:62,:,:]    = (y[:,61:62,:,:] - 0) / (1412 - 0)
+    y[:,62:63,:,:]    = (y[:,62:63,:,:] - 0) / (1412 - 0)
+    y[:,63:64,:,:]    = (y[:,63:64,:,:] - 0) / (1412 - 0)
+    y[:,64:65,:,:]    = (y[:,64:65,:,:] - 0) / (1412 - 0)
+    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)
+    data_x_norm, data_y_norm = x,y
+    return data_x_norm, data_y_norm
 
 def print_config(config):
     print(json.dumps(parsed_config, sort_keys=True, indent=4))
@@ -182,16 +201,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
     skip_first = True
 
-    data_x = None
-    prev_data_x = None
-    prev_inputs = None
-    inputs = None
-    prev_outputs = None
-    outputs = None
-    y_1 = None
-    y_2 = None
-    y_3 = None
-    y_4 = None
+    inputs = np.zeros((1,122,96,144))
+    prev_inputs = inputs
+    outputs = np.zeros((1,66,96,144))
+    prev_outputs = outputs
+
     while 1:
         # check if cam has gen the data_buffer.bin
         print("\n\033[1;35mWaiting for Fortran2Python...\033[0m\n")
@@ -325,24 +339,43 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         ps = ps.reshape(144*96,1)
 
         # input and extend input    
-        prev_data_x = data_x
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
         prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
 
+        # construct input for new model
+        tx = inputs
+        #ty = curr_data["data_y"]
+        tx_prev = prev_inputs
+        ty_prev = prev_outputs
+        ############# normalization ###############
+        tx = normalization(tx)
+        tx_prev, ty_prev = normalization_xy(tx_prev, ty_prev)
+        tx = np.transpose(tx, (0, 2, 3, 1))
+        #ty = np.transpose(ty, (0, 2, 3, 1))
+        tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
+        ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
+        tx = np.reshape(tx, (-1, tx.shape[-1]))
+        #ty = np.reshape(ty, (-1, ty.shape[-1]))
+        tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
+        ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
+        tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
+
+
         print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
 
-        points_x1 = torch.cuda.FloatTensor(normalization(data_x))
+        points_x1 = torch.cuda.FloatTensor(tx_concat)
         #points_x = torch.cuda.FloatTensor(normalization_by_level(data_x, computed_min_max_x))
 
         # Inference
         print("Inferencing...")
         time_start = time.time()
 
+        
         with torch.no_grad():
-            y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1).detach().cpu().numpy())
+            y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1).detach().cpu().numpy()
             y_2 = inverse['30_59'](all_models['30_59'](points_x1).detach().cpu().numpy())
             y_3 = inverse['61_64'](all_models['61_64'](points_x1).detach().cpu().numpy())
             y_4 = inverse['61_65'](all_models['61_65'](points_x1).detach().cpu().numpy())
@@ -417,6 +450,15 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         
         if (step < 10240):
             np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
+
+        if dQ_crm is not None:
+            # save crm outputs for online labels, only get dQ crm once
+            y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
+            outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
+            if step == 0:
+                prev_outputs = outputs
+            np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
+            dQ_crm = None
         step = step + 1
         print("Step", step, "integration\n")
 
