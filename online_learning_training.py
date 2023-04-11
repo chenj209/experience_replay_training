@@ -637,8 +637,8 @@ def run_cesm(buffer2=False):
 #    os.chdir("/cust_users/chenj209/neuroGCM/scripts/reproduce_cases/")
 #    bashCommand = "./reproduce_cases.submit"
     if buffer2:
-        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/online_buffer2_0328//")
-        bashCommand = "./online_buffer2_0328.submit"
+        os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP//scripts/ol_fix_ls_0411_buffer2//")
+        bashCommand = "./ol_fix_ls_0411_buffer2.submit"
     else:
         os.chdir("/cust_users/chenj209/ONLINE_LEARNING_STARTUP/scripts/ol_fix_ls0406/")
         bashCommand = "./ol_fix_ls0406.submit"

@@ -181,6 +181,17 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     step = 0
 
     skip_first = True
+
+    data_x = None
+    prev_data_x = None
+    prev_inputs = None
+    inputs = None
+    prev_outputs = None
+    outputs = None
+    y_1 = None
+    y_2 = None
+    y_3 = None
+    y_4 = None
     while 1:
         # check if cam has gen the data_buffer.bin
         print("\n\033[1;35mWaiting for Fortran2Python...\033[0m\n")
@@ -314,8 +325,10 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         ps = ps.reshape(144*96,1)
 
         # input and extend input    
+        prev_data_x = data_x
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
+        prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
 
@@ -377,41 +390,6 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if qtend_post_process:
             qtend[:10] = 0.0 
 
-        if step >= 10 and step < 20:
-        # chenj209(20230301): let spcam run the first 10 step
-        #if step < 10:
-            add_data = np.load(GW_PATH)
-            add_ds_data = np.load(GW_DS_PATH)
-            print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}, {add_ds_data.shape}")
-            # print(f"qtend shape: {qtend.shape}, noise path: {add_data.shape}")
-            filter_mask = np.zeros(add_data.shape)
-            filter_mask[:,53:57,26:30] = 4
-            qtend += add_data*filter_mask
-            stend += add_ds_data*filter_mask
-
-        # test new post processing
-        #data = qtend
-        #q99 = np.quantile(data.reshape(-1),0.99)
-        #q1 = np.quantile(data.reshape(-1),0.01)
-        #spread = q99 - q1
-        #multiplier = 1
-        #prev_ratio = 0
-
-        #Q99 = np.quantile(Q.reshape(-1),0.99)
-        #Q1 = np.quantile(Q.reshape(-1),0.01)
-        
-        #if spread > 0:
-            #max_val = np.max(qtend)
-            #qtend[qtend>q99] = np.tanh((qtend[qtend>q99]-q99)/spread)*(multiplier-prev_ratio)*spread+q99
-            #qtend[qtend<q1] = q1-np.tanh((q1-qtend[qtend<q1])/spread)*(multiplier-prev_ratio)*spread
-        #    qtend[qtend>q99] = q99
-        #    qtend[qtend<q1] = q1
-            # prev_ratio = np.abs(np.tanh((max_val - q99) / spread))
-        #    print(f"Q outlier ratio: {(np.max(Q)-Q99) / (Q99-Q1)}")
-            #print(f"After process min outlier ratio: {(q1 - np.min(qtend)) / spread}")
-            #print(f"prev_ratio {prev_ratio}")
-
-
         qtend.tofile(f"{data_buffer_path}/qtend.bin")
         stend.tofile(f"{data_buffer_path}/stend.bin")
       # cp.tofile(f"{data_buffer_path}/cp.bin")
@@ -431,41 +409,14 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         # Generate Prognostic Validation results (npz) by Wang Xin on 2021-11-29
         # 仅分析使用
+        prev_outputs = outputs
+        outputs = gen_outputs(qtend, stend, y_3, y_4)
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
-            if step > 0 and step <= 10:
-                # chenj209(20230301): from step 1 to step 10, read CRM output
-                # CRM output is generated after every step
-                dQ = np.fromfile(f"{data_buffer_path}/qtend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
-                dQ = dQ.astype(np.float64)
-                dQ = dQ.reshape(30,96,144)
-
-                dS = np.fromfile(f"{data_buffer_path}/stend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
-                dS = dS.astype(np.float64)
-                dS = dS.reshape(30,96,144)
-                outputs = gen_outputs(dQ, dS, y_3, y_4)
-                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
-
-        
-            if step >= 10:
-                # chenj209(20230301): save python output after 10 step
-                outputs = gen_outputs(qtend, stend, y_3, y_4)
         #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
-                np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
-            else:
-                # chenj209(20230301): still save not used qtend stend for diagnostic
-                outputs = gen_outputs(qtend, stend, y_3, y_4)
-                np.savez(online_data_path +  '/diag_prog-val_'  + "%005d"%(step+1), data_x = inputs, data_y = outputs)
-
-            if step > 0 and dQ_crm is not None:
-                # save crm outputs for online labels
-                y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
-                outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = inputs, data_y = outputs)
-                dQ_crm = None
+            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
         
         if (step < 10240):
             np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
-
         step = step + 1
         print("Step", step, "integration\n")
 
