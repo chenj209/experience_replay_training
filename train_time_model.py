@@ -9,6 +9,7 @@ import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
 from dataloader_subset_files import Dataset
+from dataloader_time_embedded import TimeDataset
 from torch.utils import data
 import models
 import tools
@@ -58,7 +59,8 @@ def main(args):
 
 
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
-    all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
+    #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
+    all_files = glob.glob(args.data_dir+'/*')
 
     print('org file num:', len(all_files))
     for i in range(17507,17530):
@@ -77,8 +79,10 @@ def main(args):
     #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
     #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
     #train_files = [file_name for file_name in all_files if file_name not in test_files]
-    test_files = all_files[-len(all_files)//10:]
-    train_files = [:-len(all_files)//10]
+    test_file_count = len(all_files)//20
+    test_files = all_files[-test_file_count:]
+    #train_files = all_files[:-test_file_count]
+    train_files = all_files[:test_file_count*2]
     # test_files = train_files
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 

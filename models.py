@@ -30,7 +30,7 @@ class skip_layer(nn.Module):
 
 class ResNet_output30_Time(nn.Module):
     def __init__(self, m, activation, num_blocks):
-        super(ResNet_output30, self).__init__()
+        super(ResNet_output30_Time, self).__init__()
         self.fc1 = nn.Linear(310, m)
         self.input_size = 310
         self.fc2 = nn.Linear(m, m)
@@ -202,7 +202,7 @@ class ResNet_output4(nn.Module):
 
 class ResNet_output5_Time(nn.Module):
     def __init__(self, m, activation, num_blocks):
-        super(ResNet_output5, self).__init__()
+        super(ResNet_output5_Time, self).__init__()
         self.fc1 = nn.Linear(310, m)
         self.input_size = 310
         self.fc2 = nn.Linear(m, m)
