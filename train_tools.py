@@ -11,13 +11,17 @@ def cosine_lr(opt, base_lr, e, epochs):
 def constant(opt, base_lr, e, epochs):
     return base_lr
 
-def train(batch, model, criterion, optimizer, device):
+def train(batch, model, criterion, optimizer, device=None):
 
     # switch to train mode
     model.train()
 
     points_x, points_y = batch
-    points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
+    if device is not None:
+        points_x, points_y = (points_x.float()).cuda(device), (points_y.float()).cuda(device)
+    else:
+        points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+
     
     
 #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???

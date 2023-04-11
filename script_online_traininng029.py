@@ -1,11 +1,18 @@
 import os
 
-DATA_DIR = "./data/baseline_online_label/"
+#DATA_DIR = "./data/baseline_online_label/"
+DATA_DIR = "/home/users/chenj209/nncam_online_data/spcam_perturb_m32/"
+#baseline_ckpt_paths = {
+#        "029": "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar",
+#        "3059": "/cust_users/x-w19/nncam.ckpts/resmlp.25GB.noise0.0/30_59_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar",
+#        "6165": "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/61_65_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch50.pth.tar"
+#        }
 baseline_ckpt_paths = {
-        "029": "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar",
-        "3059": "/cust_users/x-w19/nncam.ckpts/resmlp.25GB.noise0.0/30_59_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar",
-        "6165": "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/61_65_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch50.pth.tar"
+        "029": "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch45.pth.tar",
+        "3059": "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/30_59_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch45.pth.tar",
+        "6165": "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/61_65_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch45.pth.tar"
         }
+name = "crash2_m32_finetune029"
 
 for epoch in ['100']:
     for num_blocks in ['7']:
@@ -24,9 +31,9 @@ for epoch in ['100']:
                     lr_strategy = 'coslr'
 
                     network = 'resnet_output30'
-                    name = 'rmbaddata_wxnorm_subset_0-29_{}_nodesize{}_num_blocks{}_act{}_bs{}_scheduler_{}_lr{}_ep{}_noise{}_wd{}_dropout{}'.format(
-                        network, node_size, num_blocks, activation,
-                        batch_size, lr_strategy, lr, epoch, noise_std, weight_decay, dropout)
+                    #name = 'rmbaddata_wxnorm_subset_0-29_{}_nodesize{}_num_blocks{}_act{}_bs{}_scheduler_{}_lr{}_ep{}_noise{}_wd{}_dropout{}'.format(
+                    #    network, node_size, num_blocks, activation,
+                    #    batch_size, lr_strategy, lr, epoch, noise_std, weight_decay, dropout)
                     print(name)
 #               commands = f"CUDA_VISIBLE_DEVICES=1 python online_training.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
 #                          '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \

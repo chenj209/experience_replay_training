@@ -11,7 +11,7 @@ from utils import Logger, AverageMeter, mkdir_p
 from dataloader_subset_files import Dataset
 from torch.utils import data
 import models
-import tools
+import train_tools as tools
 import time
 import glob
 
@@ -60,7 +60,7 @@ def main(args):
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
 
-    all_files = glob.glob(args.data_dir+'/*')
+    all_files = glob.glob(args.data_dir+'/prog*')
 
     print('org file num:', len(all_files))
     #for i in range(17507,17530):
