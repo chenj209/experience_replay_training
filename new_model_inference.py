@@ -7,8 +7,10 @@ import torch
 import json
 import subprocess
 
+import models as local_models
 sys.path.append("/cust_users/chenj209/prog_val_mod/src.baseline/") 
 
+import models
 from tools import normalization, normalization_by_level
 from tools import inverse_61_64, inverse_61_65
 from tools import load_ckpts, load_ckpts_manual
@@ -43,6 +45,87 @@ CKPT_CONFIG_MAPPING = {
 CKPT_CONFIG_DEFAULT = {
         "61-64": "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/61_64_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
 }
+def load_ckpts_time(model029, model3059, model6164, model6165):
+    
+    '''
+      eg. lab_path    = '/cust_users/x-w19/nncam.ckpts'
+          resume_type = '/mlp.newData'
+          noise_type  = 'noise0.01'
+          epochs      = '50'           # epoch is a string instead of an integer
+
+      crash: 
+    '''
+    
+        
+    # define model
+    all_models = {}
+    
+    # hyperparameters (fixed)
+    num_blocks = 7
+    node_size  = 512
+    activation = 'relu'
+    dropout    = 0
+    
+    # Assign GPUs to 3 models
+    gpu_index = 0
+
+
+    for output_type in ['0_29', '30_59', '61_64', '61_65']:
+        if output_type == '0_29':
+            if len(model029.split("/")) > 1 and 'mlp' in model029.split("/")[-2]:
+                model = models.mlp_output30(node_size, activation, num_blocks)
+            else:
+                print("Loading time model 0_29")
+                model = local_models.ResNet_output30_Time(node_size, activation, num_blocks)
+        elif output_type == '30_59':
+            print("Loading time model 30_59")
+            model = local_models.ResNet_output30_Time(node_size, activation, num_blocks)
+        elif output_type == '61_64':
+            model = models.ResNet_output4(node_size, activation, num_blocks)
+        elif output_type == '61_65':
+            print("Loading time model 61_65")
+            model = local_models.ResNet_output5_Time(node_size, activation, num_blocks)
+
+        print("\nLoading DNN model to GPU_{}".format(gpu_index))
+        model = torch.nn.DataParallel(model, device_ids=[gpu_index])
+
+        print('------------------------output type: {}-----------------------'.format(output_type))
+        print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
+
+        if output_type == '0_29':
+            #resume = path + 'rmbaddata_wxnorm_subset_mlp_0-29_mlp_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio0.3_norm_typeinput_level_norm/checkpoint.pth.tar'
+            #resume = path + 'rmbaddata_wxnorm_subset_mlp_0-29_mlp_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio1.0_norm_type_input_level_norm/checkpoint.pth.tar'
+            resume = model029
+            print('\nloading the checkpoint: {}'.format(resume))
+
+        if output_type == '30_59':
+            #resume = path + 'rmbaddata_wxnorm_subset_30-59_resnet_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio0.3_norm_typeinput_level_norm/checkpoint.pth.tar'
+            #resume = path + 'rmbaddata_wxnorm_subset_30-59_resnet_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio1.0_norm_type_input_level_norm/checkpoint.pth.tar'
+            resume = model3059
+            print('\nloading the checkpoint: {}'.format(resume))
+
+        elif output_type == '61_64':
+
+#            resume = path + 'rmbaddata_wxnorm_subset_nopenalty_61-65_resnet_output5_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio0.3_norm_typeinput_level_norm/checkpoint.pth.tar'
+            #resume = '/cust_users/x-w19/nncam.ckpts/resmlp.newData.61-65/61-65_resnet_ep50_noise0.01_wd0_dropout0/checkpoint_epoch50.pth.tar'
+            resume = model6164
+            print('\nloading the checkpoint: {}'.format(resume))
+
+        elif output_type == '61_65':
+
+#            resume = path + 'rmbaddata_wxnorm_subset_nopenalty_61-65_resnet_output5_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio0.3_norm_typeinput_level_norm/checkpoint.pth.tar'
+            #resume = '/cust_users/x-w19/nncam.ckpts/resmlp.newData.61-65/61-65_resnet_ep50_noise0.01_wd0_dropout0/checkpoint_epoch50.pth.tar'
+            resume = model6165
+            print('\nloading the checkpoint: {}'.format(resume))
+
+        checkpoint = torch.load(resume)['state_dict']
+        model.load_state_dict(checkpoint)
+        
+        all_models[output_type] = model
+        
+        gpu_index = gpu_index + 1
+        
+    return all_models
 
 def normalization_xy(data_x, data_y):
     x = data_x
@@ -203,8 +286,10 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
     inputs = np.zeros((1,122,96,144))
     prev_inputs = inputs
-    outputs = np.zeros((1,66,96,144))
+    outputs = np.zeros((1,69,96,144))
     prev_outputs = outputs
+    y_3 = np.zeros((1, 4, 96, 144))
+    prev_y_3 = y_3
 
     while 1:
         # check if cam has gen the data_buffer.bin
@@ -337,6 +422,14 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         dTls  = dTls.reshape(144*96,30)
         solin = solin.reshape(144*96,1)
         ps = ps.reshape(144*96,1)
+        if dQ_crm is not None:
+            # save crm outputs for online labels, only get dQ crm once
+            y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
+            outputs = gen_outputs(dQ_crm, dS_crm, prev_y_3, y_4)
+            if step == 1:
+                prev_outputs = outputs
+            np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
+            dQ_crm = None
 
         # input and extend input    
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
@@ -349,7 +442,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         tx = inputs
         #ty = curr_data["data_y"]
         tx_prev = prev_inputs
-        ty_prev = prev_outputs
+        print("prev_outputs", prev_outputs.shape)
+        ty_prev = np.delete(prev_outputs, [61,62,63], axis=1)
+        print("ty_prev", ty_prev.shape)
         ############# normalization ###############
         tx = normalization(tx)
         tx_prev, ty_prev = normalization_xy(tx_prev, ty_prev)
@@ -362,11 +457,13 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
         ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
         tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
+        print("tx_concat", tx_concat.shape)
 
 
         print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
 
-        points_x1 = torch.cuda.FloatTensor(tx_concat)
+        points_x1_time = torch.cuda.FloatTensor(tx_concat)
+        points_x1 = torch.cuda.FloatTensor(data_x)
         #points_x = torch.cuda.FloatTensor(normalization_by_level(data_x, computed_min_max_x))
 
         # Inference
@@ -375,10 +472,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         
         with torch.no_grad():
-            y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1).detach().cpu().numpy()
-            y_2 = inverse['30_59'](all_models['30_59'](points_x1).detach().cpu().numpy())
+            y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1_time).detach().cpu().numpy())
+            y_2 = inverse['30_59'](all_models['30_59'](points_x1_time).detach().cpu().numpy())
+            prev_y_3 = y_3
             y_3 = inverse['61_64'](all_models['61_64'](points_x1).detach().cpu().numpy())
-            y_4 = inverse['61_65'](all_models['61_65'](points_x1).detach().cpu().numpy())
+            y_4 = inverse['61_65'](all_models['61_65'](points_x1_time).detach().cpu().numpy())
 
         print('Inference finished, using time: {} sec\n'.format(time.time() - time_start))
 
@@ -451,14 +549,6 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         if (step < 10240):
             np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
 
-        if dQ_crm is not None:
-            # save crm outputs for online labels, only get dQ crm once
-            y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
-            outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-            if step == 0:
-                prev_outputs = outputs
-            np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
-            dQ_crm = None
         step = step + 1
         print("Step", step, "integration\n")
 
@@ -566,7 +656,7 @@ if __name__ == "__main__":
       generate_config(parsed_config, online_data_path)
 
       # load checkpoints
-      all_models = load_ckpts_manual(
+      all_models = load_ckpts_time(
                      model029=parsed_config["0-29"]["ckpt_path"],
                      model3059=parsed_config["30-59"]["ckpt_path"],
                      model6164=parsed_config["61-64"]["ckpt_path"],
