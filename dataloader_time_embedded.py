@@ -71,7 +71,7 @@ class TimeDataset(data.Dataset):
             tx = curr_data["data_x"]
             ty = curr_data["data_y"]
             tx_prev = prev_data["data_x"]
-            ty_prev = prev_data["data_y"]
+            ty_prev = np.delete(prev_data["data_y"], 60, axis=1)
             ############# normalization ###############
             tx, ty = normalization(tx, ty)
             tx_prev, ty_prev = normalization(tx_prev, ty_prev)
