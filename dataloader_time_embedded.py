@@ -16,6 +16,64 @@ import re
 #     data_y_norm = (data_y - channel_min_y) / (channel_max_y - channel_min_y) * 2 - 1
 #     return data_x_norm, data_y_norm
 
+def normalize_x(data_x):
+    x = data_x
+
+    x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1
+    x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1
+    x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1
+    x[:,90:120,:,:] = (x[:,90:120,:,:] + 3.89e-3) / (3.89e-3*2) * 2 - 1
+    x[:,120,:,:]    = (x[:,120,:,:] - 0)/ (1412 - 0)
+    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928)
+
+    data_x_norm = x
+
+    return data_x_norm
+
+def normalize_y(data_y):
+    y = data_y
+    # output data (target)
+    y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1
+    y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1
+    y[:,60:61,:,:]    =  y[:,60:61,:,:] / (2.12e-6) * 2 - 1
+
+    y[:,61:62,:,:]    = (y[:,61:62,:,:] - 0) / (1412 - 0)
+    y[:,62:63,:,:]    = (y[:,62:63,:,:] - 0) / (1412 - 0)
+    y[:,63:64,:,:]    = (y[:,63:64,:,:] - 0) / (1412 - 0)
+    y[:,64:65,:,:]    = (y[:,64:65,:,:] - 0) / (1412 - 0)
+    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)
+
+
+    data_y_norm = y
+
+    return data_y_norm
+
+def inverse_61_65(y):
+    y[:,0] = (y[:,0]) * (1412 - 0)
+    y[:,1] = (y[:,1]) * (1412 - 0)
+    y[:,2] = (y[:,2]) * (1412 - 0)
+    y[:,3] = (y[:,3]) * (1412 - 0)
+    y[:,4] = (y[:,4]) * (1412 - 0)
+    return y
+
+def inverse_61_64(y):
+    y[:,0] = (y[:,0]+1)/2*(332+53)-53       # flns
+    y[:,1] = (y[:,1]+1)/2*(419-83)+83       # flnt
+    y[:,2] = (y[:,2]+1)/2*(1063+2.13)-2.13  # fsns
+    y[:,3] = (y[:,3]+1)/2*(1299)+0          # fsnt
+    return y
+
+def get_inverse():
+    inverse = {}
+    inverse[ '0_29'] = lambda y: (y+1)/2*(3.11e-6*2)-3.11e-6
+    inverse['30_59'] = lambda y: (y+1)/2*(3.63*2)-3.63
+    inverse['60']    = lambda y: (y+1)/2*(2.12e-6)
+    inverse['61_64'] = lambda y: inverse_61_64(y)
+    inverse['61_65'] = lambda y: inverse_61_65(y)
+    
+    return inverse
+
+
 def normalization(data_x, data_y):
     x = data_x
     y = data_y
@@ -55,7 +113,7 @@ def filename_to_idx(filename):
 
 class TimeDataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True):
         ### load the data ###
         x = []
         y = []
