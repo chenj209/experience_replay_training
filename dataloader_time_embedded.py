@@ -71,10 +71,11 @@ class TimeDataset(data.Dataset):
             tx = curr_data["data_x"]
             ty = curr_data["data_y"]
             tx_prev = prev_data["data_x"]
-            ty_prev = np.delete(prev_data["data_y"], 60, axis=1)
+            ty_prev = prev_data["data_y"]
             ############# normalization ###############
             tx, ty = normalization(tx, ty)
             tx_prev, ty_prev = normalization(tx_prev, ty_prev)
+            ty_prev = np.delete(ty_prev, 60, axis=1)
             tx = np.transpose(tx, (0, 2, 3, 1))
             ty = np.transpose(ty, (0, 2, 3, 1))
             tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
