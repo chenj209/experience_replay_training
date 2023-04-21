@@ -719,9 +719,9 @@ def online_training(all_models, optimizers, lr_schedulers, early_stoppers, logge
         #        train_tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint + f"/{model_type}", filename='checkpoint_iter'+str(get_iter(args,step,M)+BASE_EPOCH)+'.pth.tar')
         return None
     train_part = math.floor(len(train_files)*0.9)
-    training_set = Dataset(file_names=train_files[:train_part], is_train=True, noise_std=args.noise_std)
+    training_set = Dataset(file_names=train_files[:train_part], is_train=True, noise_std=args.noise_std, is_online=True)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
-    test_set = Dataset(file_names=train_files[train_part:], is_train=False, noise_std=args.noise_std)
+    test_set = Dataset(file_names=train_files[train_part:], is_train=False, noise_std=args.noise_std, is_online=True)
     testloader = data.DataLoader(test_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     gpus_to_use = [0, 1, 3]
 

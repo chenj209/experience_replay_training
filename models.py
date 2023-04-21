@@ -31,8 +31,8 @@ class skip_layer(nn.Module):
 class ResNet_output30_Time(nn.Module):
     def __init__(self, m, activation, num_blocks):
         super(ResNet_output30_Time, self).__init__()
-        self.fc1 = nn.Linear(310, m)
-        self.input_size = 310
+        self.fc1 = nn.Linear(309, m)
+        self.input_size = 309
         self.fc2 = nn.Linear(m, m)
 
         self.basicblocks = self._make_layer(m, num_blocks-1, activation)
@@ -203,8 +203,8 @@ class ResNet_output4(nn.Module):
 class ResNet_output5_Time(nn.Module):
     def __init__(self, m, activation, num_blocks):
         super(ResNet_output5_Time, self).__init__()
-        self.fc1 = nn.Linear(310, m)
-        self.input_size = 310
+        self.fc1 = nn.Linear(309, m)
+        self.input_size = 309
         self.fc2 = nn.Linear(m, m)
 
         # self.channel_max_y = torch.FloatTensor(norm_vec['channel_max_y'][0:1,61:66,0,0]).cuda()

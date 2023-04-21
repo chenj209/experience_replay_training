@@ -46,7 +46,7 @@ def normalization(data_x, data_y):
 
 class Dataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0):
+    def __init__(self, file_names, is_train, noise_std = 0, is_online=False):
         ### load the data ###
         x = []
         y = []
@@ -54,6 +54,9 @@ class Dataset(data.Dataset):
             _file = np.load(file_name)
             tx = _file["data_x"]
             ty = _file["data_y"]
+            if is_online:
+                assert(ty.shape == (1,69,96,144))
+                ty = np.delete(ty, [61,62,63], axis=1)
             ############# normalization ###############
             tx, ty = normalization(tx, ty)
             tx = np.transpose(tx, (0, 2, 3, 1))
