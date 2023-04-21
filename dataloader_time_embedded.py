@@ -131,7 +131,10 @@ class TimeDataset(data.Dataset):
             tx_prev = prev_data["data_x"]
             ty_prev = prev_data["data_y"]
             ############# normalization ###############
-            tx, ty = normalization(tx, ty)
+            #tx, ty = normalization(tx, ty)
+            tx = normalize_x(tx)
+            if output_normalized:
+                ty = normalize_y(ty)
             tx_prev, ty_prev = normalization(tx_prev, ty_prev)
             ty_prev = np.delete(ty_prev, 60, axis=1)
             tx = np.transpose(tx, (0, 2, 3, 1))
