@@ -145,8 +145,8 @@ def load_ckpts_time(model029, model3059, model6164, model6165):
     return all_models
 
 def normalization_xy(data_x, data_y):
-    x = data_x
-    y = data_y
+    x = data_x.copy()
+    y = data_y.copy()
     x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1
     x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1
     x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1
@@ -165,31 +165,48 @@ def normalization_xy(data_x, data_y):
     return data_x_norm, data_y_norm
 
 def normalize_x(data_x):                                                                
-    x = data_x                                                                          
+    x = data_x.copy()                                                                          
                                                                                         
-    x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1                            
-    x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1                      
-    x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1                  
-    x[:,90:120,:,:] = (x[:,90:120,:,:] + 3.89e-3) / (3.89e-3*2) * 2 - 1                 
-    x[:,120,:,:]    = (x[:,120,:,:] - 0)/ (1412 - 0)                                    
-    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928)                         
+    x[:, 0:30]  = (x[:, 0:30] - 0) /(0.0238) * 2 - 1                            
+    x[:,30:60]  = (x[:,30:60] - 159) / (323 - 159) * 2 - 1                      
+    x[:,60:90 ] = (x[:,60:90] + 2.13e-6) / (2.13e-6*2) * 2 - 1                  
+    x[:,90:120] = (x[:,90:120] + 3.89e-3) / (3.89e-3*2) * 2 - 1                 
+    x[:,120]    = (x[:,120] - 0)/ (1412 - 0)                                    
+    x[:,121]    = (x[:,121] - 59928) / (105782 - 59928)                         
                                                                                         
     data_x_norm = x                                                                     
                                                                                         
     return data_x_norm                                                                  
                                                                                         
 def normalize_y(data_y):                                                                
-    y = data_y                                                                          
-    # output data (target)                                                              
-    y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1                   
-    y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1                         
-    y[:,60:61,:,:]    =  y[:,60:61,:,:] / (2.12e-6) * 2 - 1                             
-                                                                                        
-    y[:,61:62,:,:]    = (y[:,61:62,:,:] - 0) / (1412 - 0)                               
-    y[:,62:63,:,:]    = (y[:,62:63,:,:] - 0) / (1412 - 0)                               
-    y[:,63:64,:,:]    = (y[:,63:64,:,:] - 0) / (1412 - 0)                               
-    y[:,64:65,:,:]    = (y[:,64:65,:,:] - 0) / (1412 - 0)                               
-    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)                               
+    if data_y.shape[1] == 66:
+        y = data_y.copy()                                                                          
+        # output data (target)                                                              
+        y[:, 0:30] = (y[:, 0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1                   
+        y[:,30:60] = (y[:,30:60] + 3.63) / (3.63*2) * 2 - 1                         
+        y[:,60:61]    =  y[:,60:61] / (2.12e-6) * 2 - 1                             
+                                                                                            
+        y[:,61:62]    = (y[:,61:62] - 0) / (1412 - 0)                               
+        y[:,62:63]    = (y[:,62:63] - 0) / (1412 - 0)                               
+        y[:,63:64]    = (y[:,63:64] - 0) / (1412 - 0)                               
+        y[:,64:65]    = (y[:,64:65] - 0) / (1412 - 0)                               
+        y[:,65:66]    = (y[:,65:66] - 0) / (1412 - 0)                               
+    if data_y.shape[1] == 65:
+        y = data_y.copy()                                                                          
+        # output data (target)                                                              
+        y[:, 0:30] = (y[:, 0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1                   
+        y[:,30:60] = (y[:,30:60] + 3.63) / (3.63*2) * 2 - 1                         
+                                                                                            
+        y[:,60:61]    = (y[:,60:61] - 0) / (1412 - 0)                               
+        y[:,61:62]    = (y[:,61:62] - 0) / (1412 - 0)                               
+        y[:,62:63]    = (y[:,62:63] - 0) / (1412 - 0)                               
+        y[:,63:64]    = (y[:,63:64] - 0) / (1412 - 0)                               
+        y[:,64:65]    = (y[:,64:65] - 0) / (1412 - 0)                               
+    else:
+        print(data_y.shape)
+        raise Exception("not implemented")
+    data_y_norm = y
+    return data_y_norm
 
 def print_config(config):
     print(json.dumps(parsed_config, sort_keys=True, indent=4))
@@ -334,7 +351,13 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
     prev_outputs = outputs
     y_3 = np.zeros((1, 4, 96, 144))
     prev_y_3 = y_3
+    prev_data_x = None
+    data_x = None
 
+    y_1 = np.zeros((144*96,30))
+    y_2 = np.zeros((144*96,30))
+    y_3 = np.zeros((144*96,4))
+    y_4 = np.zeros((144*96,5))
     while 1:
         # check if cam has gen the data_buffer.bin
         print("\n\033[1;35mWaiting for Fortran2Python...\033[0m\n")
@@ -472,77 +495,95 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
             outputs = gen_outputs(dQ_crm, dS_crm, prev_y_3, y_4)
             np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
-            dQ_crm = None
-        if step <= 1:
-            print("using previous step spcam outputs")
-            #prev_outputs = outputs
-            prev_outputs = np.load("/data/nncam_data/image_set/00002.npz")["data_y"]
-            prev_input_test = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
+            if step == 1:
+                y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
+                y_42 = sols_crm.astype(np.float64).reshape(144*96,1)
+                y_43 = solsd_crm.astype(np.float64).reshape(144*96,1)
+                y_44 = solld_crm.astype(np.float64).reshape(144*96,1)
+                y_45 = fsds_crm.astype(np.float64).reshape(144*96,1)
 
+                prev_pred = np.concatenate([y_1,y_2,y_41,y_42,y_43,y_44,y_45],axis=1).copy()
+
+                print("using previous step spcam outputs")
+                #prev_outputs = np.load("/data/nncam_data/image_set/00002.npz")["data_y"]
+        #    prev_input_test = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
+            dQ_crm = None
+#
         # input and extend input    
+        if data_x is not None:
+            prev_data_x = data_x.copy()
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
-        prev_inputs = inputs
+        #prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
-        if step == 0:
-            print("Input diff:", np.mean(np.square(inputs - prev_input_test)))
-        if step == 1:
-            prev_inputs = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
-            inputs = np.load("/data/nncam_data/image_set/00003.npz")["data_x"]
-        # inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
+        #if step == 0:
+        #    print("Input diff:", np.mean(np.square(inputs - prev_input_test)))
+        #if step == 1:
+        #    prev_inputs = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
+        #inputs = np.load("/data/nncam_data/image_set/00003.npz")["data_x"]
+        ## inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
 
         # construct input for new model
-        tx = inputs
+        #tx = data_
         #ty = curr_data["data_y"]
-        tx_prev = prev_inputs
-        print("prev_outputs", prev_outputs.shape)
-        ty_prev = prev_outputs
+        #tx_prev = prev_inputs
+        #print("prev_outputs", prev_outputs.shape)
+        #ty_prev = prev_outputs
         ############# normalization ###############
-        tx = normalize_x(tx)
-        tx_prev, ty_prev = normalization_xy(tx_prev, ty_prev)
+        #tx = normalize_x(tx)
+        #tx_prev, ty_prev = normalization_xy(tx_prev, ty_prev)
         # after normalizing prev outputs, remove 61-64
-        if step <= 1:
-            ty_prev = np.delete(ty_prev, 60, axis=1)
-        else:
-            ty_prev = np.delete(ty_prev, [60,61,62,63], axis=1)
-        print("ty_prev", ty_prev.shape)
+        #if step <= 1:
+        #    ty_prev = np.delete(ty_prev, 60, axis=1)
+        #else:
+        #    ty_prev = np.delete(ty_prev, [60,61,62,63], axis=1)
+        #print("ty_prev", ty_prev.shape)
         # tx_prev: 1x122x96,144
         # tx: 1x122x96,144
-        tx = np.transpose(tx, (0, 2, 3, 1))
+        #tx = np.transpose(tx, (0, 2, 3, 1))
         # tx: 1x96x144x122
         #ty = np.transpose(ty, (0, 2, 3, 1))
-        tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
-        ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
-        tx = np.reshape(tx, (-1, tx.shape[-1]))
+        #tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
+        #ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
+        #tx = np.reshape(tx, (-1, tx.shape[-1]))
         # tx: 1x96x144x122
         #ty = np.reshape(ty, (-1, ty.shape[-1]))
-        tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
-        ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
-        tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-        print("tx_concat", tx_concat.shape)
+        #tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
+        #ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
+        #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
+        if step >= 1:
+            prev_x = normalize_x(prev_data_x)
+            curr_x = normalize_x(data_x)
+            prev_y = normalize_y(prev_pred)
+            tx_concat = np.concatenate([prev_x, curr_x, prev_y], axis=1)
+            np.save(f"data_x_step{step}", tx_concat)
+
+            print("tx_concat", tx_concat.shape)
 
 
-        print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
+            print('Initialization, using time: {} sec\n'.format(time.time() - time_start))
 
-        points_x1_time = torch.cuda.FloatTensor(tx_concat)
-        points_x1 = torch.cuda.FloatTensor(normalization(data_x))
-        #points_x = torch.cuda.FloatTensor(normalization_by_level(data_x, computed_min_max_x))
+            points_x1_time = torch.cuda.FloatTensor(tx_concat)
+            points_x1 = torch.cuda.FloatTensor(normalization(data_x))
+            #points_x = torch.cuda.FloatTensor(normalization_by_level(data_x, computed_min_max_x))
 
-        # Inference
-        print("Inferencing...")
-        time_start = time.time()
+            # Inference
+            print("Inferencing...")
+            time_start = time.time()
 
-        for model_type in ["0_29","30_59","61_64","61_65"]:
-            all_models[model_type].eval()
+            for model_type in ["0_29","30_59","61_64","61_65"]:
+                all_models[model_type].eval()
         
-        with torch.no_grad():
-            y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1_time).detach().cpu().numpy())
-            y_2 = inverse['30_59'](all_models['30_59'](points_x1_time).detach().cpu().numpy())
-            prev_y_3 = y_3
-            y_3 = inverse['61_64'](all_models['61_64'](points_x1).detach().cpu().numpy())
-            y_4 = inverse['61_65'](all_models['61_65'](points_x1_time).detach().cpu().numpy())
+            with torch.no_grad():
+                y_1 = inverse[ '0_29'](all_models[ '0_29'](points_x1_time).detach().cpu().numpy())
+                y_2 = inverse['30_59'](all_models['30_59'](points_x1_time).detach().cpu().numpy())
+                y_3 = inverse['61_64'](all_models['61_64'](points_x1).detach().cpu().numpy())
+                y_4 = inverse['61_65'](all_models['61_65'](points_x1_time).detach().cpu().numpy())
 
-        qtend_pred = y_1
+            prev_pred = np.concatenate([y_1, y_2, y_4], axis=1)
+            np.save(f"data_y_step{step}", prev_pred)
 
         print('Inference finished, using time: {} sec\n'.format(time.time() - time_start))
 
@@ -602,6 +643,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         solld.tofile(f"{data_buffer_path}/solld.bin")
         fsds.tofile(f"{data_buffer_path}/fsds.bin")
 
+
         print('Writing back finished, using time: {} sec\n'.format(time.time() - time_start))
 
         # Generate Prognostic Validation results (npz) by Wang Xin on 2021-11-29
@@ -609,7 +651,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         prev_outputs = outputs
         outputs = gen_outputs(qtend, stend, y_3, y_4)
 
-        if step == 1:
+        if step == -1:
             target_data = np.load("/data/nncam_data/image_set/00003.npz")["data_y"]
             target_data = np.transpose(target_data, (0,2,3,1))
             target_data = np.reshape(target_data, (-1, target_data.shape[-1]))
