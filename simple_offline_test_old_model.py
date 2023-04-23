@@ -39,7 +39,8 @@ if __name__ == "__main__":
     network = "resnet_output30"
     #network = "resnet_output5"
     #resume = "ckpts_time/time_model029_0412/checkpoint.pth.tar"
-    resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    #resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    resume = "ckpts_longepoch_tkde/rmbaddata_wxnorm_subset_0-29_resnet_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep100_noise0.001_wd0_dropout0/checkpoint.pth.tar"
     #resume = "ckpts_time/time_model3059_0423/checkpoint_epoch5.pth.tar"
     #resume = "ckpts_time/time_model6165_0423/checkpoint_epoch15.pth.tar"
     #resume = "ckpts_time/time_model029_0423/checkpoint_epoch15.pth.tar"
@@ -58,9 +59,9 @@ if __name__ == "__main__":
     if network == 'resnet':
         model = models.ResNet(node_size, activation)
     elif network == 'resnet_output30':
-        model = models.ResNet_output30_Time(node_size, activation, num_blocks)
+        model = models.ResNet_output30(node_size, activation, num_blocks)
     elif network == 'resnet_output5':
-        model = models.ResNet_output5_Time(node_size, activation, num_blocks)
+        model = models.ResNet_output5(node_size, activation, num_blocks)
     elif network == 'resnet_output1':
         model = models.ResNet_output1(node_size, activation, num_blocks)
     elif network == 'mlp_output30':
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     test_files = [all_files[i] for i in test_idx]
     print("Test file size: " ,len(test_files))
 
-    testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testing_set = Dataset(file_names=test_files, is_train=False, noise_std=0)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=96*144, num_workers=1)
 
     test_losses = AverageMeter()
@@ -98,23 +99,14 @@ if __name__ == "__main__":
     y_gt = []
     for iter, batch in enumerate(testloader):
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-        #if output_type == '0-29':
-        #    batch[1] = get_inverse()["0_29"](batch[1][:, :30])
-        #if output_type == '30-59':
-        #    batch[1] = get_inverse()["30-59"](batch[1][:, 30:60])
-        #if output_type == '60':
-        #    batch[1] = get_inverse()["60"](batch[1][:, 60:61])
-        #if output_type == '61-65':
-        #    batch[1] = get_inverse()["61-65"](batch[1][:, 61:66])
-        
         if output_type == '0-29':
-            batch[1] = batch[1][:, :30]
+            batch[1] = get_inverse()["0_29"](batch[1][:, :30])
         if output_type == '30-59':
-            batch[1] = batch[1][:, 30:60]
+            batch[1] = get_inverse()["30-59"](batch[1][:, 30:60])
         if output_type == '60':
-            batch[1] = batch[1][:, 60:61]
+            batch[1] = get_inverse()["60"](batch[1][:, 60:61])
         if output_type == '61-65':
-            batch[1] = batch[1][:, 61:66]
+            batch[1] = get_inverse()["61-65"](batch[1][:, 61:66])
         #test_mses = tools.test_de(batch, model, criterion)
         model.eval()
         with torch.no_grad():

@@ -76,14 +76,19 @@ def main(args):
                 all_files.remove(file_name)
     print('hahahahahah after file num:', len(all_files))
 
-    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//20,replace=False)
     #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
     #train_files = [file_name for file_name in all_files if file_name not in test_files]
-    test_file_count = len(all_files)//20
-    test_files = all_files[-test_file_count:]
+    #test_file_count = len(all_files)//20
+    #test_files = all_files[-test_file_count:]
     #train_files = all_files[:-test_file_count]
-    train_files = all_files[:test_file_count*2]
-    # test_files = train_files
+    train_idx = np.concatenate([np.arange(1,len(all_files),13), np.arange(0,len(all_files),13)])
+    print(len(all_files))
+    print(max(train_idx))
+    train_files = [all_files[i] for i in train_idx]
+    test_all_files = glob.glob("/home/users/data/nncam_data/image_testset/")
+    test_idx = np.concatenate([np.arange(1,len(test_all_files),26), np.arange(0,len(test_all_files),26)])
+    test_files = [test_all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 
     """
@@ -189,11 +194,11 @@ def main(args):
         save_log.append(test_time)
         logger.append(save_log)
         if early_stopper.early_stop(test_losses[i].avg):
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch+1)+'.pth.tar')
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoc)+'.pth.tar')
             break
 
-        if (epoch+1)%5 == 0:
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch+1)+'.pth.tar')
+        if (epoch)%5 == 0:
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
             
 
         tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)

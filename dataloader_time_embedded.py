@@ -113,8 +113,9 @@ def filename_to_idx(filename):
 
 class TimeDataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=False):
         ### load the data ###
+        self.silent = silent
         x = []
         y = []
         file_names.sort(key=filename_to_idx)
@@ -124,7 +125,8 @@ class TimeDataset(data.Dataset):
             prev_tidx = filename_to_idx(file_names[prev_fidx])
             curr_tidx = filename_to_idx(file_name)
             if int(prev_tidx) != int(curr_tidx)-1:
-                print(f"{prev_tidx} != {curr_tidx} + 1, {file_names[prev_fidx]} is not previous timestep of {file_name}")
+                if not self.silent:
+                    print(f"{prev_tidx} != {curr_tidx} + 1, {file_names[prev_fidx]} is not previous timestep of {file_name}")
                 continue
             tx = curr_data["data_x"]
             ty = curr_data["data_y"]
@@ -148,12 +150,14 @@ class TimeDataset(data.Dataset):
             tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
             x.append(tx_concat)
             y.append(ty)
-            print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
+            if not self.silent:
+                print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
         self.x = np.concatenate(x, axis=0)
         self.y = np.concatenate(y, axis=0)
 #         print('size of self.x!!!!!!!!!!!!!',np.shape(self.x))
         self.size = self.x.shape[0]
-        print(self.x.shape, self.y.shape, self.size)
+        if not self.silent:
+            print(self.x.shape, self.y.shape, self.size)
         self.noise_std = noise_std
         self.is_train = is_train
 
@@ -197,7 +201,8 @@ class Dataset(data.Dataset):
             ty = np.reshape(ty, (-1, ty.shape[-1]))
             x.append(tx)
             y.append(ty)
-            print(idx, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
+            if not self.silent:
+                print(idx, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
         self.x = np.concatenate(x, axis=0)
         self.y = np.concatenate(y, axis=0)
 #         print('size of self.x!!!!!!!!!!!!!',np.shape(self.x))
