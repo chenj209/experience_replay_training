@@ -33,13 +33,23 @@ def Regression_Metrics(y_true, y_pred):
     return var, std, mse, rmse, mae, max_ae, bias, r2
 
 if __name__ == "__main__":
-    output_type = "0-29"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
+    parser.add_argument("--resume", "-re", help="path to selected model")
+    args = parser.parse_args()
+    #output_type = "0-29"
     #output_type = "30-59"
     #output_type = "61-65"
-    network = "resnet_output30"
-    #network = "resnet_output5"
+    if args.output_type == "0-29" or args.output_type == "30-59":
+        network = "resnet_output30"
+    elif output_type == "61-65":
+        network = "resnet_output5"
+    else:
+        raise Exception("output type problem")
     #resume = "ckpts_time/time_model029_0412/checkpoint.pth.tar"
-    resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    #resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    resume = args.resume
     #resume = "ckpts_time/time_model3059_0423/checkpoint_epoch5.pth.tar"
     #resume = "ckpts_time/time_model6165_0423/checkpoint_epoch15.pth.tar"
     #resume = "ckpts_time/time_model029_0423/checkpoint_epoch15.pth.tar"
