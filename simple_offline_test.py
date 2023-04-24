@@ -8,6 +8,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
+from nncam_data_explore.src.utility import filename_to_idx
 from dataloader_subset_files import Dataset
 from dataloader_time_embedded import TimeDataset, get_inverse
 from torch.utils import data
@@ -41,6 +42,7 @@ if __name__ == "__main__":
     #output_type = "0-29"
     #output_type = "30-59"
     #output_type = "61-65"
+    output_type = args.output_type
     if args.output_type == "0-29" or args.output_type == "30-59":
         network = "resnet_output30"
     elif output_type == "61-65":
@@ -93,8 +95,21 @@ if __name__ == "__main__":
     all_files = glob.glob(data_dir+'/*')
     all_files.sort()
     #test_files = all_files[100:200] + all_files[5000:5100]
-    test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
+
+    # old sampling
+    # [0,13,26,39...] + [1,14,27,40..]
+    test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    print(test_idx[:10])
     test_files = [all_files[i] for i in test_idx]
+    test_files.sort(key=filename_to_idx)
+    # dQ 1-e4 1-e3
+
+    # current sampling
+    # [1,14,27,40..] + [2,15,28,...]
+    #test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
+    #test_files = [all_files[i] for i in test_idx]
+    # dQ 1-e13 1-e14
     print("Test file size: " ,len(test_files))
 
     testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
