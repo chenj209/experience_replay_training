@@ -35,6 +35,9 @@ def Regression_Metrics(y_true, y_pred):
 
 if __name__ == "__main__":
     import argparse
+    import random
+    random.seed(0)
+    np.random.seed(0)
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
     parser.add_argument("--resume", "-re", help="path to selected model")
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     # old sampling
     # [0,13,26,39...] + [1,14,27,40..]
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
-    test_idx = np.random.choice(len(all_files), len(all_files)//100)
+    test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
     print(test_idx[:10])
     test_files = [all_files[i] for i in test_idx]
@@ -116,7 +119,7 @@ if __name__ == "__main__":
     #test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
     #test_files = [all_files[i] for i in test_idx]
     # dQ 1-e13 1-e14
-    print("Test file size: " ,len(test_files))
+    #print("Test file size: " ,len(test_files))
 
     testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
     #testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
