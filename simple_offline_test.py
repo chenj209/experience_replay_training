@@ -8,8 +8,9 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
+from nncam_data_explore.src.utility import filename_to_idx
 from dataloader_subset_files import Dataset
-from dataloader_time_embedded import TimeDataset, get_inverse
+from dataloader_time_embedded import TimeDatasetDisk, TimeDataset, get_inverse
 from torch.utils import data
 import models
 import tools
@@ -33,19 +34,34 @@ def Regression_Metrics(y_true, y_pred):
     return var, std, mse, rmse, mae, max_ae, bias, r2
 
 if __name__ == "__main__":
-    output_type = "0-29"
+    import argparse
+    import random
+    random.seed(0)
+    np.random.seed(0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
+    parser.add_argument("--resume", "-re", help="path to selected model")
+    args = parser.parse_args()
+    #output_type = "0-29"
     #output_type = "30-59"
     #output_type = "61-65"
-    network = "resnet_output30"
-    #network = "resnet_output5"
+    output_type = args.output_type
+    if args.output_type == "0-29" or args.output_type == "30-59":
+        network = "resnet_output30"
+    elif output_type == "61-65":
+        network = "resnet_output5"
+    else:
+        raise Exception("output type problem")
     #resume = "ckpts_time/time_model029_0412/checkpoint.pth.tar"
-    resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    #resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
+    resume = args.resume
     #resume = "ckpts_time/time_model3059_0423/checkpoint_epoch5.pth.tar"
     #resume = "ckpts_time/time_model6165_0423/checkpoint_epoch15.pth.tar"
     #resume = "ckpts_time/time_model029_0423/checkpoint_epoch15.pth.tar"
     #resume = "ckpts_time/time_model3059_0412/checkpoint.pth.tar"
     #resume = "ckpts_time/time_model6165_0412/checkpoint.pth.tar"
-    data_dir = "/home/users/data/nncam_data/image_testset/"
+    
+    data_dir = "/data/nncam_data/image_testset/"
     #data_dir = "/home/users/data/nncam_data/image_set/"
     print("Resume: ", resume)
     print("Test set path: ", data_dir)
@@ -79,15 +95,35 @@ if __name__ == "__main__":
     assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
     checkpoint = torch.load(resume)
     model.load_state_dict(checkpoint['state_dict'])
-    all_files = glob.glob(data_dir+'/*')
+    all_files = glob.glob(data_dir+'/*')[2:]
     all_files.sort()
     #test_files = all_files[100:200] + all_files[5000:5100]
-    test_idx = np.concatenate([np.arange(0, len(all_files)//10, 13), np.arange(1,len(all_files)//10,13)]) 
-    test_files = [all_files[i] for i in test_idx]
-    print("Test file size: " ,len(test_files))
 
-    testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=96*144, num_workers=1)
+    # old sampling
+    # [0,13,26,39...] + [1,14,27,40..]
+    #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    test_idx = np.random.choice(len(all_files), len(all_files)//10)
+    #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    print(test_idx[:10])
+    test_files = [all_files[i] for i in test_idx]
+    test_files.sort(key=filename_to_idx)
+    print("Test file size: " ,len(test_files))
+    print(test_files[:3])
+
+    # for debug
+    #test_files = test_files[:10]
+    # dQ 1-e4 1-e3
+
+    # current sampling
+    # [1,14,27,40..] + [2,15,28,...]
+    #test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
+    #test_files = [all_files[i] for i in test_idx]
+    # dQ 1-e13 1-e14
+    #print("Test file size: " ,len(test_files))
+
+    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    #testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
 
     test_losses = AverageMeter()
     loss_name = [output_type + '_r2: {:.4e}']
@@ -98,6 +134,11 @@ if __name__ == "__main__":
     y_gt = []
     for iter, batch in enumerate(testloader):
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+        batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+        batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
+
+        #print("shape x:", batch[0].shape)
+        #print("shape y:", batch[1].shape)
         #if output_type == '0-29':
         #    batch[1] = get_inverse()["0_29"](batch[1][:, :30])
         #if output_type == '30-59':
@@ -108,9 +149,9 @@ if __name__ == "__main__":
         #    batch[1] = get_inverse()["61-65"](batch[1][:, 61:66])
         
         if output_type == '0-29':
-            batch[1] = batch[1][:, :30]
+            batch[1] = batch[1][:,:30]
         if output_type == '30-59':
-            batch[1] = batch[1][:, 30:60]
+            batch[1] = batch[1][:,30:60]
         if output_type == '60':
             batch[1] = batch[1][:, 60:61]
         if output_type == '61-65':
