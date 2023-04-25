@@ -87,13 +87,15 @@ if __name__ == "__main__":
     assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
     checkpoint = torch.load(resume)
     model.load_state_dict(checkpoint['state_dict'])
-    all_files = glob.glob(data_dir+'/*')
+    all_files = glob.glob(data_dir+'/*')[1:]
     all_files.sort()
     print("all_files len ", len(all_files))
     #test_files = all_files[100:200] + all_files[5000:5100]
     #test_idx = np.concatenate([np.arange(1, len(all_files), 400), np.arange(2,len(all_files),400)]) 
     #test_files = [all_files[i] for i in test_idx]
-    test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
+    #test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
+    # [0,13,26,39...] + [1,14,27,40..]
+    test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
     test_files = [all_files[i] for i in test_idx]
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
