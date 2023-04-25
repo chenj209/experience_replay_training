@@ -36,15 +36,31 @@ def Regression_Metrics(y_true, y_pred):
     return var, std, mse, rmse, mae, max_ae, bias, r2
 
 if __name__ == "__main__":
-    output_type = "0-29"
-    #output_type = "30-59"
-    #output_type = "61-65"
-    network = "resnet_output30"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
+    parser.add_argument("--resume", "-re", help="path to selected model")
+    args = parser.parse_args()
+
+    output_type = args.output_type
+    if args.output_type == "0-29" or args.output_type == "30-59":
+        network = "resnet_output30"
+    elif output_type == "61-65":
+        network = "resnet_output5"
+    else:
+        raise Exception("output type problem")
+    #network = "resnet_output30"
     #network = "resnet_output5"
     #resume = "ckpts_time/time_model029_0412/checkpoint.pth.tar"
     #resume = "ckpts_time/time_model029_0423/checkpoint_epoch10.pth.tar"
     #resume = "ckpts_longepoch_tkde/rmbaddata_wxnorm_subset_0-29_resnet_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep100_noise0.001_wd0_dropout0/checkpoint.pth.tar"
-    resume = "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
+    if args.resume == "baseline":
+        if args.output_type  == "0-29":
+            resume = "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
+        elif args.output_type == "30-59":
+            resume = "/cust_users/x-w19/nncam.ckpts/resmlp.25GB.noise0.0/30_59_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
+        elif args.output_type == "61-65":
+            resume = "/cust_users/x-w19/nncam.ckpts/resmlp.newData.noise0.0/61_65_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint_epoch50.pth.tar"
     #resume = "ckpts_time/time_model3059_0423/checkpoint_epoch5.pth.tar"
 
     #resume = "ckpts_time/time_model6165_0423/checkpoint_epoch15.pth.tar"
@@ -111,45 +127,6 @@ if __name__ == "__main__":
     criterion = nn.MSELoss()
     y_pred = []
     y_gt = []
-    for idx, batch in enumerate(testloader):
-        batch_x, batch_y, batch_y_raw, batch_y_label = batch
-        print(f"batch_x shape: {batch_x.shape}")
-        print(f"batch_y shape: {batch_y.shape}")
-        print(f"batch_y_raw shape: {batch_y_raw.shape}")
-        points_x = torch.cuda.FloatTensor(batch_x.numpy())
-        #y_gt.append(batch_y.numpy())
-        #y_raw.append(batch_y_raw.numpy())
-        #y_label.append(batch_y_label.numpy())
-        
-        
-        # Inference
-        print("Inferencing...")
-        time_start = time.time()
-
-        with torch.no_grad():
-            
-            #y_1_pred = inverse[ '0_29'](model(points_x))
-            y_1_pred = get_inverse()[ '0_29'](model(points_x))
-            #y_1.append(y_1_pred.detach().cpu().numpy())
-            #y_2.append(inverse['30_59'](baseline_models['30_59'](points_x).detach().cpu().numpy()))
-            #y_3.append(inverse['61_64'](baseline_models['61_64'](points_x).detach().cpu().numpy()))
-            #y_4.append(inverse['61_65'](baseline_models['61_65'](points_x).detach().cpu().numpy()))
-    #         y_1_mlp.append(inverse[ '0_29'](mlp_models[ '0_29'](points_x).detach().cpu().numpy()))
-    #         y_2_mlp.append(inverse['30_59'](mlp_models['30_59'](points_x).detach().cpu().numpy()))
-    #         y_3_mlp.append(inverse['61_64'](mlp_models['61_64'](points_x).detach().cpu().numpy()))
-    #         y_4_mlp.append(inverse['61_65'](mlp_models['61_65'](points_x).detach().cpu().numpy()))
-    #         y_4_mlp.append(inverse['61_64'](mlp_models['61_65'](points_x).detach().cpu().numpy()))
-            
-          # y_1[i] = inverse[ '0_29'](all_models[ '0_29'](points_x).detach().cpu().numpy())
-          # y_2[i] = inverse['30_59'](all_models['30_59'](points_x).detach().cpu().numpy())
-          # y_3[i] = inverse['61_64'](all_models['61_64'](points_x).detach().cpu().numpy())
-          # y_4[i] = inverse['61_65'](all_models['61_65'](points_x).detach().cpu().numpy())
-
-        loss = criterion(y_1_pred, batch_y_raw[:,:30].cuda()) 
-        test_losses.update(loss.item(), batch[0].size(0))
-        print(test_losses.avg)
-        torch.cuda.empty_cache()
-        print('Inference finished, using time: {} sec\n'.format(time.time() - time_start))
     for iter, batch in enumerate(testloader):
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
         if output_type == '0-29':
