@@ -9,7 +9,7 @@ import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
 from dataloader_subset_files import Dataset
-from dataloader_time_embedded import TimeDataset
+from dataloader_time_embedded import TimeDatasetDisk
 from torch.utils import data
 import models
 import tools
@@ -63,32 +63,37 @@ def main(args):
     all_files = glob.glob(args.data_dir+'/*')
 
     print('org file num:', len(all_files))
-    for i in range(17507,17530):
+    #for i in range(17507,17530):
+    for i in range(17507,17531):
         for file_name in all_files:
             if str(i) in file_name:
                 all_files.remove(file_name)
     print('after file num:', len(all_files))
 
     
-    for i in ['00001', '08690', '17522', '26210']:
+    for i in ['00001', '00002', '00003', '08690', '08691', '17522', '17523','26210','26211']:
         for file_name in all_files:
             if i in file_name:
                 all_files.remove(file_name)
     print('hahahahahah after file num:', len(all_files))
 
     #test_idx = np.random.choice(len(all_files),len(all_files)//20,replace=False)
-    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
-    #train_files = [file_name for file_name in all_files if file_name not in test_files]
+    test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
+    random.shuffle(train_files)
+    test_files = [all_files[i] for i in test_idx]
     #test_file_count = len(all_files)//20
     #test_files = all_files[-test_file_count:]
     #train_files = all_files[:-test_file_count]
-    train_idx = np.concatenate([np.arange(1,len(all_files),13), np.arange(0,len(all_files),13)])
-    print(len(all_files))
-    print(max(train_idx))
-    train_files = [all_files[i] for i in train_idx]
-    test_all_files = glob.glob("/home/users/data/nncam_data/image_testset/")
-    test_idx = np.concatenate([np.arange(1,len(test_all_files),26), np.arange(0,len(test_all_files),26)])
-    test_files = [test_all_files[i] for i in test_idx]
+    #train_idx = np.concatenate([np.arange(1,len(all_files),13), np.arange(0,len(all_files),13)])
+    #train_idx = np.arange(0, len(all_files))
+    #print(len(all_files))
+    #print(max(train_idx))
+    #train_files = [all_files[i] for i in train_idx]
+    #test_all_files = glob.glob("/home/users/data/nncam_data/image_testset/")
+    #test_idx = np.concatenate([np.arange(1,len(test_all_files),26), np.arange(0,len(test_all_files),26)])
+    #test_idx = np.random.choice(len(test_all_files), len(test_all_files
+    #test_files = [test_all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 
     """
@@ -120,11 +125,11 @@ def main(args):
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
 
-    training_set = TimeDataset(file_names=train_files, is_train=True, noise_std=args.noise_std)
-    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
+    training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=args.workers)
 
-    testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=args.noise_std)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=5,min_delta=0)
     # Train and test
     current_iters = 0
@@ -136,6 +141,8 @@ def main(args):
         train_time_begin = time.time()
         for iter, batch in enumerate(trainloader):
 
+            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :30]
@@ -165,6 +172,8 @@ def main(args):
         loss_name = [args.output_type + '_r2: {:.5f}']
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
+            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :30]

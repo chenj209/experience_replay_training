@@ -1,8 +1,10 @@
 import os
 
 #DATA_DIR = "~/data/tkde_set/"
-DATA_DIR = "/home/users/data/nncam_data/image_set/"
-name = "time_model3059_0423"
+#DATA_DIR = "/home/users/data/nncam_data/image_set/"
+DATA_DIR = "/data/nncam_data/image_set/"
+
+name = "time_model3059_0425"
 
 for epoch in ['100']:
     for num_blocks in ['7']:

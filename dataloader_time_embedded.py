@@ -115,7 +115,7 @@ def filename_to_idx(filename):
 
 class TimeDatasetDisk(data.Dataset):
     'TimeDataset, keeps files on disk, only load when get item is called'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=False):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
         ### load the data ###
         self.silent = silent
         file_names.sort(key=filename_to_idx)
