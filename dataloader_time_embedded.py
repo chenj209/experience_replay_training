@@ -290,8 +290,8 @@ class DatasetDisk(data.Dataset):
             y.append(ty)
             if not self.silent:
                 print(idx, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        x = np.concatenate(x, axis=0)
-        y = np.concatenate(y, axis=0)
+        x = np.concatenate(x, axis=0).squeeze()
+        y = np.concatenate(y, axis=0).squeeze()
 
         if self.is_train and self.noise_std>0:
             # print(self.noise_std)
