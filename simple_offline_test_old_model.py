@@ -111,7 +111,8 @@ if __name__ == "__main__":
     #test_files = [all_files[i] for i in test_idx]
     #test_idx = np.concatenate([np.arange(1, len(all_files), 13), np.arange(2,len(all_files),13)]) 
     # [0,13,26,39...] + [1,14,27,40..]
-    test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    test_idx = np.arange(1,len(all_files),13)
     test_files = [all_files[i] for i in test_idx]
     print("Test file size: " ,len(test_files))
     print(test_files[:3])

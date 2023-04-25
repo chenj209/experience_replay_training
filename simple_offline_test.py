@@ -10,7 +10,7 @@ import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
 from nncam_data_explore.src.utility import filename_to_idx
 from dataloader_subset_files import Dataset
-from dataloader_time_embedded import TimeDataset, get_inverse
+from dataloader_time_embedded import TimeDatasetDisk, TimeDataset, get_inverse
 from torch.utils import data
 import models
 import tools
@@ -92,19 +92,23 @@ if __name__ == "__main__":
     assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
     checkpoint = torch.load(resume)
     model.load_state_dict(checkpoint['state_dict'])
-    all_files = glob.glob(data_dir+'/*')[1:]
+    all_files = glob.glob(data_dir+'/*')[2:]
     all_files.sort()
     #test_files = all_files[100:200] + all_files[5000:5100]
 
     # old sampling
     # [0,13,26,39...] + [1,14,27,40..]
-    test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
+    test_idx = np.random.choice(len(all_files), len(all_files)//100)
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
     print(test_idx[:10])
     test_files = [all_files[i] for i in test_idx]
     test_files.sort(key=filename_to_idx)
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
+
+    # for debug
+    #test_files = test_files[:10]
     # dQ 1-e4 1-e3
 
     # current sampling
@@ -114,8 +118,9 @@ if __name__ == "__main__":
     # dQ 1-e13 1-e14
     print("Test file size: " ,len(test_files))
 
-    testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=96*144, num_workers=1)
+    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    #testing_set = TimeDataset(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
 
     test_losses = AverageMeter()
     loss_name = [output_type + '_r2: {:.4e}']
@@ -126,6 +131,11 @@ if __name__ == "__main__":
     y_gt = []
     for iter, batch in enumerate(testloader):
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+        batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+        batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
+
+        #print("shape x:", batch[0].shape)
+        #print("shape y:", batch[1].shape)
         #if output_type == '0-29':
         #    batch[1] = get_inverse()["0_29"](batch[1][:, :30])
         #if output_type == '30-59':
@@ -136,9 +146,9 @@ if __name__ == "__main__":
         #    batch[1] = get_inverse()["61-65"](batch[1][:, 61:66])
         
         if output_type == '0-29':
-            batch[1] = batch[1][:, :30]
+            batch[1] = batch[1][:,:30]
         if output_type == '30-59':
-            batch[1] = batch[1][:, 30:60]
+            batch[1] = batch[1][:,30:60]
         if output_type == '60':
             batch[1] = batch[1][:, 60:61]
         if output_type == '61-65':
