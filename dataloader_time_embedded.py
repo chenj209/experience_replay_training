@@ -276,12 +276,16 @@ class DatasetDisk(data.Dataset):
         x = []
         y = []
         _file = self.file_names[index]
-        for idx, file_name in enumerate(file_names):
-            _file = np.load(file_name)
+        if os.path.exists(_file):
+        #for idx, file_name in enumerate(file_names):
+            _file = np.load(_file)
             tx = _file["data_x"]
             ty = _file["data_y"]
             ############# normalization ###############
-            tx, ty = normalization(tx, ty)
+            #tx, ty = normalization(tx, ty)
+            tx = normalize_x(tx)
+            if self.output_normalized:
+                ty = normalize_y(ty)
             tx = np.transpose(tx, (0, 2, 3, 1))
             ty = np.transpose(ty, (0, 2, 3, 1))
             tx = np.reshape(tx, (-1, tx.shape[-1]))

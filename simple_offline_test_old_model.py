@@ -9,7 +9,7 @@ import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
 #from dataloader_subset_files import Dataset
-from dataloader_time_embedded import TimeDataset, get_inverse
+from dataloader_time_embedded import TimeDataset, get_inverse, DatasetDisk
 #from dataloader_subset_files_offline_test import Dataset
 from offline_test.dataloader_subset_files import Dataset
 from torch.utils import data
@@ -106,7 +106,10 @@ if __name__ == "__main__":
     assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
     checkpoint = torch.load(resume)
     model.load_state_dict(checkpoint['state_dict'])
-    all_files = glob.glob(data_dir+'/*')[1:]
+    all_files = glob.glob(data_dir+'/*')[2:]
+    for fn in all_files:
+        if "08691" in fn:
+            all_files.remove(fn)
     all_files.sort()
     print("all_files len ", len(all_files))
     #test_files = all_files[100:200] + all_files[5000:5100]
@@ -116,15 +119,16 @@ if __name__ == "__main__":
     # [0,13,26,39...] + [1,14,27,40..]
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
     #test_idx = np.arange(1,len(all_files),13)
-    test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
+    test_idx = np.random.choice(len(all_files), len(all_files)//2, replace=False)
     print(test_idx[:10])
     test_files = [all_files[i] for i in test_idx]
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
 
     #testing_set = Dataset(test_files, is_train=False, noise_std=0, debug=True, )
-    testing_set = Dataset(test_files, is_train=False, noise_std=0.0, norm_type="01norm", debug=True, equator=False)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=96*144, num_workers=1)
+    #testing_set = Dataset(test_files, is_train=False, noise_std=0.0, norm_type="01norm", debug=True, equator=False)
+    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
 
     test_losses = AverageMeter()
     loss_name = [output_type + '_r2: {:.4e}']
@@ -135,6 +139,8 @@ if __name__ == "__main__":
     y_gt = []
     for iter, batch in enumerate(testloader):
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+        batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+        batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
         if output_type == '0-29':
             batch[1] = batch[1][:, :30]
         if output_type == '30-59':
@@ -154,21 +160,31 @@ if __name__ == "__main__":
         #test_mses = tools.test_de(batch, model, criterion)
         model.eval()
         with torch.no_grad():
+            points_x, points_y = batch
+            points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             #points_x, points_y = batch
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             #points_x, points_y,  = batch
-            batch_x, batch_y, batch_y_raw, batch_y_label = batch
+            #batch_x, batch_y, batch_y_raw, batch_y_label = batch
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
-            points_x = torch.cuda.FloatTensor(batch_x.numpy())
+            #points_x = torch.cuda.FloatTensor(batch_x.numpy())
             if output_type == '0-29':
-                batch_y_raw = batch_y_raw[:, :30]
+                batch[1] = batch[1][:,:30]
             if output_type == '30-59':
-                batch_y_raw = batch_y_raw[:, 30:60]
+                batch[1] = batch[1][:,30:60]
             if output_type == '60':
-                batch_y_raw = batch_y_raw[:, 60:61]
+                batch[1] = batch[1][:, 60:61]
             if output_type == '61-65':
-                batch_y_raw = batch_y_raw[:, 61:66]
-            points_y = (batch_y_raw.float()).cuda()
+                batch[1] = batch[1][:, 61:66]
+           #if output_type == '0-29':
+           #    batch_y_raw = batch_y_raw[:, :30]
+           #if output_type == '30-59':
+           #    batch_y_raw = batch_y_raw[:, 30:60]
+           #if output_type == '60':
+           #    batch_y_raw = batch_y_raw[:, 60:61]
+           #if output_type == '61-65':
+           #    batch_y_raw = batch_y_raw[:, 61:66]
+           # points_y = (batch_y_raw.float()).cuda()
 
             # compute output
             outputs_y = model(points_x)

@@ -96,13 +96,16 @@ if __name__ == "__main__":
     checkpoint = torch.load(resume)
     model.load_state_dict(checkpoint['state_dict'])
     all_files = glob.glob(data_dir+'/*')[2:]
+    for fn in all_files:
+        if "08691" in fn:
+            all_files.remove(fn)
     all_files.sort()
     #test_files = all_files[100:200] + all_files[5000:5100]
 
     # old sampling
     # [0,13,26,39...] + [1,14,27,40..]
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
-    test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
+    test_idx = np.random.choice(len(all_files), len(all_files)//2, replace=False)
     #test_idx = np.concatenate([np.arange(0, len(all_files), 13), np.arange(1,len(all_files),13)])
     print(test_idx[:10])
     test_files = [all_files[i] for i in test_idx]
