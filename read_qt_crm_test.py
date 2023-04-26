@@ -410,7 +410,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 #            stend += add_ds_data*filter_mask
 #            qtend.tofile(f"{data_buffer_path}/qtend.bin")
 #            stend.tofile(f"{data_buffer_path}/stend.bin")
-        if step % 8 == 0:
+        if False and step % 8 == 0:
             target_file = f"{READ_QT_PATH}/*{idx_to_filename(step+1)}"
             print(target_file)
             print(glob.glob(f"{READ_QT_PATH}/prog*{idx_to_filename(step+1)}"))

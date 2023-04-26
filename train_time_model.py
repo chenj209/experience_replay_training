@@ -203,7 +203,7 @@ def main(args):
         save_log.append(test_time)
         logger.append(save_log)
         if early_stopper.early_stop(test_losses[i].avg):
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoc)+'.pth.tar')
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
             break
 
         if (epoch)%5 == 0:

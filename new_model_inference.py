@@ -409,6 +409,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             dQ_crm = np.fromfile(f"{data_buffer_path}/spdq_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
             dQ_crm = dQ_crm.astype(np.float64)
             dQ_crm = dQ_crm.reshape(30,96,144)
+            print("dq mse: ", np.mean(np.square(dQ_crm - dQ)))
 
             dS_crm = np.fromfile(f"{data_buffer_path}/spdt_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
             dS_crm = dS_crm.astype(np.float64)
@@ -495,7 +496,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
             outputs = gen_outputs(dQ_crm, dS_crm, prev_y_3, y_4)
             np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
-            if step == 1:
+            if step <= 18:
                 y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
                 y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
                 y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
