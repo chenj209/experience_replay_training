@@ -517,6 +517,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         if step >= 3:
             # start inference at step 4
+            tx_raw = np.concatenate([prev_data_x, data_x, prev_pred], axis=1)
+            np.save(f"raw_x_step{step}", tx_raw)
+
             prev_x = normalize_x(prev_data_x)
             curr_x = normalize_x(data_x)
             prev_y = normalize_y(prev_pred)

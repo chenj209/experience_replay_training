@@ -1,3 +1,4 @@
 **.swp
 *.npy
 *.npz
+pure_spcam_fix_rad.json pure_spcam.json spcam_perturb_m32.json test_config.json
