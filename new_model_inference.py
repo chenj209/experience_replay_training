@@ -531,7 +531,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         #tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
         #ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
         #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-        if step >= 1:
+        if step >= 2:
             prev_x = normalize_x(prev_data_x)
             curr_x = normalize_x(data_x)
             prev_y = normalize_y(prev_pred)
@@ -648,8 +648,9 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
 
-                # Online learning: new crm outputs
+            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
             if step > 0:
+                # Online learning: new crm outputs
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
                 np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
