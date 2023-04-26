@@ -393,7 +393,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         Q = Q.astype(np.float64)
         Q = Q.reshape(30,96,144).transpose((2,1,0))
 
-        if os.path.isfile(f"{data_buffer_path}/qtend_check.bin") and (step <= 10 and step > 0): 
+        if os.path.isfile(f"{data_buffer_path}/qtend_check.bin"): 
             # reading from previous step output
             dQ = np.fromfile(f"{data_buffer_path}/qtend_check.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
             dQ = dQ.astype(np.float64)
@@ -403,13 +403,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             dS = dS.astype(np.float64)
             dS = dS.reshape(30,96,144)
 
-        dQ_crm = None
         if os.path.isfile(f"{data_buffer_path}/spdt_crm.bin"): 
             # reading from previous step crm output
             dQ_crm = np.fromfile(f"{data_buffer_path}/spdq_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
             dQ_crm = dQ_crm.astype(np.float64)
             dQ_crm = dQ_crm.reshape(30,96,144)
-            print("dq mse: ", np.mean(np.square(dQ_crm - dQ)))
 
             dS_crm = np.fromfile(f"{data_buffer_path}/spdt_crm.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
             dS_crm = dS_crm.astype(np.float64)
@@ -490,34 +488,13 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         dTls  = dTls.reshape(144*96,30)
         solin = solin.reshape(144*96,1)
         ps = ps.reshape(144*96,1)
-        if dQ_crm is not None:
-            print("Reading dQ_crm")
-            # save crm outputs for online labels, only get dQ crm once
-            y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
-            outputs = gen_outputs(dQ_crm, dS_crm, prev_y_3, y_4)
-            np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
-            if step <= 18:
-                y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
-                y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
-                y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
-                y_42 = sols_crm.astype(np.float64).reshape(144*96,1)
-                y_43 = solsd_crm.astype(np.float64).reshape(144*96,1)
-                y_44 = solld_crm.astype(np.float64).reshape(144*96,1)
-                y_45 = fsds_crm.astype(np.float64).reshape(144*96,1)
 
-                prev_pred = np.concatenate([y_1,y_2,y_41,y_42,y_43,y_44,y_45],axis=1).copy()
-
-                print("using previous step spcam outputs")
-                #prev_outputs = np.load("/data/nncam_data/image_set/00002.npz")["data_y"]
-        #    prev_input_test = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
-            dQ_crm = None
-#
         # input and extend input    
         if data_x is not None:
             prev_data_x = data_x.copy()
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
-        #prev_inputs = inputs
+        prev_inputs = inputs
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
         #if step == 0:
         #    print("Input diff:", np.mean(np.square(inputs - prev_input_test)))
@@ -670,8 +647,25 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             print(log)
 
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
-        #outputs = gen_outputs_q_only(qtend) # only keeps dQ in the outputs
-            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
+
+                # Online learning: new crm outputs
+            if step > 0:
+                y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
+                outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
+                if step <= 18:
+                    y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                    y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                    y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
+                    y_42 = sols_crm.astype(np.float64).reshape(144*96,1)
+                    y_43 = solsd_crm.astype(np.float64).reshape(144*96,1)
+                    y_44 = solld_crm.astype(np.float64).reshape(144*96,1)
+                    y_45 = fsds_crm.astype(np.float64).reshape(144*96,1)
+
+                    prev_pred = np.concatenate([y_1,y_2,y_41,y_42,y_43,y_44,y_45],axis=1).copy()
+
+                    print("using previous step spcam outputs")
+
         
         if (step < 10240):
             np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
