@@ -341,7 +341,8 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
 
     #computed_min_max_x = np.load("/cust_users/chenj209/neuroGCM_training/neuroParameterization/src/data-nncam_data-image_set--level_min_max-data-x.npy")
 
-    step = 0
+    # step should now correspond to spcam nstep
+    step = 2
 
     skip_first = True
 
@@ -442,6 +443,23 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             fsds_crm = fsds_crm.astype(np.float64)
             fsds_crm = fsds_crm.reshape(144*96,1)
             #fsds_crm = fsds_crm.reshape(144,96,1)
+            if step >= 3:
+                # Online learning: reading crm input from previous step
+                y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
+                outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
+                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step-1), data_x = prev_inputs, data_y = outputs)
+                if step <= 18:
+                    y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                    y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
+                    y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
+                    y_42 = sols_crm.astype(np.float64).reshape(144*96,1)
+                    y_43 = solsd_crm.astype(np.float64).reshape(144*96,1)
+                    y_44 = solld_crm.astype(np.float64).reshape(144*96,1)
+                    y_45 = fsds_crm.astype(np.float64).reshape(144*96,1)
+
+                    prev_pred = np.concatenate([y_1,y_2,y_41,y_42,y_43,y_44,y_45],axis=1).copy()
+
+                    print("using previous step spcam outputs")
 
         T = np.fromfile(f"{data_buffer_path}/T.bin", dtype='>f8') # dtype='>f8' 指 big_endian 的 double
         T = T.astype(np.float64)
@@ -494,44 +512,11 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
             prev_data_x = data_x.copy()
         data_x  = np.concatenate((Q, T, dqvls, dTls, solin, ps), axis = 1)
         # 仅分析使用
-        prev_inputs = inputs
+        prev_inputs = inputs.copy()
         inputs  = gen_inputs(data_x) # get online data(inputs) by Wang Xin on 2021-09-02
-        #if step == 0:
-        #    print("Input diff:", np.mean(np.square(inputs - prev_input_test)))
-        #if step == 1:
-        #    prev_inputs = np.load("/data/nncam_data/image_set/00002.npz")["data_x"]
-        #inputs = np.load("/data/nncam_data/image_set/00003.npz")["data_x"]
-        ## inputs  = gen_inputs_q_only(data_x) # only keep Q and dQls in the input
 
-        # construct input for new model
-        #tx = data_
-        #ty = curr_data["data_y"]
-        #tx_prev = prev_inputs
-        #print("prev_outputs", prev_outputs.shape)
-        #ty_prev = prev_outputs
-        ############# normalization ###############
-        #tx = normalize_x(tx)
-        #tx_prev, ty_prev = normalization_xy(tx_prev, ty_prev)
-        # after normalizing prev outputs, remove 61-64
-        #if step <= 1:
-        #    ty_prev = np.delete(ty_prev, 60, axis=1)
-        #else:
-        #    ty_prev = np.delete(ty_prev, [60,61,62,63], axis=1)
-        #print("ty_prev", ty_prev.shape)
-        # tx_prev: 1x122x96,144
-        # tx: 1x122x96,144
-        #tx = np.transpose(tx, (0, 2, 3, 1))
-        # tx: 1x96x144x122
-        #ty = np.transpose(ty, (0, 2, 3, 1))
-        #tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
-        #ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
-        #tx = np.reshape(tx, (-1, tx.shape[-1]))
-        # tx: 1x96x144x122
-        #ty = np.reshape(ty, (-1, ty.shape[-1]))
-        #tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
-        #ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
-        #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-        if step >= 2:
+        if step >= 3:
+            # start inference at step 4
             prev_x = normalize_x(prev_data_x)
             curr_x = normalize_x(data_x)
             prev_y = normalize_y(prev_pred)
@@ -629,47 +614,14 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         prev_outputs = outputs
         outputs = gen_outputs(qtend, stend, y_3, y_4)
 
-        if step == -1:
-            target_data = np.load("/data/nncam_data/image_set/00003.npz")["data_y"]
-            target_data = np.transpose(target_data, (0,2,3,1))
-            target_data = np.reshape(target_data, (-1, target_data.shape[-1]))
-            # should match spcam 00003.npz
-            y_pred = qtend_pred[0]
-            y_gt = target_data[:,:30]
-            var, std, mse, rmse, mae, max_ae, bias, r2 = Regression_Metrics(y_gt*3600*24*1000, y_pred*3600*24*1000)
-            metrics = '{}\t{:.4}\t{:.4}\t{:.4}({:.4%})\t{:.4}\t{:.4}\t{:.4}({:.4%})\t'.format(50, r2, mse, rmse, rmse/std, mae, max_ae, bias, bias/std)
-            log = ""
-            log += "metrics:\n"
-            log += "epoch\tr2\tmse\trmse\t\tmae\tmax_ae\tbias\n"
-            log += metrics
-            log += "\n"
-
-            print(log)
 
         if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
 
-            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step+1), data_x = inputs, data_y = outputs)
-            if step > 0:
-                # Online learning: new crm outputs
-                y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
-                outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
-                np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step), data_x = prev_inputs, data_y = outputs)
-                if step <= 18:
-                    y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
-                    y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
-                    y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
-                    y_42 = sols_crm.astype(np.float64).reshape(144*96,1)
-                    y_43 = solsd_crm.astype(np.float64).reshape(144*96,1)
-                    y_44 = solld_crm.astype(np.float64).reshape(144*96,1)
-                    y_45 = fsds_crm.astype(np.float64).reshape(144*96,1)
-
-                    prev_pred = np.concatenate([y_1,y_2,y_41,y_42,y_43,y_44,y_45],axis=1).copy()
-
-                    print("using previous step spcam outputs")
+            np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
 
         
         if (step < 10240):
-            np.savez(online_data_path + '/diag-extend_' + "%005d"%(step+1), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
+            np.savez(online_data_path + '/diag-extend_' + "%005d"%(step), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
 
         step = step + 1
         print("Step", step, "integration\n")
