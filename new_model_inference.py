@@ -448,7 +448,7 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
                 y_4 = np.concatenate((soll_crm, sols_crm, solsd_crm, solld_crm, fsds_crm),axis=1)
                 outputs = gen_outputs(dQ_crm, dS_crm, y_3, y_4)
                 np.savez(online_data_path +  '/crm-val_'    + "%005d"%(step-1), data_x = prev_inputs, data_y = outputs)
-                if step <= 18:
+                if step <= 28:
                     y_1 = dQ_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
                     y_2 = dS_crm.astype(np.float64).reshape(30,96,144).transpose((2,1,0)).reshape(144*96,30)
                     y_41 = soll_crm.astype(np.float64).reshape(144*96,1)
@@ -615,12 +615,12 @@ def run_experiment(all_models, online_data_path, data_buffer_path, qtend_post_pr
         outputs = gen_outputs(qtend, stend, y_3, y_4)
 
 
-        if (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
+        if step >= 3 and (step < 17520 or (step >= 17520 and (step+1)%12 == 0 and step < 35240)):
 
             np.savez(online_data_path +  '/prog-val_'   + "%005d"%(step), data_x = inputs, data_y = outputs)
 
         
-        if (step < 10240):
+        if step >= 3 and (step < 10240):
             np.savez(online_data_path + '/diag-extend_' + "%005d"%(step), omega = omega, pmid = pmid, pint = pint, s = s, zm = zm, zi = zi)
 
         step = step + 1
