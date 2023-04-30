@@ -11,10 +11,12 @@ import models as local_models
 sys.path.append("/cust_users/chenj209/prog_val_mod/src.baseline/") 
 
 import models
-from tools import normalization, normalization_by_level
-from tools import inverse_61_64, inverse_61_65
-from tools import load_ckpts, load_ckpts_manual
-from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
+#from tools import normalization, normalization_by_level
+#from tools import inverse_61_64, inverse_61_65
+#from tools import load_ckpts, load_ckpts_manual
+#from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
+from new_model_tools import gen_inputs, gen_outputs, normalize_x, normalize_y
+from new_model_tools import read_inputs, read_outputs, inverse_x, inverse_y
 
 from atm_log_process.parse_config import config_to_path
 
@@ -61,6 +63,8 @@ def Regression_Metrics(y_true, y_pred):
     r2   = 1 - mse/var
 
     return var, std, mse, rmse, mae, max_ae, bias, r2
+
+
 
 def load_ckpts_time(model029, model3059, model6164, model6165):
     
@@ -143,70 +147,6 @@ def load_ckpts_time(model029, model3059, model6164, model6165):
         gpu_index = gpu_index + 1
         
     return all_models
-
-def normalization_xy(data_x, data_y):
-    x = data_x.copy()
-    y = data_y.copy()
-    x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1
-    x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1
-    x[:,60:90,:,: ] = (x[:,60:90,:,:] + 2.13e-6) / (2.13e-6*2) * 2 - 1
-    x[:,90:120,:,:] = (x[:,90:120,:,:] + 3.89e-3) / (3.89e-3*2) * 2 - 1
-    x[:,120,:,:]    = (x[:,120,:,:] - 0)/ (1412 - 0)
-    x[:,121,:,:]    = (x[:,121,:,:] - 59928) / (105782 - 59928)
-    y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1
-    y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1
-    y[:,60:61,:,:]    =  y[:,60:61,:,:] / (2.12e-6) * 2 - 1
-    y[:,61:62,:,:]    = (y[:,61:62,:,:] - 0) / (1412 - 0)
-    y[:,62:63,:,:]    = (y[:,62:63,:,:] - 0) / (1412 - 0)
-    y[:,63:64,:,:]    = (y[:,63:64,:,:] - 0) / (1412 - 0)
-    y[:,64:65,:,:]    = (y[:,64:65,:,:] - 0) / (1412 - 0)
-    y[:,65:66,:,:]    = (y[:,65:66,:,:] - 0) / (1412 - 0)
-    data_x_norm, data_y_norm = x,y
-    return data_x_norm, data_y_norm
-
-def normalize_x(data_x):                                                                
-    x = data_x.copy()                                                                          
-                                                                                        
-    x[:, 0:30]  = (x[:, 0:30] - 0) /(0.0238) * 2 - 1                            
-    x[:,30:60]  = (x[:,30:60] - 159) / (323 - 159) * 2 - 1                      
-    x[:,60:90 ] = (x[:,60:90] + 2.13e-6) / (2.13e-6*2) * 2 - 1                  
-    x[:,90:120] = (x[:,90:120] + 3.89e-3) / (3.89e-3*2) * 2 - 1                 
-    x[:,120]    = (x[:,120] - 0)/ (1412 - 0)                                    
-    x[:,121]    = (x[:,121] - 59928) / (105782 - 59928)                         
-                                                                                        
-    data_x_norm = x                                                                     
-                                                                                        
-    return data_x_norm                                                                  
-                                                                                        
-def normalize_y(data_y):                                                                
-    if data_y.shape[1] == 66:
-        y = data_y.copy()                                                                          
-        # output data (target)                                                              
-        y[:, 0:30] = (y[:, 0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1                   
-        y[:,30:60] = (y[:,30:60] + 3.63) / (3.63*2) * 2 - 1                         
-        y[:,60:61]    =  y[:,60:61] / (2.12e-6) * 2 - 1                             
-                                                                                            
-        y[:,61:62]    = (y[:,61:62] - 0) / (1412 - 0)                               
-        y[:,62:63]    = (y[:,62:63] - 0) / (1412 - 0)                               
-        y[:,63:64]    = (y[:,63:64] - 0) / (1412 - 0)                               
-        y[:,64:65]    = (y[:,64:65] - 0) / (1412 - 0)                               
-        y[:,65:66]    = (y[:,65:66] - 0) / (1412 - 0)                               
-    if data_y.shape[1] == 65:
-        y = data_y.copy()                                                                          
-        # output data (target)                                                              
-        y[:, 0:30] = (y[:, 0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1                   
-        y[:,30:60] = (y[:,30:60] + 3.63) / (3.63*2) * 2 - 1                         
-                                                                                            
-        y[:,60:61]    = (y[:,60:61] - 0) / (1412 - 0)                               
-        y[:,61:62]    = (y[:,61:62] - 0) / (1412 - 0)                               
-        y[:,62:63]    = (y[:,62:63] - 0) / (1412 - 0)                               
-        y[:,63:64]    = (y[:,63:64] - 0) / (1412 - 0)                               
-        y[:,64:65]    = (y[:,64:65] - 0) / (1412 - 0)                               
-    else:
-        print(data_y.shape)
-        raise Exception("not implemented")
-    data_y_norm = y
-    return data_y_norm
 
 def print_config(config):
     print(json.dumps(parsed_config, sort_keys=True, indent=4))

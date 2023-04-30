@@ -12,7 +12,7 @@ sys.path.append("/cust_users/chenj209/prog_val_mod/src.baseline/")
 from tools import normalization, normalization_by_level
 from tools import inverse_61_64, inverse_61_65
 from tools import load_ckpts, load_ckpts_manual
-from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
+#from tools import gen_inputs, gen_outputs, gen_inputs_q_only, gen_outputs_q_only
 
 from atm_log_process.parse_config import config_to_path
 from nncam_data_explore.src.utility import idx_to_filename

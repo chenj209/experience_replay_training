@@ -8,7 +8,8 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from utils import Logger, AverageMeter, mkdir_p
-from dataloader_subset_files import Dataset
+#from dataloader_subset_files import Dataset
+from dataloader_time_embedded import DatasetDisk as Dataset
 from torch.utils import data
 import models
 import train_tools as tools
@@ -60,7 +61,7 @@ def main(args):
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
 
-    all_files = glob.glob(args.data_dir+'/prog*')
+    all_files = glob.glob(args.data_dir+'/*.npz')
 
     print('org file num:', len(all_files))
     #for i in range(17507,17530):
@@ -76,7 +77,8 @@ def main(args):
     #           all_files.remove(file_name)
     #print('hahahahahah after file num:', len(all_files))
 
-    test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    test_idx = np.arange(len(all_files))[-len(all_files)//10:]
     test_files = [all_files[i] for i in test_idx]
     train_files = [file_name for file_name in all_files if file_name not in test_files]
     # test_files = train_files
