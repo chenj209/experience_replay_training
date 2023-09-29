@@ -14,7 +14,6 @@ for epoch in ['50']:
                         network, activation, batch_size, lr_strategy, lr, epoch, noise_std, weight_decay, dropout)
                     print(name)
                     commands = 'CUDA_VISIBLE_DEVICES=0 python train_nn_2d.py --data_dir /home/users/data/tkde_set/tkde_set/ --output_type 0-29 --noise_std {} ' \
-                               '--test_dir /home/users/data/nncam_data/image_testset/ ' \
                                '--network {} --activation {} --dropout {} ' \
                                '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --workers 8 ' \
                                '--checkpoint ckpts/{}'.format(str(noise_std),

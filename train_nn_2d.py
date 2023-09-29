@@ -17,10 +17,7 @@ import glob
 
 def main(args):
     # define model
-    if args.train62:
-        input_dim = 62
-    else:
-        input_dim = 122
+    input_dim = 122
     if args.output_type == '0-29':
         output_dim = 30
     if args.output_type == '30-59':
@@ -51,14 +48,14 @@ def main(args):
     """
     Define dataloader
     """
-    training_set = Dataset(datadir=args.data_dir, is_train=True, train62=args.train62, noise_std=args.noise_std)
+    training_set = Dataset(datadir=args.data_dir, is_train=True, train62=False, noise_std=args.noise_std)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
-    validation_set = Dataset(datadir=args.val_dir, is_train=False, train62=args.train62, noise_std=args.noise_std)
+    validation_set = Dataset(datadir=args.data_dir, is_train=False, train62=False, noise_std=args.noise_std)
     validloader = data.DataLoader(validation_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
 
-    testing_set = Dataset(datadir=args.test_dir, is_train=False, train62=args.train62, noise_std=0)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    #testing_set = Dataset(datadir=args.test_dir, is_train=False, train62=False, noise_std=0)
+    #testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
 
     print('the length of train loader (total iters): {}'.format(len(trainloader)))
 
