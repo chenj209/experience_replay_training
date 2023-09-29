@@ -1,5 +1,26 @@
 import torch.nn as nn
 
+class MLP(nn.Module):
+    def __init__(self):
+        super(MLP, self).__init__()
+        
+        # Define the hidden layers
+        hidden_layers = []
+        in_channels = 122  # Initial input channels
+        for _ in range(6):
+            hidden_layers.append(nn.Linear(in_channels, 512, kernel_size=3, stride=1, padding=1))
+            hidden_layers.append(nn.ReLU(inplace=True))
+            in_channels = 512  # Next layers will have 512 input channels
+        
+        # Define the final layer to get the desired output shape
+        final_layer = nn.Linear(512, 30, kernel_size=3, stride=1, padding=1)
+        
+        # Combine all layers
+        self.layers = nn.Sequential(*hidden_layers, final_layer)
+
+    def forward(self, x):
+        return self.layers(x)
+
 class FCN(nn.Module):
     def __init__(self):
         super(FCN, self).__init__()
