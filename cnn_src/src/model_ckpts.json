@@ -1,0 +1,11 @@
+{
+    "0-29": {
+        "ckpt_path": "../fixed_ckpts/test_wx_alldata_rmBadData_0-29_cnn2_pad_actrelu_bs2_scheduler_coslr_lr0.0001_ep50_noise0_wd0_dropout0_wxnorm/checkpoint.pth.tar"
+    },
+    "30-59": {
+        "ckpt_path": "../fixed_ckpts/test_wx_alldata_rmBadData_30-59_cnn2_pad_actrelu_bs2_scheduler_coslr_lr0.0001_ep50_noise0_wd0_dropout0_wxnorm/checkpoint.pth.tar"
+    },
+    "61-65": {
+        "ckpt_path": "../fixed_ckpts/test_wx_alldata_rmBadData_61-65_cnn2_pad_actrelu_bs2_scheduler_coslr_lr0.0001_ep50_noise0_wd0_dropout0_wxnorm/checkpoint.pth.tar"
+    }
+}
