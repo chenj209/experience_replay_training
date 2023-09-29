@@ -76,7 +76,7 @@ class Dataset(data.Dataset):
 
         print('hahahahahah after file num:', len(all_files))
         
-        test_files = all_files[::int(0.1*len(all_files))]
+        test_files = all_files[-int(0.1*len(all_files)):]
         train_files = [file_name for file_name in all_files if file_name not in test_files]
         # test_files = train_files
         print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
