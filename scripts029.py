@@ -2,7 +2,7 @@ import os
 import sys
 for epoch in ['50']:
         for lr in ['0.0001']:
-            for batch_size in ['35']:
+            for batch_size in ['32']:
                 for noise_std in ['0']:
                     dropout = '0'
                     weight_decay = '0'
