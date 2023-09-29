@@ -1,19 +1,19 @@
 import torch.nn as nn
 
 class MLP(nn.Module):
-    def __init__(self):
+    def __init__(self, input_dim, output_dim):
         super(MLP, self).__init__()
         
         # Define the hidden layers
         hidden_layers = []
-        in_channels = 122  # Initial input channels
+        in_channels = input_dim  # Initial input channels
         for _ in range(6):
             hidden_layers.append(nn.Linear(in_channels, 512, kernel_size=3, stride=1, padding=1))
             hidden_layers.append(nn.ReLU(inplace=True))
             in_channels = 512  # Next layers will have 512 input channels
         
         # Define the final layer to get the desired output shape
-        final_layer = nn.Linear(512, 30, kernel_size=3, stride=1, padding=1)
+        final_layer = nn.Linear(512, output_dim, kernel_size=3, stride=1, padding=1)
         
         # Combine all layers
         self.layers = nn.Sequential(*hidden_layers, final_layer)
@@ -22,19 +22,19 @@ class MLP(nn.Module):
         return self.layers(x)
 
 class FCN(nn.Module):
-    def __init__(self):
+    def __init__(self, input_dim, output_dim):
         super(FCN, self).__init__()
         
         # Define the hidden layers
         hidden_layers = []
-        in_channels = 122  # Initial input channels
+        in_channels = input_dim  # Initial input channels
         for _ in range(6):
             hidden_layers.append(nn.Conv2d(in_channels, 512, kernel_size=3, stride=1, padding=1))
             hidden_layers.append(nn.ReLU(inplace=True))
             in_channels = 512  # Next layers will have 512 input channels
         
         # Define the final layer to get the desired output shape
-        final_layer = nn.Conv2d(512, 30, kernel_size=3, stride=1, padding=1)
+        final_layer = nn.Conv2d(512, output_dim, kernel_size=3, stride=1, padding=1)
         
         # Combine all layers
         self.layers = nn.Sequential(*hidden_layers, final_layer)
@@ -46,14 +46,14 @@ class Unet(nn.Module):
     """
     UNet implementation
     """
-    def __init__(self):
+    def __init__(self, input_dim, output_dim):
         super(Unet, self).__init__()
         # Encoder
         # In the encoder, convolutional layers with the Conv2d function are used to extract features from the input image. 
         # Each block in the encoder consists of two convolutional layers followed by a max-pooling layer, with the exception of the last block which does not include a max-pooling layer.
         # -------
         # input: 122x96x184
-        self.e11 = nn.Conv2d(122, 256, kernel_size=3, padding=1, stride=1) # output: 122x96x184
+        self.e11 = nn.Conv2d(input_dim, 256, kernel_size=3, padding=1, stride=1) # output: 122x96x184
         self.e12 = nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=1) # output: 256x96x184
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 256x48x92
 
@@ -86,7 +86,7 @@ class Unet(nn.Module):
         self.d32 = nn.Conv2d(256, 256, kernel_size=3, padding=1) # output: 256x96x184
 
         # Output layer
-        self.outconv = nn.Conv2d(256, 30, kernel_size=1)
+        self.outconv = nn.Conv2d(256, output_dim, kernel_size=1)
     
     def forward(self, x):
         # Encoder
