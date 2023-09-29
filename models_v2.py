@@ -94,35 +94,52 @@ class Unet(nn.Module):
     def forward(self, x):
         # Encoder
         e11 = self.e11(x)
+        e11 = nn.ReLU(inplace=True)(e11)
         e12 = self.e12(e11)
+        e12 = nn.ReLU(inplace=True)(e12)
         pool1 = self.pool1(e12)
 
         e21 = self.e21(pool1)
+        e21 = nn.ReLU(inplace=True)(e21)
         e22 = self.e22(e21)
+        e22 = nn.ReLU(inplace=True)(e22)
         pool2 = self.pool2(e22)
 
         e31 = self.e31(pool2)
+        e31 = nn.ReLU(inplace=True)(e31)
         e32 = self.e32(e31)
+        e32 = nn.ReLU(inplace=True)(e32)
         pool3 = self.pool3(e32)
 
         e41 = self.e41(pool3)
+        e41 = nn.ReLU(inplace=True)(e41)
         e42 = self.e42(e41)
+        e41 = nn.ReLU(inplace=True)(e42)
 
         # Decoder
         upconv1 = self.upconv1(e42)
+        upconv1 = nn.ReLU(inplace=True)(upconv1)
         concat1 = torch.cat([upconv1, e32], dim=1)
         d11 = self.d11(concat1)
+        d11 = nn.ReLU(inplace=True)(d11)
         d12 = self.d12(d11)
+        d12 = nn.ReLU(inplace=True)(d12)
 
         upconv2 = self.upconv2(d12)
+        upconv2 = nn.ReLU(inplace=True)(upconv2)
         concat2 = torch.cat([upconv2, e22], dim=1)
         d21 = self.d21(concat2)
+        d21 = nn.ReLU(inplace=True)(d21)
         d22 = self.d22(d21)
+        d22 = nn.ReLU(inplace=True)(d22)
 
         upconv3 = self.upconv3(d22)
+        upconv3 = nn.ReLU(inplace=True)(upconv3)
         concat3 = torch.cat([upconv3, e12], dim=1)
         d31 = self.d31(concat3)
+        d31 = nn.ReLU(inplace=True)(d31)
         d32 = self.d32(d31)
+        d32 = nn.ReLU(inplace=True)(d32)
 
         # Output layer
         outconv = self.outconv(d32)
