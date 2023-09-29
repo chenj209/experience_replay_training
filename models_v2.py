@@ -41,7 +41,9 @@ class FCN(nn.Module):
         self.layers = nn.Sequential(*hidden_layers, final_layer)
 
     def forward(self, x):
-        return self.layers(x)
+        x = self.layers(x)
+        x = x[:, :, :, 20:-20]
+        return x
 
 class Unet(nn.Module):
     """
@@ -124,7 +126,8 @@ class Unet(nn.Module):
 
         # Output layer
         outconv = self.outconv(d32)
-        return outconv
+        x = outconv[:, :, :, 20:-20]
+        return x
 
 
                 
