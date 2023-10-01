@@ -14,8 +14,8 @@ import glob
 
 
 def normalization(data_x, data_y):
-    x = data_x
-    y = data_y
+    x = data_x.copy()
+    y = data_y.copy()
     
 
     
@@ -56,7 +56,15 @@ def normalization(data_x, data_y):
 
 class Dataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, datadir, is_train, train62, noise_std = 0):
+    def __init__(self, datadir, is_train, train62, noise_std = 0, is_test=False):
+        """
+        Param:
+            datadir: the directory of the dataset
+            is_train: if True, use the training set, else use the validation set
+            noise_std: if >0, add gaussian noise to the data
+            is_test: if True, is_train is False and return all the data as test
+                    in addition, the output data (target) is not normalized
+        """
         
         #################### 屏蔽掉一些可能存在异常的数据集 ##############################        
         all_files = glob.glob(datadir + "/*.npz") 
@@ -75,25 +83,27 @@ class Dataset(data.Dataset):
                     all_files.remove(file_name)
 
         print('hahahahahah after file num:', len(all_files))
-        
-        test_files = all_files[-int(0.1*len(all_files)):]
-        train_files = [file_name for file_name in all_files if file_name not in test_files]
-        # test_files = train_files
-        print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
-        
-#         ### load the data ###
-#         all_files = glob.glob(datadir + '/*')#[:30]
-#         test_files = all_files[::10]
-#         train_files = [file_name for file_name in all_files if file_name not in test_files]
-        if is_train:
-            self.files = train_files
-        else:
-            self.files = test_files
+
+        if is_test:
+            self.files = all_files
+        else: 
+            test_files = all_files[-int(0.1*len(all_files)):]
+            train_files = [file_name for file_name in all_files 
+                           if file_name not in test_files]
+            # test_files = train_files
+            print('train files: {} test files: {}'
+                  .format(len(train_files), len(test_files)))
+            
+            if is_train:
+                self.files = train_files
+            else:
+                self.files = test_files
 
         self.size = len(self.files)
         self.noise_std = noise_std
         self.is_train = is_train
         self.train62 = train62
+        self.is_test = is_test
 
         if self.train62:
             print('the input size is 62')
@@ -130,6 +140,8 @@ class Dataset(data.Dataset):
             x = x + noise_x
             y = y + noise_y
 
+        if self.is_test:
+            return x, ty, tx
         return x, y
 
 
