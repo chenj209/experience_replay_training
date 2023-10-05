@@ -56,7 +56,7 @@ def normalization(data_x, data_y):
 
 class Dataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, datadir, is_train, train62, noise_std = 0, is_test=False):
+    def __init__(self, datadir, is_train, train62, noise_std = 0, is_test=False, sample=None):
         """
         Param:
             datadir: the directory of the dataset
@@ -68,6 +68,8 @@ class Dataset(data.Dataset):
         
         #################### 屏蔽掉一些可能存在异常的数据集 ##############################        
         all_files = glob.glob(datadir + "/*.npz") 
+        if sample is not None:
+            all_files = all_files[::sample]
 
         print('org file num:', len(all_files))
         for i in range(17507,17530):
