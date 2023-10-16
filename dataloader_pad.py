@@ -56,7 +56,7 @@ def normalization(data_x, data_y):
 
 class Dataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, datadir, is_train, train62, noise_std = 0, is_test=False):
+    def __init__(self, datadir, is_train, train62, noise_std = 0, is_test=False, sample=None):
         """
         Param:
             datadir: the directory of the dataset
@@ -69,23 +69,27 @@ class Dataset(data.Dataset):
         #################### 屏蔽掉一些可能存在异常的数据集 ##############################        
         all_files = glob.glob(datadir + "/*.npz") 
 
-        print('org file num:', len(all_files))
-        for i in range(17507,17530):
-            for file_name in all_files:
-                if str(i) in file_name:
-                    all_files.remove(file_name)
+        if is_train:
+            print('org file num:', len(all_files))
+            for i in range(17507,17530):
+                for file_name in all_files:
+                    if str(i) in file_name:
+                        all_files.remove(file_name)
 
-        print('after file num:', len(all_files))
+            print('after file num:', len(all_files))
 
-        for i in ['00001', '08690', '17522', '26210']:
-            for file_name in all_files:
-                if i in file_name:
-                    all_files.remove(file_name)
+            for i in ['00001', '08690', '17522', '26210']:
+                for file_name in all_files:
+                    if i in file_name:
+                        all_files.remove(file_name)
 
-        print('hahahahahah after file num:', len(all_files))
+            print('hahahahahah after file num:', len(all_files))
 
         if is_test:
-            self.files = all_files
+            for fn in all_files:
+                if "08691" in fn:
+                    all_files.remove(fn)
+            self.files = all_files[2:]
         else: 
             test_files = all_files[-int(0.1*len(all_files)):]
             train_files = [file_name for file_name in all_files 
@@ -98,6 +102,8 @@ class Dataset(data.Dataset):
                 self.files = train_files
             else:
                 self.files = test_files
+        if sample is not None:
+            self.files = self.files[::sample]
 
         self.size = len(self.files)
         self.noise_std = noise_std
@@ -141,7 +147,7 @@ class Dataset(data.Dataset):
             y = y + noise_y
 
         if self.is_test:
-            return x, ty, tx
+            return x, ty[0], tx[0]
         return x, y
 
 
