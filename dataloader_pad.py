@@ -68,6 +68,8 @@ class Dataset(data.Dataset):
         
         #################### 屏蔽掉一些可能存在异常的数据集 ##############################        
         all_files = glob.glob(datadir + "/*.npz") 
+        if sample is not None:
+            all_files = all_files[::sample]
 
         if is_train:
             print('org file num:', len(all_files))
