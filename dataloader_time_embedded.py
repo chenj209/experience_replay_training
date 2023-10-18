@@ -17,7 +17,7 @@ import re
 #     return data_x_norm, data_y_norm
 
 def normalize_x(data_x):
-    x = data_x
+    x = data_x.copy()
 
     x[:, 0:30,:,:]  = (x[:, 0:30,:,:] - 0) /(0.0238) * 2 - 1
     x[:,30:60,:,:]  = (x[:,30:60,:,:] - 159) / (323 - 159) * 2 - 1
@@ -31,7 +31,7 @@ def normalize_x(data_x):
     return data_x_norm
 
 def normalize_y(data_y):
-    y = data_y
+    y = data_y.copy()
     # output data (target)
     y[:, 0:30,:,:] = (y[:, 0:30,:,:] + 3.11e-6) / (3.11e-6*2) * 2 - 1
     y[:,30:60,:,:] = (y[:,30:60,:,:] + 3.63) / (3.63*2) * 2 - 1
@@ -117,9 +117,23 @@ class TimeDatasetDisk(data.Dataset):
     'TimeDataset, keeps files on disk, only load when get item is called'
     def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
         ### load the data ###
+        all_files = file_names
+        for i in range(17507,17530):
+            for file_name in all_files:
+                if str(i) in file_name:
+                    all_files.remove(file_name)
+
+        #print('after file num:', len(all_files))
+
+        for i in ['00001', '08690', '17522', '26210']:
+            for file_name in all_files:
+                if i in file_name:
+                    all_files.remove(file_name)
+
+        #print('hahahahahah after file num:', len(all_files))
+        self.file_names = all_files
         self.silent = silent
         file_names.sort(key=filename_to_idx)
-        self.file_names = file_names
         self.noise_std = noise_std
         self.is_train = is_train
         self.size = len(self.file_names)
@@ -254,18 +268,103 @@ class TimeDataset(data.Dataset):
             y = y + noise_y
 
         return x, y
-
-class DatasetDisk(data.Dataset):
+class DatasetDiskThick(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=False):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
         ### load the data ###
+        all_files = file_names
+        for i in range(17507,17530):
+            for file_name in all_files:
+                if str(i) in file_name:
+                    all_files.remove(file_name)
+
+        #print('after file num:', len(all_files))
+
+        for i in ['00001', '08690', '17522', '26210']:
+            for file_name in all_files:
+                if i in file_name:
+                    all_files.remove(file_name)
+
+        #print('hahahahahah after file num:', len(all_files))
+        self.file_names = all_files
         self.silent = silent
         file_names.sort(key=filename_to_idx)
-        self.file_names = file_names
         self.noise_std = noise_std
         self.is_train = is_train
         self.size = len(self.file_names)
         self.output_normalized = output_normalized
+
+
+    def __len__(self):
+        'Denotes the total number of samples'
+        return self.size
+
+    def __getitem__(self, index):
+        'Generates one sample of data'
+        x = []
+        y = []
+        x_raw = []
+        _file = self.file_names[index]
+        if os.path.exists(_file):
+        #for idx, file_name in enumerate(file_names):
+            _file = np.load(_file)
+            tx_raw = _file["data_x"]
+            ty = _file["data_y"]
+            ############# normalization ###############
+            #tx, ty = normalization(tx, ty)
+            tx = normalize_x(tx_raw)
+            if self.output_normalized:
+                ty = normalize_y(ty)
+            tx = np.transpose(tx, (0, 2, 3, 1))
+            tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
+            ty = np.transpose(ty, (0, 2, 3, 1))
+            tx = np.reshape(tx, (-1, tx.shape[-1]))
+            tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
+            ty = np.reshape(ty, (-1, ty.shape[-1]))
+            x.append(tx)
+            y.append(ty)
+            x_raw.append(tx_raw)
+            if not self.silent:
+                print(index, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
+        x = np.concatenate(x, axis=0).squeeze()
+        x_raw = np.concatenate(x_raw, axis=0).squeeze()
+        y = np.concatenate(y, axis=0).squeeze()
+
+        if self.is_train and self.noise_std>0:
+            # print(self.noise_std)
+            noise_x = np.random.randn(x.shape[0]) * self.noise_std
+            noise_y = np.random.randn(y.shape[0]) * self.noise_std
+            x = x + noise_x
+            y = y + noise_y
+
+        return x, y, x_raw
+
+class DatasetDisk(data.Dataset):
+    'Characterizes a dataset for PyTorch'
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
+        ### load the data ###
+        all_files = file_names
+        for i in range(17507,17530):
+            for file_name in all_files:
+                if str(i) in file_name:
+                    all_files.remove(file_name)
+
+        #print('after file num:', len(all_files))
+
+        for i in ['00001', '08690', '17522', '26210']:
+            for file_name in all_files:
+                if i in file_name:
+                    all_files.remove(file_name)
+
+        #print('hahahahahah after file num:', len(all_files))
+        self.file_names = all_files
+        self.silent = silent
+        file_names.sort(key=filename_to_idx)
+        self.noise_std = noise_std
+        self.is_train = is_train
+        self.size = len(self.file_names)
+        self.output_normalized = output_normalized
+
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -276,12 +375,16 @@ class DatasetDisk(data.Dataset):
         x = []
         y = []
         _file = self.file_names[index]
-        for idx, file_name in enumerate(file_names):
-            _file = np.load(file_name)
+        if os.path.exists(_file):
+        #for idx, file_name in enumerate(file_names):
+            _file = np.load(_file)
             tx = _file["data_x"]
             ty = _file["data_y"]
             ############# normalization ###############
-            tx, ty = normalization(tx, ty)
+            #tx, ty = normalization(tx, ty)
+            tx = normalize_x(tx)
+            if self.output_normalized:
+                ty = normalize_y(ty)
             tx = np.transpose(tx, (0, 2, 3, 1))
             ty = np.transpose(ty, (0, 2, 3, 1))
             tx = np.reshape(tx, (-1, tx.shape[-1]))
@@ -289,7 +392,7 @@ class DatasetDisk(data.Dataset):
             x.append(tx)
             y.append(ty)
             if not self.silent:
-                print(idx, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
+                print(index, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
         x = np.concatenate(x, axis=0).squeeze()
         y = np.concatenate(y, axis=0).squeeze()
 

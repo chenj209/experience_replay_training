@@ -129,7 +129,7 @@ def main(args):
                 batch[1] = batch[1][:, :, 61:66]
 
             # remove ps from training
-            batch[0][:, :,121] = 0
+            #batch[0][:, :,121] = 0
 
             #print("debug:", batch[0].shape, batch[1].shape)
             train_mse = tools.train(batch[:2], model, criterion, optimizer)
@@ -159,7 +159,7 @@ def main(args):
             if args.output_type == '61-65':
                 batch[1] = batch[1][:, :, 61:66]
 
-            batch[0][:,:,121] = 0
+            #batch[0][:,:,121] = 0
             test_mses = tools.test_de(batch[:2], model, criterion)
             for i in range(2):
                 test_mse = test_mses[i]
