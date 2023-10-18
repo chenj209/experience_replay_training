@@ -147,6 +147,13 @@ def positional_encoding(d_model, latitude, longitude):
                     pos_enc[i + d_model, lat, lon] = np.cos(lon / 10000 ** (2 * (i - 1) / d_model))
     return pos_enc
 
+def positional_encoding2(latitude, longitude):
+    pos_enc = np.zeros((3, latitude, longitude))
+    for lat in range(latitude):
+        for lon in range(longitude):
+            pos_enc[0, lat, lon] = float(1/lat)
+            pos_enc[1, lat, lon] = float(1/lon)
+    return pos_enc
 #d_model = 256
 #latitude = 96
 #longitude = 144
@@ -201,7 +208,8 @@ class DatasetDiskPos(data.Dataset):
             ty = _file["data_y"]
             ############# normalization ###############
             #tx, ty = normalization(tx, ty)
-            position_encoding = positional_encoding(4,96,144)
+            #position_encoding = positional_encoding(4,96,144)
+            position_encoding = positional_encoding2(96,144)
             tx = normalize_x(tx_raw)
             tx = np.concatenate((tx, position_encoding[None,]), axis=1)
             if self.output_normalized:

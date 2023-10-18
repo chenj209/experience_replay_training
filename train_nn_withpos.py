@@ -18,7 +18,7 @@ import glob
 
 def main(args):
     # define model
-    input_dim = 130
+    input_dim = 123
     if args.output_type == '0-29':
         output_dim = 30
     if args.output_type == '30-59':
