@@ -148,11 +148,11 @@ def positional_encoding(d_model, latitude, longitude):
     return pos_enc
 
 def positional_encoding2(latitude, longitude):
-    pos_enc = np.zeros((3, latitude, longitude))
+    pos_enc = np.zeros((2, latitude, longitude))
     for lat in range(latitude):
         for lon in range(longitude):
-            pos_enc[0, lat, lon] = float(1/lat)
-            pos_enc[1, lat, lon] = float(1/lon)
+            pos_enc[0, lat, lon] = float(1/(lat+1))
+            pos_enc[1, lat, lon] = float(1/(lon+1))
     return pos_enc
 #d_model = 256
 #latitude = 96

@@ -4,7 +4,7 @@ import numpy as np
 import time
 import glob
 import re
-from . import phys_consts
+import phys_consts
 
 # norm_vec = np.load('norm_vec.npz')
 # channel_max_x = norm_vec['channel_max_x']
