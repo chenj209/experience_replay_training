@@ -134,35 +134,7 @@ def filename_to_idx(filename):
 
 import numpy as np
 
-def positional_encoding(d_model, latitude, longitude):
-    pos_enc = np.zeros((2 * d_model, latitude, longitude))
-    for lat in range(latitude):
-        for lon in range(longitude):
-            for i in range(d_model):
-                if i % 2 == 0:
-                    pos_enc[i, lat, lon] = np.sin(lat / 10000 ** (2 * i / d_model))
-                    pos_enc[i + d_model, lat, lon] = np.sin(lon / 10000 ** (2 * i / d_model))
-                else:
-                    pos_enc[i, lat, lon] = np.cos(lat / 10000 ** (2 * (i - 1) / d_model))
-                    pos_enc[i + d_model, lat, lon] = np.cos(lon / 10000 ** (2 * (i - 1) / d_model))
-    return pos_enc
-
-def positional_encoding2(latitude, longitude):
-    pos_enc = np.zeros((2, latitude, longitude))
-    for lat in range(latitude):
-        for lon in range(longitude):
-            pos_enc[0, lat, lon] = float(1/(lat+1))
-            pos_enc[1, lat, lon] = float(1/(lon+1))
-    return pos_enc
-#d_model = 256
-#latitude = 96
-#longitude = 144
-#
-#position_encodings = positional_encoding(d_model, latitude, longitude)
-#print(position_encodings.shape)  # (512, 96, 144)
-
-
-class DatasetDiskPos(data.Dataset):
+class DatasetDiskLandMask(data.Dataset):
     'Characterizes a dataset for PyTorch'
     def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
         ### load the data ###
