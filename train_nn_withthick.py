@@ -45,7 +45,8 @@ def main(args):
     cudnn.benchmark = True
     
     
-    all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
+    #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
+    all_files = glob.glob(args.data_dir+'/*')#[::7]
 
     print('org file num:', len(all_files))
     for i in range(17507,17530):
@@ -61,7 +62,8 @@ def main(args):
                 all_files.remove(file_name)
     print('hahahahahah after file num:', len(all_files))
 
-    test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    test_idx = list(range(len(all_files)))[-len(all_files)//10:]
     test_files = [all_files[i] for i in test_idx]
     train_files = [file_name for file_name in all_files if file_name not in test_files]
     # test_files = train_files
