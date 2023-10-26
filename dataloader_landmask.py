@@ -162,6 +162,7 @@ class DatasetDiskLandMask(data.Dataset):
         pconsts = np.load(os.path.dirname(os.path.abspath(__file__))+"/phys_consts.npz")
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
+        self.landmask = np.load("landmask.npy")
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -181,9 +182,8 @@ class DatasetDiskLandMask(data.Dataset):
             ############# normalization ###############
             #tx, ty = normalization(tx, ty)
             #position_encoding = positional_encoding(4,96,144)
-            position_encoding = positional_encoding2(96,144)
             tx = normalize_x(tx_raw)
-            tx = np.concatenate((tx, position_encoding[None,]), axis=1)
+            tx = np.concatenate((tx, self.landmask[None, None]), axis=1)
             if self.output_normalized:
                 ty = normalize_y(ty)
             tx = np.transpose(tx, (0, 2, 3, 1))
