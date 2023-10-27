@@ -193,7 +193,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argsparser.get_argparser()
-    parser.add_argument('--land_sea_type', type="str", help='land or sea', default='sea')
+    parser.add_argument('--land_sea_type', type=str, help='land or sea', default='sea')
     args = parser.parse_args()
     print(args)
 
