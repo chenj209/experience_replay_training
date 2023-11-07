@@ -13,13 +13,13 @@ import time
 import glob
 from torch.utils import data
 
-sys.path.append(os.path.join(sys.path[0], '..', 'const'))
+sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
 sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
 sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from rh import get_pmid_from_ps1d, cal_rh
 import phys_consts
-from dataloader_refactor import get_inverse, DatasetDiskThick
+from dataloader_refactor import DatasetDisk
 from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
@@ -40,8 +40,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     # y_3 = []
     # y_4 = []
     y_gt = []
-    hyam = np.load(os.path.join(sys.path[0],"hyam.npy"))
-    hybm = np.load(os.path.join(sys.path[0],"hybm.npy")
+    hyam = np.load(os.path.join(sys.path[0],"..", "consts", "hyam.npy"))
+    hybm = np.load(os.path.join(sys.path[0],"..", "consts", "hybm.npy"))
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')
@@ -104,7 +104,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     qtend_log = report_qtend(y_gt, y_1)
     qtend_log_lvl = report_qtend_vert(y_gt, y_1)
-    qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
+    #qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
 
@@ -123,7 +123,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #"rad_log": rad_log,
         #"rad_log_individual": rad_log_individual,
         "qtend_log_lvl": qtend_log_lvl,
-        "qtend_log_spatial": qtend_log_spatial,
+        #"qtend_log_spatial": qtend_log_spatial,
         # "stend_log_lvl": stend_log_lvl,
         # "stend_log_spatial": stend_log_spatial
     }
@@ -171,10 +171,10 @@ if __name__ == "__main__":
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
 
-    testing_set = DatasetDiskThick(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
     if args.thick:
-        pconsts = np.load(os.path.dirname(os.path.abspath(__file__))+"/phys_consts.npz")
+        pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
         hyai = pconsts["hyai"]
         hybi = pconsts["hybi"]
         get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi) 
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     with open(args.out_json, "w") as f:
         json.dump({
             "dq/dt": logs["qtend_log"],
-            "dT/dt": logs["stend_log"],
+            #"dT/dt": logs["stend_log"],
             #"radiation": rad_log,
             #"dqdt_lvl": qtend_log_lvl,
             #"dTdt_lvl": stend_log_lvl,
@@ -202,10 +202,10 @@ if __name__ == "__main__":
     #         #**rad_log_individual
     #         }, f, indent=4)
 
-    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
-    np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
+    #np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
+    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
     np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_vert.npz", **logs["qtend_log_lvl"])
-    np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
+    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
 
 
 

@@ -15,9 +15,9 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 
-from . import models
-from . import models_ex
-from . import models_v2
+import models
+#import models_ex
+import models_v2
 
 network = 'resnet'    # 'resnet' / 'fcn'
 train62 = False       #  True - 62  or  False - 122 
@@ -107,10 +107,10 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
         #         model = models_v2.Unet(122,30)
         #     else:
         #         model = models.ResNet_output30(node_size, activation, num_blocks)
-        elif output_type == '61_64':
-            model = models.ResNet_output4(node_size, activation, num_blocks)
-        elif output_type == '61_65':
-            model = models_ex.ResNet_output5(node_size, activation, num_blocks)
+        #elif output_type == '61_64':
+            #model = models.ResNet_output4(node_size, activation, num_blocks)
+        #elif output_type == '61_65':
+            #model = models_ex.ResNet_output5(node_size, activation, num_blocks)
 
         real_gpu_id = visible_gpus[gpu_index%len(visible_gpus)]
         print("\nLoading DNN model to GPU_{}".format(real_gpu_id))

@@ -1,4 +1,5 @@
 from torch.utils import data
+import sys
 import os
 import numpy as np
 import time
@@ -43,7 +44,7 @@ class DatasetDisk(data.Dataset):
         self.is_train = is_train
         self.size = len(self.file_names)
         self.output_normalized = output_normalized
-        pconsts = np.load(os.path.dirname(os.path.abspath(__file__))+"/phys_consts.npz")
+        pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
 

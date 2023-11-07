@@ -1,6 +1,8 @@
 import numpy as np
 import os
-from . import phys_consts
+import sys
+sys.path.append(os.path.join(sys.path[0], "..", "consts"))
+import phys_consts
 
 PHYS_CONST_FILENAME = "phys_consts.npz"
 NC_SAMPLE_PATH = "/Users/jiandachen/Projects/NNCAM/nn_metrics/10year_manual_rh.cam.h0.2009-12.nc"
@@ -205,11 +207,11 @@ def report_qtend_spatial(y_gt, qtend):
 
 def report_qtend_vert(y_gt, qtend):
     y_gt = y_gt[:,0:30]
-    original_shape = (30, 96, 144)
-    y_gt = reverse_operations(y_gt, original_shape)
-    qtend = reverse_operations(qtend, original_shape)
-    print(qtend.shape)
-    return Regression_Metrics_axis(y_gt, qtend, axis=(0,2,3))
+    #original_shape = (30, 96, 144)
+    #y_gt = reverse_operations(y_gt, original_shape)
+    #qtend = reverse_operations(qtend, original_shape)
+    #print(qtend.shape)
+    return Regression_Metrics_axis(y_gt, qtend, axis=0)
 
 def report_qtend(y_gt, qtend, mask=None):
     if mask is not None:
