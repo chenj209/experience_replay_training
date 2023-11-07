@@ -158,7 +158,7 @@ def main(args):
         for iter, batch in enumerate(validloader):
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
             unnormalized_x = batch[2]
-            pmid = get_pmid_from_ps1d(unnormalized_x[0,:,121])
+            pmid = get_pmid_from_ps1d(unnormalized_x[0,:,121], hyam, hybm)
             rh = cal_rh(unnormalized_x[0,:,:30], unnormalized_x[0,:,30:60], pmid)
             #print("rh shape:", rh.shape)
             rh_mask = torch.max(rh,1).values <= 1
