@@ -128,7 +128,7 @@ def main(args):
             rh = cal_rh(unnormalized_x[0,:,:30], unnormalized_x[0,:,30:60], pmid)
             #print("rh shape:", rh.shape)
             rh_mask = torch.max(rh,1).values <= 1
-            print("rh_mask shape:", rh_mask.shape, "rh cap percentage:", rh_mask.sum()/rh_mask.shape[0])
+            print(f"rh_mask shape: {rh_mask.shape} rh cap percentage: {rh_mask.sum()/rh_mask.shape[0]:.2%}")
             batch[0] = batch[0][:, rh_mask, :122]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, rh_mask, :30]
