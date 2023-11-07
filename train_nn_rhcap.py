@@ -110,6 +110,8 @@ def main(args):
 
     #test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
     #test_variance = {'0-29': 20731.56910, '30-59': 3233.22239, '60': 0.20854, '61-65':1.010511}
+    hyam = np.load("hyam.npy")
+    hybm = np.load("hybm.npy")
     
     # Train and validate
     current_iters = 0
@@ -122,10 +124,11 @@ def main(args):
         for iter, batch in enumerate(trainloader):
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             unnormalized_x = batch[2]
-            pmid = get_pmid_from_ps1d(unnormalized_x[0,:,121])
+            pmid = get_pmid_from_ps1d(unnormalized_x[0,:,121], hyam, hybm)
             rh = cal_rh(unnormalized_x[0,:,:30], unnormalized_x[0,:,30:60], pmid)
-            rh_mask = np.max(rh,axis=1) <= 1
-            print("rh_mask shape:", rh_mask.shape)
+            #print("rh shape:", rh.shape)
+            rh_mask = torch.max(rh,1).values <= 1
+            #print("rh_mask shape:", rh_mask.shape)
             batch[0] = batch[0][:, rh_mask, :122]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, rh_mask, :30]
