@@ -8,19 +8,19 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
-from torch.utils import data
-
-sys.path.append(os.path.join(sys.path[0], '..', 'const'))
-import phys_consts
-sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
-from dataloader_refactor import get_inverse, DatasetDiskThick
-#import models
-#import train_tools as tools
 import json
 import time
 import glob
-from nncam_models.load_models import load_models, get_inverse
-#from tqdm.autonotebook import tqdm
+from torch.utils import data
+
+sys.path.append(os.path.join(sys.path[0], '..', 'const'))
+sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
+sys.path.append(os.path.join(sys.path[0], '..', 'models'))
+sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
+from rh import get_pmid_from_ps1d, cal_rh
+import phys_consts
+from dataloader_refactor import get_inverse, DatasetDiskThick
+from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
@@ -36,19 +36,28 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     criterion = nn.MSELoss()
     y_pred = []
     y_1 = []
-    y_2 = []
-    y_3 = []
-    y_4 = []
+    # y_2 = []
+    # y_3 = []
+    # y_4 = []
     y_gt = []
+    hyam = np.load(os.path.join(sys.path[0],"hyam.npy"))
+    hybm = np.load(os.path.join(sys.path[0],"hybm.npy")
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')
         if batch[0].shape[0] == 0:
             continue
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+        unnormalized_x = batch[2]
+        pmid = get_pmid_from_ps1d(unnormalized_x[0,:,121], hyam, hybm)
+        rh = cal_rh(unnormalized_x[0,:,:30], unnormalized_x[0,:,30:60], pmid)
+        rh_mask = torch.max(rh,1).values <= 1
         batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
         batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
         batch[2] = batch[2].reshape(-1, batch[2].shape[-1])
+        batch[0] = batch[0][rh_mask, :]
+        batch[1] = batch[1][rh_mask, :]
+        batch[2] = batch[2][rh_mask, :]
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw = batch
@@ -61,11 +70,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
             y_1.append(y1)
-            y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
-                                             .cpu().numpy())
-            if get_thickness is not None:
-                y2 *= thickness
-            y_2.append(y2)
+            # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
+            #                                  .cpu().numpy())
+            # if get_thickness is not None:
+            #     y2 *= thickness
+            # y_2.append(y2)
             #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
                                              #.cpu().numpy()))
             if get_thickness is not None:
@@ -76,17 +85,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
 
     y_1 = np.concatenate(y_1, axis=0)
-    y_2 = np.concatenate(y_2, axis=0)
+    # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
     if save:
         if get_thickness is not None:
             np.save("qtend_pred_thickness.npy", y_1)
-            np.save("stend_pred_thickness.npy", y_2)
+            # np.save("stend_pred_thickness.npy", y_2)
             np.save("spcam_gt_thickness.npy", y_gt)
         else:
             np.save("qtend_pred.npy", y_1)
-            np.save("stend_pred.npy", y_2)
+            # np.save("stend_pred.npy", y_2)
             np.save("spcam_gt.npy", y_gt)
 
 
@@ -99,10 +108,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
 
-    stend_log = report_stend(y_gt, y_2)
-    stend_log_lvl = report_stend_vert(y_gt, y_2)
-    stend_log_spatial = report_stend_spatial(y_gt, y_2)
-    del y_2
+    # stend_log = report_stend(y_gt, y_2)
+    # stend_log_lvl = report_stend_vert(y_gt, y_2)
+    # stend_log_spatial = report_stend_spatial(y_gt, y_2)
+    # del y_2
 
     #rad_log = report_rad_prog(y_gt, y_4)
 
@@ -110,26 +119,22 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     return {
         "qtend_log": qtend_log,
-        "stend_log": stend_log,
+        # "stend_log": stend_log,
         #"rad_log": rad_log,
         #"rad_log_individual": rad_log_individual,
         "qtend_log_lvl": qtend_log_lvl,
         "qtend_log_spatial": qtend_log_spatial,
-        "stend_log_lvl": stend_log_lvl,
-        "stend_log_spatial": stend_log_spatial
+        # "stend_log_lvl": stend_log_lvl,
+        # "stend_log_spatial": stend_log_spatial
     }
 
 if __name__ == "__main__":
     import argparse
     import random
-    #dh_settings.get_weight()
-    #dh_settings.get_hyai_hybi()
     torch.multiprocessing.set_sharing_strategy('file_system')
     random.seed(0)
     np.random.seed(0)
     parser = argparse.ArgumentParser()
-    #parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
-    #parser.add_argument("--resume", "-re", help="path to selected model")
     parser.add_argument("config", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
     parser.add_argument("--sample", type=int, help="sample frequency to use", default=1)
@@ -141,7 +146,8 @@ if __name__ == "__main__":
         config = json.load(f)
     all_models = load_models(
         config["0-29"]["ckpt_path"],
-        config["30-59"]["ckpt_path"],
+        # config["30-59"]["ckpt_path"],
+        None,
         None,
         #config["61-65"]["ckpt_path"]
         None

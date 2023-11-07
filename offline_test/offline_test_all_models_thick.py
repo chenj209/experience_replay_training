@@ -1,3 +1,4 @@
+import sys
 import argparse
 import os
 import random
@@ -7,23 +8,18 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
-#from utils import Logger, AverageMeter, mkdir_p
-#from dataloader_subset_files import Dataset
-from .dataloader_time_embedded import TimeDataset, get_inverse, DatasetDiskThick
-#from dataloader_subset_files_offline_test import Dataset
-#from offline_test.dataloader_subset_files import Dataset
-#from nncam_data_explore.stiff_scripts.sum_dh_base import get_thickness_from_ps_1d
-#from nncam_data_explore.stiff_scripts import settings as dh_settings
-from torch.utils import data
-from . import phys_consts
-#import models
-#import train_tools as tools
 import json
 import time
 import glob
-from nncam_models.load_models import load_models, get_inverse
-#from tqdm.autonotebook import tqdm
-from .metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
+from torch.utils import data
+
+sys.path.append(os.path.join(sys.path[0], '..', 'const'))
+sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
+sys.path.append(os.path.join(sys.path[0], '..', 'models'))
+import phys_consts
+from dataloader_refactor import get_inverse, DatasetDiskThick
+from load_models import load_models, get_inverse
+from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
     get_thickness_from_ps_1d
