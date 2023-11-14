@@ -5,7 +5,9 @@ import numpy as np
 import time
 import glob
 import re
-from rh import get_pmid_from_x, cal_rh
+#sys.path.append(
+#from rh import get_pmid_from_x, cal_rh
+sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from normalization import normalize_x, normalize_y
 
 def idx_to_filename(idx):

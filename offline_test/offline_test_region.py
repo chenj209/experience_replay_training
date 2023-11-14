@@ -13,11 +13,11 @@ import time
 import glob
 from torch.utils import data
 
-sys.path.append(os.path.join(sys.path[0], '..', 'const'))
+sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
 sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
 sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 import phys_consts
-from dataloader_refactor import get_inverse, DatasetDisk
+from dataloader_refactor import DatasetDisk
 from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
@@ -187,7 +187,7 @@ if __name__ == "__main__":
     with open(args.out_json, "w") as f:
         json.dump({
             "dq/dt": logs["qtend_log"],
-            "dT/dt": logs["stend_log"],
+            #"dT/dt": logs["stend_log"],
             #"radiation": rad_log,
             #"dqdt_lvl": qtend_log_lvl,
             #"dTdt_lvl": stend_log_lvl,
@@ -203,10 +203,10 @@ if __name__ == "__main__":
     #         #**rad_log_individual
     #         }, f, indent=4)
 
-    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
-    np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
+    #np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
+    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
     np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_vert.npz", **logs["qtend_log_lvl"])
-    np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
+    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
 
 
 
