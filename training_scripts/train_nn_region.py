@@ -7,14 +7,20 @@ import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
-from utils import Logger, AverageMeter, mkdir_p
-from dataloader_refactor import DatasetDisk
 from torch.utils import data
-# import models_v2 as models
-import nncam_models.models as models
-import tools
 import time
 import glob
+import sys
+# import models_v2 as models
+
+sys.path.append(os.path.join(sys.path[0], "..", "models"))
+import models
+sys.path.append(os.path.join(sys.path[0], ".."))
+from utils import Logger, AverageMeter, mkdir_p
+sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
+from dataloader_refactor import DatasetDisk
+sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+import tools
 
 def main(args):
     # define model
