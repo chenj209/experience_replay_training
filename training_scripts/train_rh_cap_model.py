@@ -1,4 +1,3 @@
-import argsparser
 import os
 import random
 import torch
@@ -9,18 +8,21 @@ import torch.optim as optim
 import numpy as np
 import multiprocessing as mp
 from torch.utils import data
-import models
-import tools
 import time
 import glob
 import json
 
 import sys
-sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+sys.path.append(os.path.join(sys.path[0], ".."))
 from utils import Logger, AverageMeter, mkdir_p
-from rh import get_pmid_from_ps1d, torch_cal_qsat_water
+sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+import tools
+import argsparser
+from rh import torch_get_pmid, torch_cal_qsat_water
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_refactor import DatasetDisk
+sys.path.append(os.path.join(sys.path[0], "..", "models"))
+import models
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -44,12 +46,15 @@ class RHMaskLoss(nn.Module):
         super(RHMaskLoss, self).__init__()
         self.hyam = np.load(os.path.join(sys.path[0],"..", "consts", "hyam.npy"))
         self.hybm = np.load(os.path.join(sys.path[0],"..", "consts", "hybm.npy"))
+        self.hyam = torch.tensor(self.hyam).cuda()
+        self.hybm = torch.tensor(self.hybm).cuda()
+
 
     def forward(self, x_raw, output_type, output, target):
         x = x_raw
-        pmid = get_pmid_from_ps1d(x[:,121],self.hyam, self.hybm)
-        T = x[:,30:60]
-        Q = x[:,:30]
+        pmid = torch_get_pmid(x[0,:,121],self.hyam, self.hybm)
+        T = x[0,:,30:60]
+        Q = x[0,:,:30]
         # add old nn pred
         # Q += get_inverse()['0_29'](x[:,122:])*30*60
 
@@ -235,7 +240,7 @@ def main(args):
         loss_name = [args.output_type + '_r2: {:.5f}']
         test_time_begin = time.time()
         for iter, batch in enumerate(validloader):
-            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
