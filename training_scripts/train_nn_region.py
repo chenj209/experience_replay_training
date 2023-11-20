@@ -1,4 +1,3 @@
-import argsparser
 import os
 import random
 import torch
@@ -20,6 +19,7 @@ from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_refactor import DatasetDisk
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+import argsparser
 import tools
 
 def main(args):
@@ -116,7 +116,10 @@ def main(args):
     #test_variance = {'0-29': 20731.56910, '30-59': 3233.22239, '60': 0.20854, '61-65':1.010511}
     
     # Train and validate
-    region_mask = np.load(args.region_mask)[None, None, :, :]
+    if args.region_mask == "all":
+        region_mask = np.ones((96,144))[None, None, :, :]
+    else:
+        region_mask = np.load(args.region_mask)[None, None, :, :]
     region_mask = np.transpose(region_mask, (0, 2, 3, 1))
     region_mask = np.reshape(region_mask, (-1, region_mask.shape[-1]))
     region_mask = (region_mask[:,0]==1)
