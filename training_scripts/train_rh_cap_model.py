@@ -240,7 +240,7 @@ def main(args):
         loss_name = [args.output_type + '_r2: {:.5f}']
         test_time_begin = time.time()
         for iter, batch in enumerate(validloader):
-            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
