@@ -90,7 +90,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
-    RH = np.concatenate(rh, axis=0)
+    RH = np.concatenate(RH, axis=0)
     if save:
         if get_thickness is not None:
             np.save("qtend_pred_thickness.npy", y_1)
