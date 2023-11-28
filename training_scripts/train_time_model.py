@@ -134,10 +134,10 @@ def main(args):
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
 
     training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=args.workers)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
 
     testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=args.workers)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=5,min_delta=0)
     # Train and test
     current_iters = 0

@@ -16,7 +16,7 @@ for epoch in ['50']:
                     #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
                     
                     activation = 'relu'
-                    batch_size = '1024'
+                    batch_size = '32'
                     lr_strategy = 'coslr'
 
                     network = 'resnet_output30'
