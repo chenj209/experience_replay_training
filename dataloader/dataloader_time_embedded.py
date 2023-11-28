@@ -151,6 +151,7 @@ class TimeDatasetDisk(data.Dataset):
         prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-1)])
         x = []
         y = []
+        x_raw = []
         if os.path.exists(prev_file):
             prev_data = np.load(prev_file)
             curr_data = np.load(target_file)
@@ -160,6 +161,7 @@ class TimeDatasetDisk(data.Dataset):
                 if not self.silent:
                     print(f"{prev_tidx} != {curr_tidx} + 1, {file_names[prev_fidx]} is not previous timestep of {file_name}")
                 return None, None
+            tx_raw = curr_data["data_x"]
             tx = curr_data["data_x"]
             ty = curr_data["data_y"]
             tx_prev = prev_data["data_x"]
@@ -174,17 +176,21 @@ class TimeDatasetDisk(data.Dataset):
             tx = np.transpose(tx, (0, 2, 3, 1))
             ty = np.transpose(ty, (0, 2, 3, 1))
             tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
+            tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
             ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
             tx = np.reshape(tx, (-1, tx.shape[-1]))
             ty = np.reshape(ty, (-1, ty.shape[-1]))
             tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
             ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
             tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
+            tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
             x.append(tx_concat)
             y.append(ty)
+            x_raw.append(tx_raw)
             if not self.silent:
                 print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
         x = np.concatenate(x, axis=0).squeeze()
+        x_raw = np.concatenate(x_raw, axis=0).squeeze()
         y = np.concatenate(y, axis=0).squeeze()
         if not self.silent:
             print(self.x.shape, self.y.shape, self.size)
@@ -196,7 +202,7 @@ class TimeDatasetDisk(data.Dataset):
             x = x + noise_x
             y = y + noise_y
 
-        return x, y
+        return x, y, x_raw
 
 class TimeDataset(data.Dataset):
     'Characterizes a dataset for PyTorch'

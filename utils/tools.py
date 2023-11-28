@@ -16,7 +16,7 @@ def train(batch, model, criterion, optimizer):
     # switch to train mode
     model.train()
 
-    points_x, points_y = batch
+    points_x, points_y = batch[:2]
     points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
     
     
