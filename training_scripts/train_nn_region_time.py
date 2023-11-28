@@ -51,7 +51,7 @@ def main(args):
     cudnn.benchmark = True
     
     
-    all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
+    all_files = glob.glob(args.data_dir+'/*')[::12]#[::7]
 
     print('org file num:', len(all_files))
     for i in range(17507,17530):

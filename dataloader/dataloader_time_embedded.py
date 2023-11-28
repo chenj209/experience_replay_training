@@ -189,20 +189,21 @@ class TimeDatasetDisk(data.Dataset):
             x_raw.append(tx_raw)
             if not self.silent:
                 print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        x = np.concatenate(x, axis=0).squeeze()
-        x_raw = np.concatenate(x_raw, axis=0).squeeze()
-        y = np.concatenate(y, axis=0).squeeze()
-        if not self.silent:
-            print(self.x.shape, self.y.shape, self.size)
+            x = np.concatenate(x, axis=0).squeeze()
+            x_raw = np.concatenate(x_raw, axis=0).squeeze()
+            y = np.concatenate(y, axis=0).squeeze()
+            if not self.silent:
+                print(self.x.shape, self.y.shape, self.size)
 
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
+            if self.is_train and self.noise_std>0:
+                # print(self.noise_std)
+                noise_x = np.random.randn(x.shape[0]) * self.noise_std
+                noise_y = np.random.randn(y.shape[0]) * self.noise_std
+                x = x + noise_x
+                y = y + noise_y
 
-        return x, y, x_raw
+            return x, y, x_raw
+        return None, None, None
 
 class TimeDataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
