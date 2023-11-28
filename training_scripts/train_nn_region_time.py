@@ -133,7 +133,7 @@ def main(args):
         for iter, batch in enumerate(trainloader):
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             # land_sea_flag = (args.land_sea_type == "land")
-            batch[0] = batch[0][:, region_mask, :122]
+            batch[0] = batch[0][:, region_mask, :309]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask, :30]
             if args.output_type == '30-59':

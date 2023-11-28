@@ -14,7 +14,7 @@ for epoch in ['50']:
                     name = 'timemodelpacific_0-29_{}_act{}_bs{}_scheduler_{}_lr{}_ep{}_noise{}_wd{}_dropout{}_wxnorm'.format(
                         network, activation, batch_size, lr_strategy, lr, epoch, noise_std, weight_decay, dropout)
                     print(name)
-                    commands = 'CUDA_VISIBLE_DEVICES={} python train_nn_region_time.py --region_mask pacific_region_mask.npy --data_dir /home/users/data/nncam_data/image_set/ --output_type 0-29 --noise_std {} ' \
+                    commands = 'CUDA_VISIBLE_DEVICES={} python train_nn_region_time.py --region_mask ../consts/pacific_region_mask.npy --data_dir /home/users/data/nncam_data/image_set/ --output_type 0-29 --noise_std {} ' \
                                '--network {} --activation {} --dropout {} ' \
                                '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --workers 8 ' \
                                '--checkpoint ckpts_time/{}'.format(sys.argv[2], str(noise_std),
