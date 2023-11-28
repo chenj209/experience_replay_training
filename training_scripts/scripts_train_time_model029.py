@@ -2,9 +2,9 @@ import os
 
 #DATA_DIR = "~/data/tkde_set/"
 DATA_DIR = "/home/users/data/nncam_data/image_set/"
-name = "time_model029_0425"
+name = "time_model029_sampled12_1127"
 
-for epoch in ['100']:
+for epoch in ['50']:
     for num_blocks in ['7']:
         for node_size in ['512']:
             for noise_std in [0.0]:
