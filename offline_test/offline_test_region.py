@@ -38,7 +38,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     y_3 = []
     y_4 = []
     y_gt = []
-    region_mask = np.load(args.region_mask)[None, None, :, :]
+    if args.region_mask == "all":
+        region_mask = np.ones((1,1,96,144))
+    else:
+        region_mask = np.load(args.region_mask)[None, None, :, :]
     region_mask = np.transpose(region_mask, (0, 2, 3, 1))
     region_mask = np.reshape(region_mask, (-1, region_mask.shape[-1]))
     region_mask = (region_mask[:,0]==1)
