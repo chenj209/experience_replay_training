@@ -96,7 +96,7 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
                 model = models.ResMLP(130,30,node_size, activation, num_blocks)
             elif model_type == "pos2":
                 model = models.ResMLP(124,30,node_size, activation, num_blocks)
-            elif model_type.startswith("resmlp"): 
+            elif model is not None and model_type.startswith("resmlp"): 
                 m = re.match(r"resmlp_(\d+)_(\d+)", model_type)
                 input_size = int(m.group(1))
                 output_size = int(m.group(2))
