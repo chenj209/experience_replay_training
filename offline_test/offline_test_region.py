@@ -103,7 +103,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     qtend_log = report_qtend(y_gt, y_1)
     qtend_log_lvl = report_qtend_vert(y_gt, y_1)
-    # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
+    if args.region_mask == "all":
+        qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
 
@@ -116,16 +117,18 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     #rad_log_individual = report_rad_prog_individual(y_gt, y_4)
 
-    return {
+    res = {
         "qtend_log": qtend_log,
         # "stend_log": stend_log,
         #"rad_log": rad_log,
         #"rad_log_individual": rad_log_individual,
         "qtend_log_lvl": qtend_log_lvl,
-        # "qtend_log_spatial": qtend_log_spatial,
         # "stend_log_lvl": stend_log_lvl,
         # "stend_log_spatial": stend_log_spatial
     }
+    if args.region_mask == "all":
+        res["qtend_log_spatial"] = qtend_log_spatial
+    return res
 
 if __name__ == "__main__":
     import argparse
@@ -206,7 +209,8 @@ if __name__ == "__main__":
     #         #**rad_log_individual
     #         }, f, indent=4)
 
-    #np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
+    if args.region_mask == "all":
+        np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
     np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_vert.npz", **logs["qtend_log_lvl"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
