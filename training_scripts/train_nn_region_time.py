@@ -54,14 +54,15 @@ def main(args):
     all_files = glob.glob(args.data_dir+'/*')[::12]#[::7]
 
     print('org file num:', len(all_files))
-    for i in range(17507,17530):
+    for i in range(17507,17531):
         for file_name in all_files:
             if str(i) in file_name:
                 all_files.remove(file_name)
     print('after file num:', len(all_files))
 
     
-    for i in ['00001', '08690', '17522', '26210']:
+    # for i in ['00001', '08690', '17522', '26210']:
+    for i in ['00001', '00002', '00003', '08690', '08691', '17522', '17523','26210','26211']:
         for file_name in all_files:
             if i in file_name:
                 all_files.remove(file_name)
