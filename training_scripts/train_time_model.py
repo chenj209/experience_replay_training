@@ -44,7 +44,7 @@ def main(args):
         model = models.ResNet(args.node_size, args.activation)
     elif args.network == 'resnet_output30':
         #model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
-        model = models.ResMLP(152, 30, args.node_size, args.activation, args.num_blocks)
+        model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
         model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
