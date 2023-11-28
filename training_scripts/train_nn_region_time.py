@@ -162,7 +162,7 @@ def main(args):
         test_time_begin = time.time()
         for iter, batch in enumerate(validloader):
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
-            batch[0] = batch[0][:, region_mask, :122]
+            batch[0] = batch[0][:, region_mask, :309]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask, :30]
             if args.output_type == '30-59':
