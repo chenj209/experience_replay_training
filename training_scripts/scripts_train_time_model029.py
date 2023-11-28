@@ -26,7 +26,7 @@ for epoch in ['50']:
                     print(name)
                     commands = f"CUDA_VISIBLE_DEVICES=1 python train_time_model.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
-                               '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
+                               '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
                                '--checkpoint ckpts_time/{}'.format(str(noise_std),
                                                               network, node_size, num_blocks, activation,
                                                               dropout,
