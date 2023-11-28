@@ -1,20 +1,25 @@
-import argsparser
 import os
+import time
+import glob
 import random
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
-from utils import Logger, AverageMeter, mkdir_p
-from dataloader_subset_files import Dataset
-from dataloader_time_embedded import TimeDatasetDisk
 from torch.utils import data
+
+sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import models
+sys.path.append(os.path.join(sys.path[0], ".."))
+from utils import Logger, AverageMeter, mkdir_p
+sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+import argsparser
 import tools
-import time
-import glob
+sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
+from dataloader_time_embedded import TimeDatasetDisk
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -60,7 +65,7 @@ def main(args):
 
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*')
+    all_files = glob.glob(args.data_dir+'/*')[::12]
 
     print('org file num:', len(all_files))
     #for i in range(17507,17530):
@@ -78,7 +83,9 @@ def main(args):
     print('hahahahahah after file num:', len(all_files))
 
     #test_idx = np.random.choice(len(all_files),len(all_files)//20,replace=False)
-    test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
+    test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
     random.shuffle(train_files)
     test_files = [all_files[i] for i in test_idx]
