@@ -91,18 +91,6 @@ def main(args):
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
     random.shuffle(train_files)
     test_files = [all_files[i] for i in test_idx]
-    #test_file_count = len(all_files)//20
-    #test_files = all_files[-test_file_count:]
-    #train_files = all_files[:-test_file_count]
-    #train_idx = np.concatenate([np.arange(1,len(all_files),13), np.arange(0,len(all_files),13)])
-    #train_idx = np.arange(0, len(all_files))
-    #print(len(all_files))
-    #print(max(train_idx))
-    #train_files = [all_files[i] for i in train_idx]
-    #test_all_files = glob.glob("/home/users/data/nncam_data/image_testset/")
-    #test_idx = np.concatenate([np.arange(1,len(test_all_files),26), np.arange(0,len(test_all_files),26)])
-    #test_idx = np.random.choice(len(test_all_files), len(test_all_files
-    #test_files = [test_all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 
     """
@@ -149,7 +137,8 @@ def main(args):
         train_losses = AverageMeter()
         train_time_begin = time.time()
         for iter, batch in enumerate(trainloader):
-            if batch[0] == 0:
+            if batch[0].size() == 1 and batch[0] == 0:
+                # skip empty batch due to missing data
                 continue
             batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
             batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
@@ -182,7 +171,8 @@ def main(args):
         loss_name = [args.output_type + '_r2: {:.5f}']
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
-            if batch[0] == 0:
+            if batch[0].size() == 1 and batch[0] == 0:
+                # skip empty batch due to missing data
                 continue
             batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
             batch[1] = batch[1].reshape(-1, batch[1].shape[-1])

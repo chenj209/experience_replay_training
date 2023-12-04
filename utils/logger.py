@@ -66,7 +66,7 @@ class Logger(object):
             elif isinstance(num, str):
                 self.file.write(num)
             else:
-                self.file.write("{0:.6f}".format(num))
+                self.file.write("{0:.4e}".format(num))
             self.file.write('\t')
             self.numbers[self.names[index]].append(num)
         self.file.write('\n')
