@@ -418,55 +418,6 @@ class DatasetDisk(data.Dataset):
             y = y + noise_y
 
         return x, y
-class Dataset(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0):
-        ### load the data ###
-        x = []
-        y = []
-        file_names.sort(key=filename_to_idx)
-        for idx, file_name in enumerate(file_names):
-            _file = np.load(file_name)
-            tx = _file["data_x"]
-            ty = _file["data_y"]
-            ############# normalization ###############
-            tx, ty = normalization(tx, ty)
-            tx = np.transpose(tx, (0, 2, 3, 1))
-            ty = np.transpose(ty, (0, 2, 3, 1))
-            tx = np.reshape(tx, (-1, tx.shape[-1]))
-            ty = np.reshape(ty, (-1, ty.shape[-1]))
-            x.append(tx)
-            y.append(ty)
-            if not self.silent:
-                print(idx, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        self.x = np.concatenate(x, axis=0)
-        self.y = np.concatenate(y, axis=0)
-#         print('size of self.x!!!!!!!!!!!!!',np.shape(self.x))
-        self.size = self.x.shape[0]
-        print(self.x.shape, self.y.shape, self.size)
-        self.noise_std = noise_std
-        self.is_train = is_train
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return self.size
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        x = self.x[index:index+1]
-        y = self.y[index:index+1]
-
-        x = x[0]
-        y = y[0]
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y
 
 if __name__ == '__main__':
     import os
@@ -482,15 +433,5 @@ if __name__ == '__main__':
         np.save('checkcode_x_time'+str(idx), x.numpy())
         np.save('checkcode_y_time'+str(idx), y.numpy())
         if idx == 1:
-            break
-        print(idx, x.size(), y.size())
-
-    training_set = Dataset(file_names, is_train=True, noise_std=0)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
-    for idx, batch in enumerate(trainloader):
-        x, y = batch
-        np.save('checkcode_x'+str(idx), x.numpy())
-        np.save('checkcode_y'+str(idx), y.numpy())
-        if idx == 2:
             break
         print(idx, x.size(), y.size())
