@@ -215,12 +215,17 @@ class TimeDatasetDisk(data.Dataset):
 
 if __name__ == '__main__':
     import os
+    import sys
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("multistep", type=int, help="multistep", default=1)
+    args = parser.parse_args()
     data_dir = "/home/users/data/nncam_data/image_set/"
     if not os.path.exists(data_dir):
         data_dir = "/data/nncam_data/image_set/"
     file_names = os.listdir(data_dir)
     file_names = [data_dir + fn for fn in file_names][:10]
-    training_set = TimeDatasetDisk(file_names, is_train=True, noise_std=0)
+    training_set = TimeDatasetDisk(file_names, is_train=True, noise_std=0,multistep=args.multistep)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw = batch
