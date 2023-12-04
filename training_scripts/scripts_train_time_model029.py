@@ -2,6 +2,9 @@ import os
 
 #DATA_DIR = "~/data/tkde_set/"
 DATA_DIR = "/home/users/data/nncam_data/image_set/"
+if not os.path.exists(DATA_DIR):
+    DATA_DIR = "/data/nncam_data/image_set/"
+
 name = "time_model029_sampled12_1127"
 
 for epoch in ['50']:
