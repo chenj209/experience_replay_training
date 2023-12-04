@@ -166,8 +166,8 @@ class TimeDatasetDisk(data.Dataset):
             tx = np.reshape(tx, (-1, tx.shape[-1]))
             ty = np.reshape(ty, (-1, ty.shape[-1]))
 
-        prev_data = []
-        for p in range(1,self.multstep+1):
+        prev_inputs = []
+        for p in range(1,self.multistep+1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
             if os.path.exists(prev_file):
                 prev_data = np.load(prev_file)
@@ -184,13 +184,13 @@ class TimeDatasetDisk(data.Dataset):
                 ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
                 tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
                 ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
-                prev_data.extend([tx_prev, ty_prev])
+                prev_inputs.extend([tx_prev, ty_prev])
             else:
                 print(f"Current file: {target_file} Missing {prev_file}")
-                return None, None, None
-
+                return 0, 0, 0
+        x,y,x_raw = [],[],[]
         #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-        tx_concat = np.concatenate([*prev_data, tx], axis=1)
+        tx_concat = np.concatenate([*prev_inputs, tx], axis=1)
         tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
         x.append(tx_concat)
         y.append(ty)
@@ -212,212 +212,6 @@ class TimeDatasetDisk(data.Dataset):
 
         return x, y, x_raw
 
-class TimeDataset(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=False):
-        ### load the data ###
-        self.silent = silent
-        x = []
-        y = []
-        file_names.sort(key=filename_to_idx)
-        for prev_fidx, file_name in enumerate(file_names[1:]):
-            prev_data = np.load(file_names[prev_fidx])
-            curr_data = np.load(file_name)
-            prev_tidx = filename_to_idx(file_names[prev_fidx])
-            curr_tidx = filename_to_idx(file_name)
-            if int(prev_tidx) != int(curr_tidx)-1:
-                if not self.silent:
-                    print(f"{prev_tidx} != {curr_tidx} + 1, {file_names[prev_fidx]} is not previous timestep of {file_name}")
-                continue
-            tx = curr_data["data_x"]
-            ty = curr_data["data_y"]
-            tx_prev = prev_data["data_x"]
-            ty_prev = prev_data["data_y"]
-            ############# normalization ###############
-            #tx, ty = normalization(tx, ty)
-            tx = normalize_x(tx)
-            if output_normalized:
-                ty = normalize_y(ty)
-            tx_prev, ty_prev = normalization(tx_prev, ty_prev)
-            ty_prev = np.delete(ty_prev, 60, axis=1)
-            tx = np.transpose(tx, (0, 2, 3, 1))
-            ty = np.transpose(ty, (0, 2, 3, 1))
-            tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
-            ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
-            tx = np.reshape(tx, (-1, tx.shape[-1]))
-            ty = np.reshape(ty, (-1, ty.shape[-1]))
-            tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
-            ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
-            tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-            x.append(tx_concat)
-            y.append(ty)
-            if not self.silent:
-                print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        self.x = np.concatenate(x, axis=0)
-        self.y = np.concatenate(y, axis=0)
-#         print('size of self.x!!!!!!!!!!!!!',np.shape(self.x))
-        self.size = self.x.shape[0]
-        if not self.silent:
-            print(self.x.shape, self.y.shape, self.size)
-        self.noise_std = noise_std
-        self.is_train = is_train
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return self.size
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        x = self.x[index:index+1]
-        y = self.y[index:index+1]
-
-        x = x[0]
-        y = y[0]
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y
-class DatasetDiskThick(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
-        ### load the data ###
-        all_files = file_names
-        for i in range(17507,17530):
-            for file_name in all_files:
-                if str(i) in file_name:
-                    all_files.remove(file_name)
-
-        #print('after file num:', len(all_files))
-
-        for i in ['00001', '08690', '17522', '26210']:
-            for file_name in all_files:
-                if i in file_name:
-                    all_files.remove(file_name)
-
-        #print('hahahahahah after file num:', len(all_files))
-        self.file_names = all_files
-        self.silent = silent
-        file_names.sort(key=filename_to_idx)
-        self.noise_std = noise_std
-        self.is_train = is_train
-        self.size = len(self.file_names)
-        self.output_normalized = output_normalized
-
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return self.size
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        x = []
-        y = []
-        x_raw = []
-        _file = self.file_names[index]
-        if os.path.exists(_file):
-        #for idx, file_name in enumerate(file_names):
-            _file = np.load(_file)
-            tx_raw = _file["data_x"]
-            ty = _file["data_y"]
-            ############# normalization ###############
-            #tx, ty = normalization(tx, ty)
-            tx = normalize_x(tx_raw)
-            if self.output_normalized:
-                ty = normalize_y(ty)
-            tx = np.transpose(tx, (0, 2, 3, 1))
-            tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
-            ty = np.transpose(ty, (0, 2, 3, 1))
-            tx = np.reshape(tx, (-1, tx.shape[-1]))
-            tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
-            ty = np.reshape(ty, (-1, ty.shape[-1]))
-            x.append(tx)
-            y.append(ty)
-            x_raw.append(tx_raw)
-            if not self.silent:
-                print(index, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        x = np.concatenate(x, axis=0).squeeze()
-        x_raw = np.concatenate(x_raw, axis=0).squeeze()
-        y = np.concatenate(y, axis=0).squeeze()
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y, x_raw
-
-class DatasetDisk(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
-        ### load the data ###
-        all_files = file_names
-        for i in range(17507,17530):
-            for file_name in all_files:
-                if str(i) in file_name:
-                    all_files.remove(file_name)
-
-        #print('after file num:', len(all_files))
-
-        for i in ['00001', '08690', '17522', '26210']:
-            for file_name in all_files:
-                if i in file_name:
-                    all_files.remove(file_name)
-
-        #print('hahahahahah after file num:', len(all_files))
-        self.file_names = all_files
-        self.silent = silent
-        file_names.sort(key=filename_to_idx)
-        self.noise_std = noise_std
-        self.is_train = is_train
-        self.size = len(self.file_names)
-        self.output_normalized = output_normalized
-
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return self.size
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        x = []
-        y = []
-        _file = self.file_names[index]
-        if os.path.exists(_file):
-        #for idx, file_name in enumerate(file_names):
-            _file = np.load(_file)
-            tx = _file["data_x"]
-            ty = _file["data_y"]
-            ############# normalization ###############
-            #tx, ty = normalization(tx, ty)
-            tx = normalize_x(tx)
-            if self.output_normalized:
-                ty = normalize_y(ty)
-            tx = np.transpose(tx, (0, 2, 3, 1))
-            ty = np.transpose(ty, (0, 2, 3, 1))
-            tx = np.reshape(tx, (-1, tx.shape[-1]))
-            ty = np.reshape(ty, (-1, ty.shape[-1]))
-            x.append(tx)
-            y.append(ty)
-            if not self.silent:
-                print(index, len(file_names), 'x-shape & y-shape:', tx.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-        x = np.concatenate(x, axis=0).squeeze()
-        y = np.concatenate(y, axis=0).squeeze()
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y
 
 if __name__ == '__main__':
     import os
@@ -426,12 +220,12 @@ if __name__ == '__main__':
         data_dir = "/data/nncam_data/image_set/"
     file_names = os.listdir(data_dir)
     file_names = [data_dir + fn for fn in file_names][:10]
-    training_set = TimeDataset(file_names, is_train=True, noise_std=0)
+    training_set = TimeDatasetDisk(file_names, is_train=True, noise_std=0)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
     for idx, batch in enumerate(trainloader):
-        x, y = batch
+        x, y, x_raw = batch
         np.save('checkcode_x_time'+str(idx), x.numpy())
         np.save('checkcode_y_time'+str(idx), y.numpy())
-        if idx == 1:
-            break
+        #if idx == 1:
+        #    break
         print(idx, x.size(), y.size())
