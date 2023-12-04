@@ -115,7 +115,7 @@ def filename_to_idx(filename):
 
 class TimeDatasetDisk(data.Dataset):
     'TimeDataset, keeps files on disk, only load when get item is called'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True, multistep=1):
         ### load the data ###
         all_files = file_names
         for i in range(17507,17530):
@@ -138,6 +138,7 @@ class TimeDatasetDisk(data.Dataset):
         self.is_train = is_train
         self.size = len(self.file_names)
         self.output_normalized = output_normalized
+        self.multistep = multistep
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -148,62 +149,68 @@ class TimeDatasetDisk(data.Dataset):
         target_file = self.file_names[index]
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
-        prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-1)])
-        x = []
-        y = []
-        x_raw = []
-        if os.path.exists(prev_file):
-            prev_data = np.load(prev_file)
+        if os.path.exists(target_file):
             curr_data = np.load(target_file)
-            prev_tidx = filename_to_idx(prev_file)
             curr_tidx = filename_to_idx(target_file)
-            if int(prev_tidx) != int(curr_tidx)-1:
-                if not self.silent:
-                    print(f"{prev_tidx} != {curr_tidx} + 1, {file_names[prev_fidx]} is not previous timestep of {file_name}")
-                return None, None
             tx_raw = curr_data["data_x"]
             tx = curr_data["data_x"]
             ty = curr_data["data_y"]
-            tx_prev = prev_data["data_x"]
-            ty_prev = prev_data["data_y"]
             ############# normalization ###############
             #tx, ty = normalization(tx, ty)
             tx = normalize_x(tx)
             if self.output_normalized:
                 ty = normalize_y(ty)
-            tx_prev, ty_prev = normalization(tx_prev, ty_prev)
-            ty_prev = np.delete(ty_prev, 60, axis=1)
             tx = np.transpose(tx, (0, 2, 3, 1))
             ty = np.transpose(ty, (0, 2, 3, 1))
-            tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
             tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
-            ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
             tx = np.reshape(tx, (-1, tx.shape[-1]))
             ty = np.reshape(ty, (-1, ty.shape[-1]))
-            tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
-            ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
-            tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
-            tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
-            x.append(tx_concat)
-            y.append(ty)
-            x_raw.append(tx_raw)
-            if not self.silent:
-                print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
-            x = np.concatenate(x, axis=0).squeeze()
-            x_raw = np.concatenate(x_raw, axis=0).squeeze()
-            y = np.concatenate(y, axis=0).squeeze()
-            if not self.silent:
-                print(self.x.shape, self.y.shape, self.size)
 
-            if self.is_train and self.noise_std>0:
-                # print(self.noise_std)
-                noise_x = np.random.randn(x.shape[0]) * self.noise_std
-                noise_y = np.random.randn(y.shape[0]) * self.noise_std
-                x = x + noise_x
-                y = y + noise_y
+        prev_data = []
+        for p in range(1,self.multstep+1):
+            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
+            if os.path.exists(prev_file):
+                prev_data = np.load(prev_file)
+                prev_tidx = filename_to_idx(prev_file)
+                if int(prev_tidx) != int(curr_tidx)-p:
+                    if not self.silent:
+                        print(f"{prev_tidx} != {curr_tidx} + {p}, {file_names[prev_tidx]} is not previous {p} timestep of {target_file}")
+                    return None, None
+                tx_prev = prev_data["data_x"]
+                ty_prev = prev_data["data_y"]
+                tx_prev, ty_prev = normalization(tx_prev, ty_prev)
+                ty_prev = np.delete(ty_prev, 60, axis=1)
+                tx_prev = np.transpose(tx_prev, (0, 2, 3, 1))
+                ty_prev = np.transpose(ty_prev, (0, 2, 3, 1))
+                tx_prev = np.reshape(tx_prev, (-1, tx_prev.shape[-1]))
+                ty_prev = np.reshape(ty_prev, (-1, ty_prev.shape[-1]))
+                prev_data.extend([tx_prev, ty_prev])
+            else:
+                print(f"Current file: {target_file} Missing {prev_file}")
+                return None, None, None
 
-            return x, y, x_raw
-        return None, None, None
+        #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
+        tx_concat = np.concatenate([*prev_data, tx], axis=1)
+        tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
+        x.append(tx_concat)
+        y.append(ty)
+        x_raw.append(tx_raw)
+        # if not self.silent:
+            # print(prev_fidx+1, len(file_names), 'x-shape & y-shape:', tx_concat.shape, ty.shape) # (1, 96, 144, 32) (1, 96, 144, 5)
+        x = np.concatenate(x, axis=0).squeeze()
+        x_raw = np.concatenate(x_raw, axis=0).squeeze()
+        y = np.concatenate(y, axis=0).squeeze()
+        if not self.silent:
+            print(self.x.shape, self.y.shape, self.size)
+
+        if self.is_train and self.noise_std>0:
+            # print(self.noise_std)
+            noise_x = np.random.randn(x.shape[0]) * self.noise_std
+            noise_y = np.random.randn(y.shape[0]) * self.noise_std
+            x = x + noise_x
+            y = y + noise_y
+
+        return x, y, x_raw
 
 class TimeDataset(data.Dataset):
     'Characterizes a dataset for PyTorch'
@@ -464,6 +471,8 @@ class Dataset(data.Dataset):
 if __name__ == '__main__':
     import os
     data_dir = "/home/users/data/nncam_data/image_set/"
+    if not os.path.exists(data_dir):
+        data_dir = "/data/nncam_data/image_set/"
     file_names = os.listdir(data_dir)
     file_names = [data_dir + fn for fn in file_names][:10]
     training_set = TimeDataset(file_names, is_train=True, noise_std=0)

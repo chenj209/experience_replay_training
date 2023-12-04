@@ -44,7 +44,8 @@ def main(args):
         model = models.ResNet(args.node_size, args.activation)
     elif args.network == 'resnet_output30':
         #model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
-        model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
+        #model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
+        model = models.ResMLP(122+int(args.multistep)*187, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
         model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
@@ -133,10 +134,10 @@ def main(args):
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
 
-    training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std)
+    training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
 
-    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std)
+    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std, multistep=int(args.multistep))
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=5,min_delta=0)
     # Train and test
