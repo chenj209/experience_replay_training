@@ -228,8 +228,7 @@ if __name__ == '__main__':
     training_set = TimeDatasetDisk(file_names, is_train=True, noise_std=0,multistep=args.multistep)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
     for idx, batch in enumerate(trainloader):
-        print(batch[0])
-        if batch[0].size() == 1 and batch[0] == 0:
+        if batch[0] == 0:
             print(f"Missing data, skipping batch {idx}")
         x, y, x_raw = batch
         np.save('checkcode_x_time'+str(idx), x.numpy())
