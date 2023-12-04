@@ -33,7 +33,7 @@ if __name__ == "__main__":
                         print(name)
                         commands = f"CUDA_VISIBLE_DEVICES={args.gpu} python train_time_model.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
-                                '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
+                                '--train-batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
                                 '--checkpoint ckpts_time/{}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
