@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
+from torch.utils.data.dataloader import default_collate
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import models
@@ -121,12 +122,15 @@ def main(args):
                     'constant': tools.constant}
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
+    def my_collate(batch):
+        batch = list(filter (lambda x:x is not None, batch))
+        return default_collate(batch)
 
     training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers, collate_fn=my_collate)
 
     testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std, multistep=int(args.multistep))
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers, collate_fn=my_collate)
     early_stopper = EarlyStopper(patience=5,min_delta=0)
     # Train and test
     current_iters = 0

@@ -1,4 +1,5 @@
 from torch.utils import data
+from torch.utils.data.dataloader import default_collate
 import os
 import numpy as np
 import time
@@ -175,7 +176,7 @@ class TimeDatasetDisk(data.Dataset):
                 if int(prev_tidx) != int(curr_tidx)-p:
                     if not self.silent:
                         print(f"{prev_tidx} != {curr_tidx} + {p}, {file_names[prev_tidx]} is not previous {p} timestep of {target_file}")
-                    return None, None
+                    return None
                 tx_prev = prev_data["data_x"]
                 ty_prev = prev_data["data_y"]
                 tx_prev, ty_prev = normalization(tx_prev, ty_prev)
@@ -187,7 +188,7 @@ class TimeDatasetDisk(data.Dataset):
                 prev_inputs.extend([tx_prev, ty_prev])
             else:
                 print(f"Current file: {target_file} Missing {prev_file}")
-                return 0, 0, 0
+                return None
         x,y,x_raw = [],[],[]
         #tx_concat = np.concatenate([tx_prev, tx, ty_prev], axis=1)
         tx_concat = np.concatenate([*prev_inputs, tx], axis=1)
@@ -224,11 +225,14 @@ if __name__ == '__main__':
     if not os.path.exists(data_dir):
         data_dir = "/data/nncam_data/image_set/"
     file_names = os.listdir(data_dir)
-    file_names = [data_dir + fn for fn in file_names][:10]
+    file_names = [data_dir + fn for fn in file_names][:100]
     training_set = TimeDatasetDisk(file_names, is_train=True, noise_std=0,multistep=args.multistep)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
+    def my_collate(batch):
+        batch = list(filter (lambda x:x is not None, batch))
+        return default_collate(batch)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=32, num_workers=4, collate_fn=my_collate)
     for idx, batch in enumerate(trainloader):
-        if batch[0] == 0:
+        if batch[0].size() == 1 and batch[0] == 0:
             print(f"Missing data, skipping batch {idx}")
         x, y, x_raw = batch
         np.save('checkcode_x_time'+str(idx), x.numpy())
