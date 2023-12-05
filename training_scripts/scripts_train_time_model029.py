@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     name = f"time_model029_sampled12_1204_multistep{args.multistep}"
 
-    for epoch in ['50']:
+    for epoch in ['200']:
         for num_blocks in ['7']:
             for node_size in ['512']:
                 for noise_std in [0.0]:
