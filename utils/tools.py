@@ -80,7 +80,7 @@ def test(batch, model, criterion):
     # switch to eval mode
     model.eval()
     with torch.no_grad():
-        points_x, points_y = batch
+        points_x, points_y = batch[:2]
         points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
         # compute output
@@ -116,7 +116,7 @@ def test_de(batch, model, criterion):
     # switch to eval mode
     model.eval()
     with torch.no_grad():
-        points_x, points_y = batch
+        points_x, points_y = batch[:2]
         points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
         # compute output
