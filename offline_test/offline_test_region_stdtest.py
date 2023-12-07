@@ -75,17 +75,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 if args.land_align == 1:
                     pred1[landmask[:,0]==0] = adjust_std_mean(
                         pred1[landmask[:,0]==0],
-                        landstdmean["data_y_mean"],
-                        landstdmean["data_y_std"],
-                        seastdmean["data_y_mean"],
-                        seastdmean["data_y_std"])
+                        landstdmean["data_y_mean"][:30],
+                        landstdmean["data_y_std"][:30],
+                        seastdmean["data_y_mean"][:30],
+                        seastdmean["data_y_std"][:30])
                 else:
                     pred1[landmask[:,0]==1] = adjust_std_mean(
                         pred1[landmask[:,0]==1],
-                        seastdmean["data_y_mean"],
-                        seastdmean["data_y_std"],
-                        landstdmean["data_y_mean"],
-                        landstdmean["data_y_std"])
+                        seastdmean["data_y_mean"][:30],
+                        seastdmean["data_y_std"][:30],
+                        landstdmean["data_y_mean"][:30],
+                        landstdmean["data_y_std"][:30])
 
             y1 = get_inverse()['0_29'](pred1)
             if get_thickness is not None:
