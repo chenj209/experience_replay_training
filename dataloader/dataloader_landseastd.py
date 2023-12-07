@@ -172,6 +172,10 @@ class DatasetDiskLandSeaStd(data.Dataset):
         self.landstdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "land_std_mean.npz"))}
         self.seastdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "sea_std_mean.npz"))}
         self.land_align = land_align
+        if self.land_align:
+            print("align sea to land")
+        else:
+            print("align land to sea")
 
 
     def __len__(self):
