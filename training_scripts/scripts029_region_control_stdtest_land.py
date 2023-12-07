@@ -14,7 +14,7 @@ for epoch in ['50']:
                     name = 'modelstdtestland_0-29_{}_act{}_bs{}_scheduler_{}_lr{}_ep{}_noise{}_wd{}_dropout{}_wxnorm'.format(
                         network, activation, batch_size, lr_strategy, lr, epoch, noise_std, weight_decay, dropout)
                     print(name)
-                    commands = 'CUDA_VISIBLE_DEVICES={} python train_nn_region_stdtest.py --region_mask all --land_align True --data_dir /data/nncam_data/image_set/ --output_type 0-29 --noise_std {} ' \
+                    commands = 'CUDA_VISIBLE_DEVICES={} python train_nn_region_stdtest.py --region_mask all --land_align 1 --data_dir /data/nncam_data/image_set/ --output_type 0-29 --noise_std {} ' \
                                '--network {} --activation {} --dropout {} ' \
                                '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --workers 8 ' \
                                '--checkpoint ckpts/{}'.format(sys.argv[2], str(noise_std),
