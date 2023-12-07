@@ -162,6 +162,8 @@ if __name__ == "__main__":
     np.random.seed(0)
     #data_dir = "/data/nncam_data/image_testset/"
     data_dir = "/home/users/data/nncam_data/image_testset/"
+    if not os.path.exists(data_dir):
+        data_dir = "/data/nncam_data/image_testset/"
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
