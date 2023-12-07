@@ -204,7 +204,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argsparser.get_argparser()
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file')
-    parser.add_argument('--land_align', action="store_true", help='whether to align sea to land or the inverse')
+    parser.add_argument('--land_align', type=bool, help='whether to align sea to land or the inverse')
     args = parser.parse_args()
     print(args)
 
