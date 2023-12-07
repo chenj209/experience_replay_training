@@ -169,8 +169,8 @@ class DatasetDiskLandSeaStd(data.Dataset):
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
         self.landmask = np.load(os.path.join(sys.path[0], "..", "consts", "landmask.npy"))
-        self.landstdmean = np.load(os.path.join(sys.path[0], "..", "consts", "land_std_mean.npz"))
-        self.seastdmean = np.load(os.path.join(sys.path[0], "..", "consts", "sea_std_mean.npz"))
+        self.landstdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "land_std_mean.npz"))}
+        self.seastdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "sea_std_mean.npz"))}
         self.land_align = land_align
 
 
@@ -248,7 +248,7 @@ if __name__ == '__main__':
             if i in file_name:
                 file_names.remove(file_name)
 
-    training_set = DatasetDiskLandSeaStd(file_names, is_train=True, noise_std=0, land_align=False)
+    training_set = DatasetDiskLandSeaStd(file_names, is_train=True, noise_std=0, land_align=True)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1)
     land_x = []
     sea_x = []
