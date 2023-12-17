@@ -62,7 +62,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         file_names = batch[3]
         #model.eval()
         with torch.no_grad():
-            points_x, points_y, x_raw = batch
+            points_x, points_y, x_raw, _ = batch
             if get_thickness is not None:
                 thickness = get_thickness(x_raw[:,121].numpy())
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
@@ -72,6 +72,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
             y_1.append(y1)
+            y1 = inverse_to_inference_shape(y1)
+            for b in range(y1.shape[0]):
+                file_name = file_names[b].split("/")[-1]
+                np.save(args.save_path + "/" + file_name, y1[b])
             # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
             #                                  .cpu().numpy())
             # if get_thickness is not None:
@@ -82,9 +86,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if get_thickness is not None:
                 points_y[:,:30] *= thickness*phys_consts.LATVAP
                 points_y[:,30:60] *= thickness
-            points_y = inverse_to_inference_shape(points_y.numpy())
-            for b in range(points_y.shape[0]):
-                np.save(args.save_path + "/" + file_names[b], points_y[b])
             # points_y = points_y.numpy()
             y_gt.append(points_y)
 
@@ -198,7 +199,7 @@ if __name__ == "__main__":
     else:
         get_thickness = None
 
-    logs = offline_test(args, all_models, testloader, get_thickness, save=args.save)
+    logs = offline_test(args, all_models, testloader, get_thickness, save=args.save_path)
 
     with open(args.out_json, "w") as f:
         json.dump({
