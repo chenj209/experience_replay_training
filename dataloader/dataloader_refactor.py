@@ -23,7 +23,7 @@ def filename_to_idx(filename):
 
 class DatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True):
+    def __init__(self, file_names, is_train, noise_std = 0, output_normalized=True, silent=True, filename=False):
         ### load the data ###
         all_files = file_names
         for i in range(17507,17530):
@@ -44,6 +44,7 @@ class DatasetDisk(data.Dataset):
         file_names.sort(key=filename_to_idx)
         self.noise_std = noise_std
         self.is_train = is_train
+        self.file_name = filename
         self.size = len(self.file_names)
         self.output_normalized = output_normalized
         pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
@@ -92,6 +93,9 @@ class DatasetDisk(data.Dataset):
             noise_y = np.random.randn(y.shape[0]) * self.noise_std
             x = x + noise_x
             y = y + noise_y
+
+        if self.file_name:
+            return x, y, x_raw, self.file_names[index]
 
         return x, y, x_raw
 
@@ -145,15 +149,21 @@ class Dataset(data.Dataset):
 
         return x, y
 
-# if __name__ == '__main__':
-#     import os
-#     data_dir = "/home/users/data/nncam_data/image_set/"
-#     file_names = os.listdir(data_dir)
-#     file_names = [data_dir + fn for fn in file_names][:10]
-#     training_set = TimeDataset(file_names, is_train=True, noise_std=0)
-#     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
-#     for idx, batch in enumerate(trainloader):
-#         x, y = batch
+if __name__ == '__main__':
+    import os
+    data_dir = "/home/users/data/nncam_data/image_set/"
+    if not os.path.isdir(data_dir):
+        data_dir = "/data/nncam_data/image_set/"
+    if not os.path.isdir(data_dir):
+        data_dir = "./data/"
+    file_names = os.listdir(data_dir)
+    file_names = [data_dir + fn for fn in file_names]
+    print(file_names[:10])
+    training_set = DatasetDisk(file_names, is_train=True, noise_std=0, filename=True)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=4)
+    for idx, batch in enumerate(trainloader):
+        x, y, x_raw, filenames = batch
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
 #         np.save('checkcode_x_time'+str(idx), x.numpy())
 #         np.save('checkcode_y_time'+str(idx), y.numpy())
 #         if idx == 1:
