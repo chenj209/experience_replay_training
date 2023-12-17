@@ -17,7 +17,7 @@ sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
 sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
 sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 import phys_consts
-from dataloader_refactor import DatasetDisk
+from dataloader_landseastd import DatasetDiskLandSeaStd, adjust_std_mean
 from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
@@ -45,6 +45,12 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     region_mask = np.transpose(region_mask, (0, 2, 3, 1))
     region_mask = np.reshape(region_mask, (-1, region_mask.shape[-1]))
     region_mask = (region_mask[:,0]==1)
+    if args.inverse == 1:
+        landmask = np.load(os.path.join(sys.path[0], "..", "consts", "landmask.npy"))[None,None,:,:]
+        landmask = np.transpose(landmask, (0, 2, 3, 1))
+        landmask = np.reshape(landmask, (-1, landmask.shape[-1]))
+        landstdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "land_std_mean.npz"))}
+        seastdmean = {**np.load(os.path.join(sys.path[0], "..", "consts", "sea_std_mean.npz"))}
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')
@@ -64,8 +70,24 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 thickness = get_thickness(x_raw[:,121].numpy())
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
-            y1 = get_inverse()['0_29'](all_models['0_29'](points_x).detach()
-                                                        .cpu().numpy())
+            pred1 = all_models['0_29'](points_x).detach().cpu().numpy()
+            if args.inverse == 1:
+                if args.land_align == 1:
+                    pred1[landmask[:,0]==0] = adjust_std_mean(
+                        pred1[landmask[:,0]==0],
+                        landstdmean["data_y_mean"][:30],
+                        landstdmean["data_y_std"][:30],
+                        seastdmean["data_y_mean"][:30],
+                        seastdmean["data_y_std"][:30])
+                else:
+                    pred1[landmask[:,0]==1] = adjust_std_mean(
+                        pred1[landmask[:,0]==1],
+                        seastdmean["data_y_mean"][:30],
+                        seastdmean["data_y_std"][:30],
+                        landstdmean["data_y_mean"][:30],
+                        landstdmean["data_y_std"][:30])
+
+            y1 = get_inverse()['0_29'](pred1)
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
             y_1.append(y1)
@@ -147,6 +169,8 @@ if __name__ == "__main__":
     parser.add_argument("--thick", action="store_true")
     parser.add_argument("--save", action="store_true")
     parser.add_argument("--region_mask", type=str)
+    parser.add_argument("--land_align", type=int)
+    parser.add_argument("--inverse", type=int)
     args = parser.parse_args()
     print(args.config)
     with open(args.config, "r") as f:
@@ -180,7 +204,7 @@ if __name__ == "__main__":
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
 
-    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testing_set = DatasetDiskLandSeaStd(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True, land_align=args.land_align)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))

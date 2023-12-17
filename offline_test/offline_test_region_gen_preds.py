@@ -18,11 +18,14 @@ sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
 sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 import phys_consts
 from dataloader_refactor import DatasetDisk
+# from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
     get_thickness_from_ps_1d
+sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
+from data_shape import to_inference_shape, inverse_to_inference_shape
 
 
 def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
@@ -42,8 +45,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         region_mask = np.ones((1,1,96,144))
     else:
         region_mask = np.load(args.region_mask)[None, None, :, :]
-    region_mask = np.transpose(region_mask, (0, 2, 3, 1))
-    region_mask = np.reshape(region_mask, (-1, region_mask.shape[-1]))
+    region_mask = to_inference_shape(region_mask)
     region_mask = (region_mask[:,0]==1)
     for iter, batch in enumerate(testloader):
         # allow empty batch
@@ -57,6 +59,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         batch[0] = batch[0][region_mask, :]
         batch[1] = batch[1][region_mask, :]
         batch[2] = batch[2][region_mask, :]
+        file_names = batch[3]
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw = batch
@@ -79,7 +82,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if get_thickness is not None:
                 points_y[:,:30] *= thickness*phys_consts.LATVAP
                 points_y[:,30:60] *= thickness
-            points_y = points_y.numpy()
+            points_y = inverse_to_inference_shape(points_y.numpy())
+            for b in range(points_y.shape[0]):
+                np.save(args.save_path + "/" + file_names[b], points_y[b])
+            # points_y = points_y.numpy()
             y_gt.append(points_y)
 
 
@@ -105,6 +111,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     qtend_log_lvl = report_qtend_vert(y_gt, y_1)
     if args.region_mask == "all":
         qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
+    # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
 
@@ -123,6 +130,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #"rad_log": rad_log,
         #"rad_log_individual": rad_log_individual,
         "qtend_log_lvl": qtend_log_lvl,
+        # "qtend_log_spatial": qtend_log_spatial,
         # "stend_log_lvl": stend_log_lvl,
         # "stend_log_spatial": stend_log_spatial
     }
@@ -145,7 +153,7 @@ if __name__ == "__main__":
     parser.add_argument("out_json", help="path to output json file")
     parser.add_argument("--sample", type=int, help="sample frequency to use", default=1)
     parser.add_argument("--thick", action="store_true")
-    parser.add_argument("--save", action="store_true")
+    parser.add_argument("--save_path", type=str, default="offline_test_preds")
     parser.add_argument("--region_mask", type=str)
     args = parser.parse_args()
     print(args.config)
@@ -157,12 +165,12 @@ if __name__ == "__main__":
         None,
         None,
         #config["61-65"]["ckpt_path"]
-        None
+        None,
+        model_type="resmlp_122_30"
     )
     np.random.seed(0)
-    #data_dir = "/data/nncam_data/image_testset/"
     data_dir = "/home/users/data/nncam_data/image_testset/"
-    if not os.path.exists(data_dir):
+    if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_testset/"
     print("Test set path: ", data_dir)
 
@@ -180,7 +188,7 @@ if __name__ == "__main__":
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
 
-    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True)
+    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
