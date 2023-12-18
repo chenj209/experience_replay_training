@@ -21,7 +21,7 @@ import models
 import models_v2
 
 network = 'resnet'    # 'resnet' / 'fcn'
-train62 = False       #  True - 62  or  False - 122 
+train62 = False       #  True - 62  or  False - 122
 os.environ["CUDA_VISIBLE_DEVICES"] = '0, 1, 2, 3'
 
 
@@ -52,7 +52,7 @@ def get_inverse():
 
 def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3],
                 model_type=None):
-    
+
     """
     Load four models from given ckpt path
 
@@ -62,17 +62,17 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
       model6164(str): path to ckpt file of model for 61-64
       model6165(str): path to ckpt file of model for 61-65
     """
-    
-        
+
+
     # define model
     all_models = {}
-    
+
     # hyperparameters (fixed)
     num_blocks = 7
     node_size  = 512
     activation = 'relu'
     dropout    = 0
-    
+
     # Assign GPUs to 3 models
     gpu_index = 0
 
@@ -96,7 +96,7 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
                 model = models.ResMLP(130,30,node_size, activation, num_blocks)
             elif model_type == "pos2":
                 model = models.ResMLP(124,30,node_size, activation, num_blocks)
-            elif model_type is not None and model_type.startswith("resmlp"): 
+            elif model_type is not None and model_type.startswith("resmlp"):
                 m = re.match(r"resmlp_(\d+)_(\d+)", model_type)
                 input_size = int(m.group(1))
                 output_size = int(m.group(2))
@@ -118,14 +118,6 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
             #model = models.ResNet_output4(node_size, activation, num_blocks)
         #elif output_type == '61_65':
             #model = models_ex.ResNet_output5(node_size, activation, num_blocks)
-
-        real_gpu_id = visible_gpus[gpu_index%len(visible_gpus)]
-        print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
-        model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
-
-        print('------------------------output type: {}-----------------------'.format(output_type))
-        print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
-
         resume = None
         if output_type == '0_29':
             #resume = path + 'rmbaddata_wxnorm_subset_mlp_0-29_mlp_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0_sample_ratio0.3_norm_typeinput_level_norm/checkpoint.pth.tar'
@@ -155,13 +147,21 @@ def load_models(model029, model3059, model6164, model6165, visible_gpus=[0,1,2,3
 
         if resume is None:
             continue
+
+        real_gpu_id = visible_gpus[gpu_index%len(visible_gpus)]
+        print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
+        model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
+
+        print('------------------------output type: {}-----------------------'.format(output_type))
+        print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
+
         checkpoint = torch.load(resume)['state_dict']
         model.load_state_dict(checkpoint)
-        
+
         all_models[output_type] = model
-        
+
         gpu_index = gpu_index + 1
-        
+
     return all_models
 
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
   from atm_log_process import parse_config, settings
   config = parse_config.load_config_file(settings.SRC_PATH + "/crash_case1/" + settings.CONFIG_FILE)
   all_models = load_models(
-      config["0-29"]["ckpt_path"], 
+      config["0-29"]["ckpt_path"],
       config["30-59"]["ckpt_path"],
       config["61-64"]["ckpt_path"],
       config["61-65"]["ckpt_path"]
