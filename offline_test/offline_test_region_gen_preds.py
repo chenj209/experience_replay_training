@@ -94,17 +94,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
-    if save:
-        if get_thickness is not None:
-            np.save("qtend_pred_thickness.npy", y_1)
-            np.save("stend_pred_thickness.npy", y_2)
-            np.save("spcam_gt_thickness.npy", y_gt)
-        else:
-            np.save("qtend_pred.npy", y_1)
-            np.save("stend_pred.npy", y_2)
-            np.save("spcam_gt.npy", y_gt)
-
-
 
     test_time = time.time() - test_time_begin
 
@@ -179,15 +168,16 @@ if __name__ == "__main__":
 
     cudnn.benchmark = True
 
-    all_files = glob.glob(data_dir+'/*')[2::args.sample]
-    for fn in all_files:
-        if "08691" in fn:
-            all_files.remove(fn)
+    #all_files = glob.glob(data_dir+'/*')[2::args.sample]
+    #for fn in all_files:
+    #    if "08691" in fn:
+    #        all_files.remove(fn)
     all_files.sort()
-    print("all_files len ", len(all_files))
-    test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
-    print(test_idx[:10])
-    test_files = [all_files[i] for i in test_idx]
+    #print("all_files len ", len(all_files))
+    #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
+    #print(test_idx[:10])
+    #test_files = [all_files[i] for i in test_idx]
+    test_files = all_files
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
 
