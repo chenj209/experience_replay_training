@@ -173,6 +173,8 @@ if __name__ == "__main__":
     data_dir = "/home/users/data/nncam_data/image_testset/"
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_testset/"
+    if not os.path.isdir(data_dir):
+        data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
@@ -195,7 +197,7 @@ if __name__ == "__main__":
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
         hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi) 
+        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
     else:
         get_thickness = None
 
