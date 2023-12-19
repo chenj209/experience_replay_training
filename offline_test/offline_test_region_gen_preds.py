@@ -168,11 +168,12 @@ if __name__ == "__main__":
 
     cudnn.benchmark = True
 
-    #all_files = glob.glob(data_dir+'/*')[2::args.sample]
-    #for fn in all_files:
-    #    if "08691" in fn:
-    #        all_files.remove(fn)
+    all_files = glob.glob(data_dir+'/*')
+    for fn in all_files:
+        if "08691" in fn or "00002" in fn:
+            all_files.remove(fn)
     all_files.sort()
+    all_files = all_files[::args.sample]
     #print("all_files len ", len(all_files))
     #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
     #print(test_idx[:10])
@@ -180,6 +181,7 @@ if __name__ == "__main__":
     test_files = all_files
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
+    print(test_files[-3:])
 
     testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
