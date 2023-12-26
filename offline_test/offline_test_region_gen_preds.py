@@ -17,7 +17,8 @@ sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
 sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
 sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 import phys_consts
-from dataloader_refactor import DatasetDisk
+#from dataloader_refactor import DatasetDisk
+from dataloader_newformat import DatasetDisk
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models, get_inverse
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
@@ -182,6 +183,10 @@ if __name__ == "__main__":
     print("Test file size: " ,len(test_files))
     print(test_files[:3])
     print(test_files[-3:])
+
+    col_names = np.loadtxt("/pscratch/sd/c/chenjd21/spcam_new_data/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
     testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)

@@ -20,7 +20,7 @@ def filename_to_idx(filename):
         return -1
     else:
         return int(m.group(1))
-    
+
 import re
 def col_name_cmp(var_name, col_name):
     pattern = f"^{var_name}(_lev\d+)?$"
@@ -42,8 +42,8 @@ def get_index_from_colnames(col_names, var_name):
 class DatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
     def __init__(
-        self, 
-        file_names, 
+        self,
+        file_names,
         col_names, # list of all column names in the dataset
         col_names_x, # list of column names for input
         col_names_y, # list of column names for output
@@ -114,7 +114,7 @@ class DatasetDisk(data.Dataset):
             ty = data[self.output_indices,:,:][None]
             ############# normalization ###############
             #tx, ty = normalization(tx, ty)
-            tx = normalize_x(tx_raw) 
+            tx = normalize_x(tx_raw)
             if self.output_normalized:
                 ty = normalize_y(ty)
             tx = np.transpose(tx, (0, 2, 3, 1))
@@ -153,12 +153,15 @@ if __name__ == '__main__':
     if not os.path.isdir(data_dir):
         # data_dir = "./data/"
         data_dir = "/Users/jiandachen/Projects/NNCAM_packages/precip_pattern/test_data/"
-    file_names = glob.glob(data_dir + "*.npy")[1:]
+    if not os.path.isdir(data_dir):
+        # data_dir = "./data/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    file_names = glob.glob(data_dir + "*.npy")[35041:]
     file_names.sort()
     file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print(file_names[:10])
-    col_names = np.loadtxt("/Users/jiandachen/Projects/NNCAM_packages/precip_pattern/col_names.txt", dtype=str)
+    col_names = np.loadtxt("/pscratch/sd/c/chenjd21/spcam_new_data/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False)
