@@ -108,7 +108,7 @@ class DatasetDisk(data.Dataset):
         if os.path.exists(_file):
         #for idx, file_name in enumerate(file_names):
             data = np.load(_file)
-            print(_file, data.shape)
+            #print(_file, data.shape)
             tx_raw = data[self.input_indices,:,:][None]
             tx = data[self.input_indices,:,:][None]
             ty = data[self.output_indices,:,:][None]

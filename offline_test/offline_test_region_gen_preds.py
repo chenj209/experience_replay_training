@@ -5,6 +5,7 @@ import random
 import torch
 import torch.nn as nn
 import torch.nn.parallel
+import re
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument("--thick", action="store_true")
     parser.add_argument("--save_path", type=str, default="offline_test_preds")
     parser.add_argument("--region_mask", type=str)
+    parser.add_argument("--start_ts", type=int, default=0)
     args = parser.parse_args()
     print(args.config)
     with open(args.config, "r") as f:
@@ -164,7 +166,8 @@ if __name__ == "__main__":
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_testset/"
     if not os.path.isdir(data_dir):
-        data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
+        #data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
@@ -174,6 +177,21 @@ if __name__ == "__main__":
         if "08691" in fn or "00002" in fn:
             all_files.remove(fn)
     all_files.sort()
+    if args.start_ts > 0:
+        start_idx = -1
+        for i,fn in enumerate(all_files):
+            m = re.search("(\d{5})\.np", fn)
+            if m is not None:
+                if int(m.group(1)) >= args.start_ts:
+                    start_idx = i
+                    break
+            else:
+                print(f"{fn} not matching")
+        if start_idx == -1:
+            raise Exception(f"start ts {args.start_ts} not found")
+        all_files = all_files[start_idx:]
+        print(f"Starting from {start_idx}, first files {all_files[:5]}")
+
     all_files = all_files[::args.sample]
     #print("all_files len ", len(all_files))
     #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
@@ -188,7 +206,10 @@ if __name__ == "__main__":
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
-    testing_set = DatasetDisk(file_names=test_files, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
+    col_names = np.loadtxt("/pscratch/sd/c/chenjd21/spcam_new_data/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    testing_set = DatasetDisk(test_files, col_names, col_names_x, col_names_y, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
