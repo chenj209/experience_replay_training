@@ -24,16 +24,18 @@ if __name__ == "__main__":
         data_dir = "/data/nncam_data/image_set/"
     if not os.path.isdir(data_dir):
         # data_dir = "./data/"
-        # data_dir = "/Users/jiandachen/Projects/NNCAM_packages/precip_pattern/test_data/"
-        data_dir = "./test_data/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+        #data_dir = "./test_data/"
     if not os.path.isdir(data_dir):
         # data_dir = "./data/"
         #data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
         data_dir = "./test_data/"
-    pred_dir = "./pred_data/"
+    pred_dir = "/pscratch/sd/c/chenjd21/resmlp_pred/"
+    if not os.path.isdir(pred_dir):
+        pred_dir = "./pred_data/"
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
-    # file_names = file_names[2:10]
+    file_names = file_names[35041:35041+17530:192]
     # file_names = [data_dir + fn for fn in file_names]
     print(file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
@@ -49,7 +51,7 @@ if __name__ == "__main__":
     files_to_check = []
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, file_names = batch
-        # print(idx, "x:", x.size(), "y:", y.size(), "x_raw:", x_raw.size(), file_names)
+        print(f"{idx}/{len(trainloader)},", "x:", x.size(), "y:", y.size(), "x_raw:", x_raw.size(), file_names, end="\r")
         preds = to_inference_shape(np.load(pred_dir + file_names[0].split("/")[-1])[None,])
         # preds = np.concatenate(preds, axis=0)
         # print("pred:", preds.shape)
@@ -94,7 +96,7 @@ if __name__ == "__main__":
         target = scaler.fit_transform(MSE[:,tl:tl+1])
         # X_train, X_temp, y_train, y_temp = train_test_split(X, target, test_size=0.3, random_state=42)
         # X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
-        X_train, X_test, y_train, y_test = train_test_split(X, MSE[:,tl], test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, target, test_size=0.2, random_state=42)
 
         # xgb_reg = xgb.XGBRegressor(objective ='reg:squarederror', n_estimators=500, eta=0.1, max_depth=7, subsample=0.7, colsample_bytree=0.8, random_state=42, eval_metric="rmse")
         # print(xgb_reg.get_params())
@@ -144,6 +146,7 @@ if __name__ == "__main__":
         rmse = np.sqrt(mse)
         r2 = r2_score(y_test, y_pred)
 
+        print(f"Decision tree for level {tl}")
         print("Root Mean Squared Error:", rmse)
         print("R-squared:", r2)
         dump(tree_reg, 'tree_reg_' + str(tl) + '.joblib')
