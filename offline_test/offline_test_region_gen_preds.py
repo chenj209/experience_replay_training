@@ -192,7 +192,7 @@ if __name__ == "__main__":
         all_files = all_files[start_idx:]
         print(f"Starting from {start_idx}, first files {all_files[:5]}")
 
-    all_files = all_files[::args.sample]
+    all_files = all_files
     #print("all_files len ", len(all_files))
     #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
     #print(test_idx[:10])
@@ -202,14 +202,10 @@ if __name__ == "__main__":
     print(test_files[:3])
     print(test_files[-3:])
 
-    col_names = np.loadtxt("/pscratch/sd/c/chenjd21/spcam_new_data/col_names.txt", dtype=str)
+    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
-
-    col_names = np.loadtxt("/pscratch/sd/c/chenjd21/spcam_new_data/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
-    testing_set = DatasetDisk(test_files, col_names, col_names_x, col_names_y, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True)
+    testing_set = DatasetDisk(test_files, col_names, col_names_x, col_names_y, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True, sample_rate=args.sample)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
