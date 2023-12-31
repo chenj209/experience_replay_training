@@ -76,7 +76,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             y_1.append(y1)
             y1 = inverse_to_inference_shape(y1)
             for b in range(y1.shape[0]):
-                file_name = file_names[b].split("/")[-1]
+                file_name = file_names[0][b].split("/")[-1]
                 np.save(args.save_path + "/" + file_name, y1[b])
             # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
             #                                  .cpu().numpy())
