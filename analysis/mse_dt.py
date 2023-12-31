@@ -61,7 +61,7 @@ if __name__ == "__main__":
             if r2 < 0:
                 files_to_check.append(fn)
                 bad_file_flag = True
-                print(f"bad file: {fn} in {file_names}, skippping")
+                print(f"bad file: {fn} in {file_names}, skipping")
                 break
         if bad_file_flag:
             continue
