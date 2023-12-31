@@ -35,7 +35,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
-    file_names = file_names[35041:35041+17530:12]
+    # file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
@@ -49,19 +49,29 @@ if __name__ == "__main__":
     Y = []
     P = []
     files_to_check = []
+    # TODO: problem here, need to filter all problematic files
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, file_names = batch
         print(f"{idx}/{len(trainloader)},", "x:", x.size(), "y:", y.size(), "x_raw:", x_raw.size(), file_names, end="\r")
-        preds = to_inference_shape(np.load(pred_dir + file_names[0].split("/")[-1])[None,])
+        bad_file_flag = False
+        for fn in file_names[0]:
+            gt = np.load(fn)
+            pred = np.load(pred_dir + file_names[0][-1].split("/")[-1])
+            r2 = r2_score(gt, pred, multioutput="variance_weighted")
+            if r2 < 0:
+                files_to_check.append(fn)
+                bad_file_flag = True
+                print(f"bad file: {fn} in {file_names}, skippping")
+                break
+        if bad_file_flag:
+            continue
+
+        preds = to_inference_shape(np.load(pred_dir + file_names[0][-1].split("/")[-1])[None,])
         # preds = np.concatenate(preds, axis=0)
         # print("pred:", preds.shape)
         # X.append(x_raw[0])
         # Y.append(y[0])
         # P.append(preds)
-        r2 = r2_score(y[0], preds, multioutput="variance_weighted")
-        if r2 < 0:
-            files_to_check.append(file_names[0])
-            continue
         X.append(x_raw[0])
         Y.append(y[0])
         P.append(preds)
