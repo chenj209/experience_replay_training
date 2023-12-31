@@ -35,7 +35,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
-    file_names = file_names[35041:35041+17530:192]
+    file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
