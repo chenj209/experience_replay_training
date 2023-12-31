@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from joblib import dump
 
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
-from dataloader_newformat import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from data_shape import to_inference_shape
 
@@ -43,8 +43,8 @@ if __name__ == "__main__":
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     #col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     col_names_y = ["qtend_check"]
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     X = []
     Y = []
     P = []

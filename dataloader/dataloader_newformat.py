@@ -53,7 +53,8 @@ class DatasetDisk(data.Dataset):
         output_normalized=True,
         silent=True,
         filename=False,
-        multistep=0):
+        multistep=0,
+        sample_rate=1):
         ### load the data ###
         all_files = file_names
         if is_train:
@@ -70,9 +71,27 @@ class DatasetDisk(data.Dataset):
                         all_files.remove(file_name)
 
         #print('hahahahahah after file num:', len(all_files))
-        self.file_names = all_files
         self.silent = silent
-        file_names.sort(key=filename_to_idx)
+        self.multistep = multistep
+        self.all_files = all_files[:]
+        self.all_files.sort(key=filename_to_idx)
+        self.file_names = []
+        if self.multistep > 0:
+            for file_name in self.all_files[::sample_rate]:
+                cur_idx = filename_to_idx(file_name)
+                missing_flag = False
+                for p in range(1, self.multistep+1):
+                    prev_idx = cur_idx - p
+                    tokens = file_name.split("/")
+                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
+                    if prev_file_name not in self.all_files:
+                        print(f"Missing {prev_file_name} for {file_name}")
+                        missing_flag = True
+                        break
+                if not missing_flag:
+                    self.file_names.append(file_name)
+        else:
+            self.file_names = self.all_files[::sample_rate]
         self.noise_std = noise_std
         self.is_train = is_train
         self.file_name = filename
@@ -84,7 +103,6 @@ class DatasetDisk(data.Dataset):
         self.col_names = col_names
         self.col_names_x = col_names_x
         self.col_names_y = col_names_y
-        self.multistep = multistep
         input_indices = []
         for cn in col_names_x:
             start_idx, end_idx = get_index_from_colnames(col_names, cn)
@@ -128,30 +146,22 @@ class DatasetDisk(data.Dataset):
         y = []
         x_raw = []
         target_file = self.file_names[index]
+        file_names = [target_file]
         if os.path.exists(target_file):
         #for idx, file_name in enumerate(file_names):
             tx, y, tx_raw = self.get_xy_from_file(target_file, self.input_indices, self.output_indices, self.output_normalized)
 
             tokens = target_file.split("/")
-            curr_tidx = filename_to_idx(target_file)
+            # curr_tidx = filename_to_idx(target_file)
             target_fileidx = filename_to_idx(tokens[-1])
             prev_inputs = []
             prev_raws = []
             for p in range(1,self.multistep+1):
-                print(target_fileidx)
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-                if os.path.exists(prev_file):
-                    prev_tidx = filename_to_idx(prev_file)
-                    if int(prev_tidx) != int(curr_tidx)-p:
-                        if not self.silent:
-                            print(f"{prev_tidx} != {curr_tidx} + {p}, {file_names[prev_tidx]} is not previous {p} timestep of {target_file}")
-                        return None
-                    tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, output_normalized=True)
-                    prev_inputs.extend([tx_prev, ty_prev])
-                    prev_raws.append(tx_raw)
-                else:
-                    print(f"Current file: {target_file} Missing {prev_file}")
-                    return None
+                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, output_normalized=True)
+                prev_inputs.extend([tx_prev, ty_prev])
+                prev_raws.append(tx_raw)
+                file_names.append(prev_file)
             x = np.concatenate([*prev_inputs, tx], axis=1)
             x_raw = np.concatenate([*prev_raws, tx_raw], axis=1)
 
@@ -163,7 +173,7 @@ class DatasetDisk(data.Dataset):
                 y = y + noise_y
 
             if self.file_name:
-                return x, y, x_raw, self.file_names[index-self.multistep:index+1]
+                return x, y, x_raw, file_names[::-1]
 
             return x, y, x_raw
         return None
@@ -171,6 +181,7 @@ class DatasetDisk(data.Dataset):
 def filter_collate(batch):
     batch = list(filter (lambda x:x is not None, batch))
     return default_collate(batch)
+
 
 if __name__ == '__main__':
     import os
@@ -200,8 +211,10 @@ if __name__ == '__main__':
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         np.save('checkcode_x_new'+str(idx), x_raw.numpy())
         np.save('checkcode_y_new'+str(idx), y.numpy())
+    # TODO: problem here, need to filter all files without previous file before doing
+    # the dataloader thing
     training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=2, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
