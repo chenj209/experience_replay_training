@@ -56,7 +56,7 @@ class DatasetDisk(data.Dataset):
         multistep=0,
         sample_rate=1):
         ### load the data ###
-        all_files = file_names
+        all_files = file_names[:]
         if is_train:
             for i in range(17507,17530):
                 for file_name in all_files:
