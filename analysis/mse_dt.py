@@ -64,14 +64,14 @@ if __name__ == "__main__":
     print("problem_files:", problem_files)
     for fn in problem_files:
         all_files.remove(fn)
-    training_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1)
+    training_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, sample=192)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     X = []
     Y = []
     P = []
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, file_names = batch
-        print(f"{idx}/{len(trainloader)},", "x:", x.size(), "y:", y.size(), "x_raw:", x_raw.size(), file_names, end="\r")
+        print(f"{idx}/{len(trainloader)},", "x:", x.size(), "y:", y.size(), "x_raw:", x_raw.size(), file_names, flush=True)
         bad_file_flag = False
         preds = to_inference_shape(np.load(pred_dir + file_names[0][-1].split("/")[-1])[None,])
         r2 = r2_score(y[0], preds, multioutput="variance_weighted")
@@ -83,11 +83,11 @@ if __name__ == "__main__":
     X = np.concatenate(X, axis=0)
     Y = np.concatenate(Y, axis=0)
     P = np.concatenate(P, axis=0)
-    print("X:", X.shape)
-    print("Y:", Y.shape)
-    print("P:", P.shape)
+    print("X:", X.shape, flush=True)
+    print("Y:", Y.shape, flush=True)
+    print("P:", P.shape, flush=True)
     # check R2
-    print("r2 of pred: ", r2_score(Y, P, multioutput="variance_weighted"))
+    print("r2 of pred: ", r2_score(Y, P, multioutput="variance_weighted"), flush=True)
     # print("r2 of pred: ", r2_score(Y[:,29], P[:,29], multioutput="variance_weighted"))
     # for i in range(X.shape[0]):
     #     print("idx:", i)
@@ -162,7 +162,7 @@ if __name__ == "__main__":
             rmse = np.sqrt(mse)
             r2 = r2_score(y_test, y_pred)
 
-            print(f"Decision tree for level {tl}")
-            print("Root Mean Squared Error:", rmse)
-            print("R-squared:", r2)
+            print(f"Decision tree for level {tl}", flush=True)
+            print("Root Mean Squared Error:", rmse, flush=True)
+            print("R-squared:", r2, flush=True)
             dump(tree_reg, f'tree_reg_depth{depth}_' + str(tl) + '.joblib')
