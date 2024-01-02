@@ -22,6 +22,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("level", type=int, help="level", default=0)
+    parser.add_argument("--sample_rate", type=int, help="level", default=12)
     args = parser.parse_args()
     data_dir = "/home/users/data/nncam_data/image_set/"
     if not os.path.isdir(data_dir):
@@ -39,6 +40,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     all_files = glob.glob(data_dir + "*.npy")
     all_files.sort()
+    all_files = all_files[35042:35042+17530]
     # file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(all_files[:10])
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     #col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     col_names_y = ["qtend_check"]
     # filter problematic files
-    filter_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=0)
+    filter_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, sample_rate=args.sample_rate)
     filterloader = data.DataLoader(filter_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     problem_files = []
     for idx, batch in enumerate(filterloader):
@@ -64,7 +66,7 @@ if __name__ == "__main__":
     print("problem_files:", problem_files)
     for fn in problem_files:
         all_files.remove(fn)
-    training_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, sample=192)
+    training_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, sample_rate=args.sample_rate)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     X = []
     Y = []
@@ -149,7 +151,7 @@ if __name__ == "__main__":
 
         # Initialize the DecisionTreeRegressor
         for depth in [3,5,7,9,11]:
-            tree_reg = DecisionTreeRegressor(random_state=42, max_depth=5)
+            tree_reg = DecisionTreeRegressor(random_state=42, max_depth=depth)
 
             # Train the model
             tree_reg.fit(X_train, y_train)
@@ -165,4 +167,4 @@ if __name__ == "__main__":
             print(f"Decision tree for level {tl}", flush=True)
             print("Root Mean Squared Error:", rmse, flush=True)
             print("R-squared:", r2, flush=True)
-            dump(tree_reg, f'tree_reg_depth{depth}_' + str(tl) + '.joblib')
+            dump(tree_reg, f'tree_reg_depth{depth}_sample{args.sample_rate}' + str(tl) + '.joblib')
