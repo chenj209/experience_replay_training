@@ -10,6 +10,7 @@ from torch.utils.data.dataloader import default_collate
 #from rh import get_pmid_from_x, cal_rh
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from normalization import normalize_x, normalize_y, normalization
+from data_shape import to_inference_shape, inverse_to_inference_shape
 
 def idx_to_filename(idx):
   return str(idx).rjust(5,'0') + '.npy'
@@ -54,7 +55,8 @@ class DatasetDisk(data.Dataset):
         silent=True,
         filename=False,
         multistep=0,
-        sample_rate=1):
+        sample_rate=1,
+        image=False):
         ### load the data ###
         all_files = file_names[:]
         if is_train:
@@ -115,30 +117,35 @@ class DatasetDisk(data.Dataset):
             output_indices.extend(list(range(start_idx, end_idx)))
         self.input_indices = input_indices
         self.output_indices = output_indices
+        self.image = image # if True, the shape would be (CxHxW)
 
     def __len__(self):
         'Denotes the total number of samples'
         return self.size
     
     @staticmethod
-    def get_xy_from_file(file_name, input_indices, output_indices, output_normalized=True):
+    def get_xy_from_file(file_name, input_indices, output_indices, output_normalized=True, image=False):
         data = np.load(file_name)
-        tx_raw = data[input_indices,:,:][None]
-        tx = data[input_indices,:,:][None]
-        ty = data[output_indices,:,:][None]
+        tx_raw = data[input_indices,:,:][None,]
+        tx = data[input_indices,:,:][None,]
+        ty = data[output_indices,:,:][None,]
 
         ############# normalization ###############
         #tx, ty = normalization(tx, ty)
         tx = normalize_x(tx)
         if output_normalized:
             ty = normalize_y(ty)
-        tx = np.transpose(tx, (0, 2, 3, 1))
-        ty = np.transpose(ty, (0, 2, 3, 1))
-        tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
-        tx = np.reshape(tx, (-1, tx.shape[-1]))
-        ty = np.reshape(ty, (-1, ty.shape[-1]))
-        tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
-        return tx, ty, tx_raw
+        if not image:
+            tx = to_inference_shape(tx)
+            ty = to_inference_shape(ty)
+            tx_raw = to_inference_shape(tx_raw)
+        # tx = np.transpose(tx, (0, 2, 3, 1))
+        # ty = np.transpose(ty, (0, 2, 3, 1))
+        # tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
+        # tx = np.reshape(tx, (-1, tx.shape[-1]))
+        # ty = np.reshape(ty, (-1, ty.shape[-1]))
+        # tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
+        return tx.squeeze(), ty.squeeze(), tx_raw.squeeze()
 
     def __getitem__(self, index):
         'Generates one sample of data'
@@ -149,7 +156,7 @@ class DatasetDisk(data.Dataset):
         file_names = [target_file]
         if os.path.exists(target_file):
         #for idx, file_name in enumerate(file_names):
-            tx, y, tx_raw = self.get_xy_from_file(target_file, self.input_indices, self.output_indices, self.output_normalized)
+            tx, y, tx_raw = self.get_xy_from_file(target_file, self.input_indices, self.output_indices, self.output_normalized, self.image)
 
             tokens = target_file.split("/")
             # curr_tidx = filename_to_idx(target_file)
@@ -158,12 +165,17 @@ class DatasetDisk(data.Dataset):
             prev_raws = []
             for p in range(1,self.multistep+1):
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, output_normalized=True)
+                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, output_normalized=True, image=self.image)
                 prev_inputs.extend([tx_prev, ty_prev])
                 prev_raws.append(tx_raw)
                 file_names.append(prev_file)
-            x = np.concatenate([*prev_inputs, tx], axis=1)
-            x_raw = np.concatenate([*prev_raws, tx_raw], axis=1)
+            print(tx.shape, y.shape, tx_raw.shape)
+
+            channel_axis = 1
+            if self.image:
+                channel_axis = 0
+            x = np.concatenate([*prev_inputs, tx], axis=channel_axis)
+            x_raw = np.concatenate([*prev_raws, tx_raw], axis=channel_axis)
 
             if self.is_train and self.noise_std>0:
                 # print(self.noise_std)
@@ -211,8 +223,6 @@ if __name__ == '__main__':
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         np.save('checkcode_x_new'+str(idx), x_raw.numpy())
         np.save('checkcode_y_new'+str(idx), y.numpy())
-    # TODO: problem here, need to filter all files without previous file before doing
-    # the dataloader thing
     training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
@@ -221,6 +231,15 @@ if __name__ == '__main__':
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         np.save('checkcode_x_new_ts1'+str(idx), x_raw.numpy())
         np.save('checkcode_y_new_ts1'+str(idx), y.numpy())
+    col_names_x = col_names[:]
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, image=True)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    for idx, batch in enumerate(trainloader):
+        x, y, x_raw, filenames = batch
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        # np.save('checkcode_x_new'+str(idx), x.numpy())
+        np.save('checkcode_x_new_image'+str(idx), x_raw.numpy())
+        np.save('checkcode_y_new_image'+str(idx), y.numpy())
 #         if idx == 1:
 #             break
 #         print(idx, x.size(), y.size())
