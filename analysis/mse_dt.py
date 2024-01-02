@@ -153,7 +153,7 @@ if __name__ == "__main__":
         # print("R-squared:", r2)
 
         # Initialize the DecisionTreeRegressor
-        for depth in [3,5,7,9,11]:
+        for depth in list(range(3,20,2)):
             #tree_reg = DecisionTreeRegressor(random_state=42, max_depth=depth)
             tree_clf = DecisionTreeClassifier(random_state=42, max_depth=depth)
 
@@ -172,5 +172,4 @@ if __name__ == "__main__":
             print(f"Decision tree for level {tl}, depth {depth}", flush=True)
             #print("Root Mean Squared Error:", rmse, flush=True)
             print("Accuracy: ", accuracy, flush=True)
-            print("R-squared:", r2, flush=True)
             dump(tree_clf, f'tree_clf_depth{depth}_sample{args.sample_rate}' + str(tl) + '.joblib')
