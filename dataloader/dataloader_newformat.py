@@ -51,6 +51,7 @@ class DatasetDisk(data.Dataset):
         col_names_y, # list of column names for output
         is_train,
         noise_std = 0,
+        input_normalized=True,
         output_normalized=True,
         silent=True,
         filename=False,
@@ -99,6 +100,7 @@ class DatasetDisk(data.Dataset):
         self.file_name = filename
         self.size = len(self.file_names)
         self.output_normalized = output_normalized
+        self.input_normalized = input_normalized
         pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
@@ -124,7 +126,7 @@ class DatasetDisk(data.Dataset):
         return self.size
     
     @staticmethod
-    def get_xy_from_file(file_name, input_indices, output_indices, output_normalized=True, image=False):
+    def get_xy_from_file(file_name, input_indices, output_indices, input_normalized=True, output_normalized=True, image=False):
         data = np.load(file_name)
         tx_raw = data[input_indices,:,:][None,]
         tx = data[input_indices,:,:][None,]
@@ -132,7 +134,8 @@ class DatasetDisk(data.Dataset):
 
         ############# normalization ###############
         #tx, ty = normalization(tx, ty)
-        tx = normalize_x(tx)
+        if input_normalized:
+            tx = normalize_x(tx)
         if output_normalized:
             ty = normalize_y(ty)
         if not image:
@@ -156,7 +159,7 @@ class DatasetDisk(data.Dataset):
         file_names = [target_file]
         if os.path.exists(target_file):
         #for idx, file_name in enumerate(file_names):
-            tx, y, tx_raw = self.get_xy_from_file(target_file, self.input_indices, self.output_indices, self.output_normalized, self.image)
+            tx, y, tx_raw = self.get_xy_from_file(target_file, self.input_indices, self.output_indices, self.input_normalized, self.output_normalized, self.image)
 
             tokens = target_file.split("/")
             # curr_tidx = filename_to_idx(target_file)
@@ -165,7 +168,7 @@ class DatasetDisk(data.Dataset):
             prev_raws = []
             for p in range(1,self.multistep+1):
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, output_normalized=True, image=self.image)
+                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file, self.input_indices, self.output_indices, input_normalized=self.input_normalized, output_normalized=True, image=self.image)
                 prev_inputs.extend([tx_prev, ty_prev])
                 prev_raws.append(tx_raw)
                 file_names.append(prev_file)

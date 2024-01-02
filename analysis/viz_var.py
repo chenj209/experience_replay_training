@@ -50,7 +50,7 @@ if __name__ == "__main__":
     #col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     col_names_y = ["qtend_check"]
     # filter problematic files
-    filter_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=0, image=True, sample_rate=args.sample_rate)
+    filter_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, input_normalized=False, output_normalized=False, multistep=0, image=True, sample_rate=args.sample_rate)
     filterloader = data.DataLoader(filter_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     problem_files = []
     vars = []
