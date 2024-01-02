@@ -30,7 +30,7 @@ if __name__ == "__main__":
                             feature_names=full_col_names,  
                             class_names=["qtend_RMSE"],
                             filled=True, rounded=True,  
-                            special_characters=True)
+                            special_characters=True, impurity=True,rotate=True,proportion=True)
 
     # Draw graph
     graph = graphviz.Source(dot_data)  
