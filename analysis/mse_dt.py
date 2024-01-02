@@ -64,6 +64,7 @@ if __name__ == "__main__":
         if r2 < 0:
             problem_files.append(file_names[0][-1])
     print("problem_files:", problem_files)
+    # TODO: instead of removing it here, do it in the dataloader by providing a list of exclueded files
     for fn in problem_files:
         all_files.remove(fn)
     training_set = DatasetDisk(all_files, col_names, col_names_x, col_names_y, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, sample_rate=args.sample_rate)
