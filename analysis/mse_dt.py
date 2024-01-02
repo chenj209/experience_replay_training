@@ -3,10 +3,10 @@ import os
 import numpy as np
 import xgboost as xgb
 from sklearn.datasets import fetch_california_housing
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 from torch.utils import data
 import matplotlib.pyplot as plt
 from joblib import dump
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     all_files = glob.glob(data_dir + "*.npy")
     all_files.sort()
-    all_files = all_files[35042:35042+17530]
+    #all_files = all_files[35042:35042+17530]
     # file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(all_files[:10])
@@ -112,9 +112,11 @@ if __name__ == "__main__":
         # Split the dataset into training and testing sets
         scaler = MinMaxScaler()
         target = scaler.fit_transform(MSE[:,tl:tl+1])
+        bins = np.percentile(target, np.linspace(0, 100, 5))
+        target_binned = np.digitize(target, bins)
         # X_train, X_temp, y_train, y_temp = train_test_split(X, target, test_size=0.3, random_state=42)
         # X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
-        X_train, X_test, y_train, y_test = train_test_split(X, target, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, target_binned, test_size=0.2, random_state=42)
 
         # xgb_reg = xgb.XGBRegressor(objective ='reg:squarederror', n_estimators=500, eta=0.1, max_depth=7, subsample=0.7, colsample_bytree=0.8, random_state=42, eval_metric="rmse")
         # print(xgb_reg.get_params())
@@ -152,20 +154,23 @@ if __name__ == "__main__":
 
         # Initialize the DecisionTreeRegressor
         for depth in [3,5,7,9,11]:
-            tree_reg = DecisionTreeRegressor(random_state=42, max_depth=depth)
+            #tree_reg = DecisionTreeRegressor(random_state=42, max_depth=depth)
+            tree_clf = DecisionTreeClassifier(random_state=42, max_depth=depth)
 
             # Train the model
-            tree_reg.fit(X_train, y_train)
+            tree_clf.fit(X_train, y_train)
 
             # Make predictions
-            y_pred = tree_reg.predict(X_test)
+            y_pred = tree_clf.predict(X_test)
 
             # Evaluate the model
-            mse = mean_squared_error(y_test, y_pred)
-            rmse = np.sqrt(mse)
+            #mse = mean_squared_error(y_test, y_pred)
+            #rmse = np.sqrt(mse)
+            accuracy = accuracy_score(y_test, y_pred)
             r2 = r2_score(y_test, y_pred)
 
-            print(f"Decision tree for level {tl}", flush=True)
-            print("Root Mean Squared Error:", rmse, flush=True)
+            print(f"Decision tree for level {tl}, depth {depth}", flush=True)
+            #print("Root Mean Squared Error:", rmse, flush=True)
+            print("Accuracy: ", accuracy, flush=True)
             print("R-squared:", r2, flush=True)
-            dump(tree_reg, f'tree_reg_depth{depth}_sample{args.sample_rate}' + str(tl) + '.joblib')
+            dump(tree_clf, f'tree_clf_depth{depth}_sample{args.sample_rate}' + str(tl) + '.joblib')

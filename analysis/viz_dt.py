@@ -24,6 +24,26 @@ if __name__ == "__main__":
     col_names_prev = [col_names[i]+"_prev" for i in range(len(col_names))]
     full_col_names = list(col_names_prev) + list(col_names)
     tree_clf = load(args.tree_dump)
+        # Traverse the tree
+    feature_importance = tree_clf.tree_.compute_feature_importances(normalize=True)
+    sorted_idx = np.argsort(feature_importance)[::-1]
+    for i in range(20):
+        print(f"{full_col_names[sorted_idx[i]]}: {feature_importance[sorted_idx[i]]}")
+    print(feature_importance[:10])
+    def print_tree(node, depth=0, max_depth=2):
+        if depth > max_depth or node == -1:
+            return
+
+        left_child = tree_clf.tree_.children_left[node]
+        right_child = tree_clf.tree_.children_right[node]
+        feature_index = tree_clf.tree_.feature[node]
+
+        # Print only if it's not a leaf node
+        if feature_index != -2:
+            print("  " * depth + full_col_names[feature_index])
+            print_tree(left_child, depth + 1, max_depth)
+            print_tree(right_child, depth + 1, max_depth)
+    print_tree(0)
 
     # Export as dot file
     dot_data = export_graphviz(tree_clf, out_file=None, 
