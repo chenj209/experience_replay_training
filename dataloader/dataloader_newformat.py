@@ -32,7 +32,8 @@ class DatasetDisk(data.Dataset):
         filename=False,
         multistep=0,
         sample_rate=1,
-        image=False):
+        image=False,
+        prev_ex_vars=None):
         ### load the data ###
         all_files = file_names[:]
         if is_train:
@@ -56,6 +57,7 @@ class DatasetDisk(data.Dataset):
         self.data_std = data_std
         self.data_mean = data_mean
         self.file_names = []
+        self.prev_ex_vars = prev_ex_vars
         if self.multistep > 0:
             for file_name in self.all_files[::sample_rate]:
                 cur_idx = filename_to_idx(file_name)
@@ -84,17 +86,25 @@ class DatasetDisk(data.Dataset):
         self.col_names = col_names
         self.col_names_x = col_names_x
         self.col_names_y = col_names_y
-        input_indices = []
+        prev_input_indices = []
+        curr_input_indices = []
         for cn in col_names_x:
             start_idx, end_idx = get_index_from_colnames(col_names, cn)
             print(cn, start_idx, end_idx)
-            input_indices.extend(list(range(start_idx, end_idx)))
+            prev_input_indices.extend(list(range(start_idx, end_idx)))
+            curr_input_indices.extend(list(range(start_idx, end_idx)))
+        if prev_ex_vars is not None:
+            for cn in prev_ex_vars:
+                start_idx, end_idx = get_index_from_colnames(col_names, cn)
+                print(cn, start_idx, end_idx)
+                prev_input_indices.extend(list(range(start_idx, end_idx)))
         output_indices = []
         for cn in col_names_y:
-            print(cn, start_idx, end_idx)
             start_idx, end_idx = get_index_from_colnames(col_names, cn)
+            print(cn, start_idx, end_idx)
             output_indices.extend(list(range(start_idx, end_idx)))
-        self.input_indices = input_indices
+        self.input_indices = curr_input_indices
+        self.prev_input_indices = prev_input_indices
         self.output_indices = output_indices
         self.image = image # if True, the shape would be (CxHxW)
 
@@ -102,16 +112,22 @@ class DatasetDisk(data.Dataset):
         'Denotes the total number of samples'
         return self.size
 
-    def normalize_x(self, x):
-        return normalize_data_var_names(x, self.col_names_x, self.col_names, self.data_mean, self.data_std)
+    def normalize_x(self, x, prev=False):
+        col_names_x = self.col_names_x[:]
+        if prev and self.prev_ex_vars is not None:
+            col_names_x = col_names_x + self.prev_ex_vars
+        return normalize_data_var_names(x, col_names_x, self.col_names, self.data_mean, self.data_std)
     
     def normalize_y(self, y):
         return normalize_data_var_names(y, self.col_names_y, self.col_names, self.data_mean, self.data_std)
     
-    def get_xy_from_file(self, file_name):
+    def get_xy_from_file(self, file_name, prev=False):
         data = np.load(file_name)
-        tx_raw = data[self.input_indices,:,:][None,]
-        tx = data[self.input_indices,:,:][None,]
+        input_indices = self.input_indices
+        if prev:
+            input_indices = self.prev_input_indices
+        tx_raw = data[input_indices,:,:][None,]
+        tx = data[input_indices,:,:][None,]
         ty = data[self.output_indices,:,:][None,]
 
         ############# normalization ###############
@@ -124,13 +140,14 @@ class DatasetDisk(data.Dataset):
             tx = to_inference_shape(tx)
             ty = to_inference_shape(ty)
             tx_raw = to_inference_shape(tx_raw)
+            return tx, ty, tx_raw
         # tx = np.transpose(tx, (0, 2, 3, 1))
         # ty = np.transpose(ty, (0, 2, 3, 1))
         # tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
         # tx = np.reshape(tx, (-1, tx.shape[-1]))
         # ty = np.reshape(ty, (-1, ty.shape[-1]))
         # tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
-        return tx.squeeze(), ty.squeeze(), tx_raw.squeeze()
+        return tx[0], ty[0], tx_raw[0]
 
     def __getitem__(self, index):
         'Generates one sample of data'
@@ -142,6 +159,7 @@ class DatasetDisk(data.Dataset):
         if os.path.exists(target_file):
         #for idx, file_name in enumerate(file_names):
             tx, y, tx_raw = self.get_xy_from_file(target_file)
+            # print(target_file, tx.shape, y.shape, tx_raw.shape)
 
             tokens = target_file.split("/")
             # curr_tidx = filename_to_idx(target_file)
@@ -150,17 +168,21 @@ class DatasetDisk(data.Dataset):
             prev_raws = []
             for p in range(1,self.multistep+1):
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-                tx_prev, ty_prev, tx_raw = self.get_xy_from_file(prev_file)
+                tx_prev, ty_prev, tx_raw_prev = self.get_xy_from_file(prev_file, prev=True)
+                # print(prev_file, tx_prev.shape, ty_prev.shape, tx_raw_prev.shape)
                 prev_inputs.extend([tx_prev, ty_prev])
-                prev_raws.append(tx_raw)
+                prev_raws.append(tx_raw_prev)
                 file_names.append(prev_file)
-            print(tx.shape, y.shape, tx_raw.shape)
 
             channel_axis = 1
             if self.image:
                 channel_axis = 0
+            # print("prev inputs shape:", [x.shape for x in prev_inputs])
+            # print("prev raws shape:", [x.shape for x in prev_raws])
             x = np.concatenate([*prev_inputs, tx], axis=channel_axis)
             x_raw = np.concatenate([*prev_raws, tx_raw], axis=channel_axis)
+            # print("x shape:", x.shape)
+            # print("x raw shape:", x_raw.shape)
 
             if self.is_train and self.noise_std>0:
                 # print(self.noise_std)
@@ -229,14 +251,16 @@ if __name__ == '__main__':
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         np.save('checkcode_x_new_ts1'+str(idx), x_raw.numpy())
         np.save('checkcode_y_new_ts1'+str(idx), y.numpy())
-    var_names = []
-    pattern = f"^(.*?)(?=_lev\d+|$)"
-    for col_name in col_names:
-        match = re.match(pattern, col_name)
-        if match and match.group(1) not in var_names:
-            var_names.append(match.group(1))
-    col_names_x = var_names
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True)
+    # var_names = []
+    # pattern = f"^(.*?)(?=_lev\d+|$)"
+    # for col_name in col_names:
+    #     match = re.match(pattern, col_name)
+    #     if match and match.group(1) not in var_names:
+    #         var_names.append(match.group(1))
+    #col_names_x = var_names
+    col_names_x = ["QL"]
+    col_names_y = ["FSDS"]
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True, prev_ex_vars=["CLOUD"])
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
