@@ -16,4 +16,4 @@ export SLURM_CPU_BIND="cores"
 conda activate mpi4py2
 python -c "import torch; print(torch.zeros(1).cuda())"
 python -c "import torch; print(torch.cuda.is_available())"
-srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029.py --multistep 1
+srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py --multistep 1 --ex_input CLOUD

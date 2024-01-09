@@ -74,6 +74,7 @@ class DatasetDisk(data.Dataset):
                     self.file_names.append(file_name)
         else:
             self.file_names = self.all_files[::sample_rate]
+        print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
         self.noise_std = noise_std
         self.is_train = is_train
         self.file_name = filename
@@ -117,10 +118,10 @@ class DatasetDisk(data.Dataset):
         if prev and self.prev_ex_vars is not None:
             col_names_x = col_names_x + self.prev_ex_vars
         return normalize_data_var_names(x, col_names_x, self.col_names, self.data_mean, self.data_std)
-    
+
     def normalize_y(self, y):
         return normalize_data_var_names(y, self.col_names_y, self.col_names, self.data_mean, self.data_std)
-    
+
     def get_xy_from_file(self, file_name, prev=False):
         data = np.load(file_name)
         input_indices = self.input_indices
@@ -170,7 +171,7 @@ class DatasetDisk(data.Dataset):
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
                 tx_prev, ty_prev, tx_raw_prev = self.get_xy_from_file(prev_file, prev=True)
                 # print(prev_file, tx_prev.shape, ty_prev.shape, tx_raw_prev.shape)
-                prev_inputs.extend([tx_prev, ty_prev])
+                prev_inputs.append(tx_prev)
                 prev_raws.append(tx_raw_prev)
                 file_names.append(prev_file)
 
@@ -226,15 +227,15 @@ if __name__ == '__main__':
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     training_set = DatasetDisk(
-        file_names, 
-        col_names, 
-        col_names_x, 
-        col_names_y, 
-        data_stds, 
-        data_means, 
-        is_train=True, 
-        noise_std=0, 
-        filename=True, 
+        file_names,
+        col_names,
+        col_names_x,
+        col_names_y,
+        data_stds,
+        data_means,
+        is_train=True,
+        noise_std=0,
+        filename=True,
         output_normalized=False
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
