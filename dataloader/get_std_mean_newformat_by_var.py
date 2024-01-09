@@ -1,10 +1,26 @@
+import concurrent.futures
+import numpy as np
+import glob
+import argparse
+import re
+from dataloader_newformat import get_index_from_colnames
+from tqdm.autonotebook import tqdm
+def process_file(fn, var_names, col_names, region_mask, debug):
+    data = np.load(fn)
+    data_sums = {var_name: 0 for var_name in var_names}
+    all_data = {var_name: [] for var_name in var_names} if debug else None
+
+    for var_name in var_names:
+        start, end = get_index_from_colnames(col_names, var_name)
+        idx = list(range(start, end))
+        cur_data = data[idx][:, region_mask].astype(np.float64)
+        data_sums[var_name] += cur_data.sum()
+
+        if debug:
+            all_data[var_name].append(cur_data)
+
+    return data_sums, all_data
 if __name__ == '__main__':
-    import numpy as np
-    import glob
-    import argparse
-    import re
-    from dataloader_newformat import get_index_from_colnames
-    from tqdm.autonotebook import tqdm
     parser = argparse.ArgumentParser()
     parser.add_argument("--datapath", type=str, default="./data/")
     parser.add_argument("--col_names", type=str, default="./data/col_names.txt")
@@ -43,20 +59,43 @@ if __name__ == '__main__':
 
 
     sample_file = np.load(all_files[0])
+    # data_sums = {var_name: 0 for var_name in var_names}
+    # print(region_mask.shape)
+    # if args.debug:
+    #     all_data = {var_name: [] for var_name in var_names}
+    # for fn in tqdm(all_files):
+    #     data = np.load(fn)
+    #     # import ipdb; ipdb.set_trace()
+    #     for var_name in var_names:
+    #         start, end = get_index_from_colnames(col_names, var_name)
+    #         idx = list(range(start,end))
+    #         cur_data = data[idx][:,region_mask].astype(np.float64)
+    #         data_sums[var_name] += cur_data.sum()
+    #         if args.debug:
+    #             all_data[var_name].append(cur_data)
+    
     data_sums = {var_name: 0 for var_name in var_names}
-    print(region_mask.shape)
-    if args.debug:
-        all_data = {var_name: [] for var_name in var_names}
-    for fn in tqdm(all_files):
-        data = np.load(fn)
-        # import ipdb; ipdb.set_trace()
-        for var_name in var_names:
-            start, end = get_index_from_colnames(col_names, var_name)
-            idx = list(range(start,end))
-            cur_data = data[idx][:,region_mask].astype(np.float64)
-            data_sums[var_name] += cur_data.sum()
-            if args.debug:
-                all_data[var_name].append(cur_data)
+    all_data = {var_name: [] for var_name in var_names} if args.debug else None
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        futures = [executor.submit(process_file, fn, var_names, col_names, region_mask, args.debug) for fn in all_files]
+        
+        # for future in concurrent.futures.as_completed(futures):
+        #     file_data_sums, file_all_data = future.result()
+        #     for var_name in var_names:
+        #         data_sums[var_name] += file_data_sums[var_name]
+        #         if args.debug:
+        #             all_data[var_name].extend(file_all_data[var_name])
+        with tqdm(total=len(all_files)) as progress:
+            for future in concurrent.futures.as_completed(futures):
+                file_data_sums, file_all_data = future.result()
+                for var_name in var_names:
+                    data_sums[var_name] += file_data_sums[var_name]
+                    if args.debug:
+                        all_data[var_name].extend(file_all_data[var_name])
+
+                # Update the progress bar
+                progress.update(1)
     data_means = data_sums
     for var_name in var_names:
         start, end = get_index_from_colnames(col_names, var_name)
