@@ -28,6 +28,9 @@ if __name__ == '__main__':
             var_names.append(match.group(1))
     print(var_names)
     all_files = glob.glob(args.datapath + "/*.npy")
+    all_files.sort()
+    all_files = all_files[:35040]
+    print(all_files[:10], "...", all_files[-10:])
 
     # remove bad files
     for i in range(17507,17531):
@@ -35,7 +38,7 @@ if __name__ == '__main__':
             if str(i) in file_name:
                 all_files.remove(file_name)
 
-    
+
     for i in ['00001', '00002', '00003', '08690', '08691', '17522', '17523','26210','26211']:
         for file_name in all_files:
             if i in file_name:
