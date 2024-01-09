@@ -75,7 +75,8 @@ def main(args):
         data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    col_names_y = ["qtend_check"]
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
@@ -154,7 +155,8 @@ def main(args):
         is_train=True,
         noise_std=0,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate)
+        sample_rate=args.sample_rate,
+        prev_ex_vars=prev_ex_vars)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
     testing_set = DatasetDisk(
@@ -167,7 +169,8 @@ def main(args):
         is_train=False,
         noise_std=0,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate)
+        sample_rate=args.sample_rate,
+        prev_ex_vars=prev_ex_vars)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=10,min_delta=0)
     # Train and test
@@ -246,7 +249,7 @@ def main(args):
         save_log.append(train_time)
         save_log.append(test_time)
         logger.append(save_log)
-        if early_stopper.early_stop(test_losses[i].avg):
+        if False and early_stopper.early_stop(test_losses[i].avg):
             tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
             break
 

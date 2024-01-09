@@ -171,7 +171,7 @@ class DatasetDisk(data.Dataset):
                 prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
                 tx_prev, ty_prev, tx_raw_prev = self.get_xy_from_file(prev_file, prev=True)
                 # print(prev_file, tx_prev.shape, ty_prev.shape, tx_raw_prev.shape)
-                prev_inputs.extend([tx_prev, ty_prev])
+                prev_inputs.append(tx_prev)
                 prev_raws.append(tx_raw_prev)
                 file_names.append(prev_file)
 
