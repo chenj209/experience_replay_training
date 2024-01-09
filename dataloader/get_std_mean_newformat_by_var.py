@@ -20,6 +20,18 @@ def process_file(fn, var_names, col_names, region_mask, debug):
             all_data[var_name].append(cur_data)
 
     return data_sums, all_data
+
+def process_file_std(fn, var_names, col_names, region_mask, data_means):
+    data = np.load(fn)
+    data_std_sums = {var_name: 0 for var_name in var_names}
+
+    for var_name in var_names:
+        start, end = get_index_from_colnames(col_names, var_name)
+        idx = list(range(start, end))
+        cur_data = data[idx][:, region_mask].astype(np.float64)
+        data_std_sums[var_name] += ((cur_data - data_means[var_name])**2).sum()
+
+    return data_std_sums
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--datapath", type=str, default="./data/")
@@ -106,13 +118,26 @@ if __name__ == '__main__':
         data_means[var_name] = data_sums[var_name] / (len(all_files)*np.sum(region_mask)*var_lvl)
     # compute std
     data_std_sums = {var_name: 0 for var_name in var_names}
-    for fn in tqdm(all_files):
-        data = np.load(fn)
-        for var_name in var_names:
-            start, end = get_index_from_colnames(col_names, var_name)
-            idx = list(range(start,end))
-            cur_data = data[idx][:,region_mask].astype(np.float64)
-            data_std_sums[var_name] += ((cur_data - data_means[var_name])**2).sum()
+    # for fn in tqdm(all_files):
+    #     data = np.load(fn)
+    #     for var_name in var_names:
+    #         start, end = get_index_from_colnames(col_names, var_name)
+    #         idx = list(range(start,end))
+    #         cur_data = data[idx][:,region_mask].astype(np.float64)
+    #         data_std_sums[var_name] += ((cur_data - data_means[var_name])**2).sum()
+    # data_std_sums = {var_name: 0 for var_name in var_names}
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        futures = {executor.submit(process_file_std, fn, var_names, col_names, region_mask, data_means): fn for fn in all_files}
+
+        with tqdm(total=len(all_files)) as progress:
+            for future in concurrent.futures.as_completed(futures):
+                file_data_std_sums = future.result()
+                for var_name in var_names:
+                    data_std_sums[var_name] += file_data_std_sums[var_name]
+
+                progress.update(1)
+
 
     data_stds = data_std_sums
     for var_name in var_names:
