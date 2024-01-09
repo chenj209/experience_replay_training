@@ -40,7 +40,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     all_files = glob.glob(data_dir + "*.npy")
     all_files.sort()
-    #all_files = all_files[35042:35042+17530]
+    all_files = all_files[35042:35042+17530]
     # file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(all_files[:10])
@@ -110,8 +110,9 @@ if __name__ == "__main__":
     target_levels = [args.level]
     for tl in target_levels:
         # Split the dataset into training and testing sets
-        scaler = MinMaxScaler()
-        target = scaler.fit_transform(MSE[:,tl:tl+1])
+        #scaler = MinMaxScaler()
+        #target = scaler.fit_transform(MSE[:,tl:tl+1])
+        target = MSE[:,tl:tl+1]
         bins = np.percentile(target, np.linspace(0, 100, 5))
         target_binned = np.digitize(target, bins)
         # X_train, X_temp, y_train, y_temp = train_test_split(X, target, test_size=0.3, random_state=42)

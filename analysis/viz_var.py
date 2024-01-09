@@ -41,6 +41,7 @@ if __name__ == "__main__":
         pred_dir = "./pred_data/"
     all_files = glob.glob(data_dir + "*.npy")
     all_files.sort()
+    all_files = all_files[35041:35041+17520]
     # file_names = file_names[35041:35041+17530:12]
     # file_names = [data_dir + fn for fn in file_names]
     print(all_files[:10])
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         bad_file_flag = False
         preds = to_inference_shape(np.load(pred_dir + file_names[0][-1].split("/")[-1])[None,])
         print("preds:", preds.shape)
-        r2 = r2_score(y[0], preds, multioutput="variance_weighted")
+        r2 = r2_score(to_inference_shape(y), preds, multioutput="variance_weighted")
         if r2 < 0:
             problem_files.append(file_names[0][-1])
         else:
