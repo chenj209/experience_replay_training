@@ -10,7 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
-from torch.utils.data.dataloader import default_collate
+# from torch.utils.data.dataloader import default_collate
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import models
@@ -20,7 +20,7 @@ sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 import argsparser
 import tools
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
-from dataloader_time_embedded import TimeDatasetDisk
+from dataloader_newformat import DatasetDisk
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -64,11 +64,24 @@ def main(args):
 
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
-
+    data_dir = args.data_dir
+    if not os.path.isdir(data_dir):
+        data_dir = "/data/nncam_data/image_set/"
+    if not os.path.isdir(data_dir):
+        # data_dir = "./data/"
+        data_dir = "../analysis/test_data/"
+    if not os.path.isdir(data_dir):
+        # data_dir = "./data/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*')[::12]
+    all_files = glob.glob(args.data_dir+'/*')
 
     print('org file num:', len(all_files))
     #for i in range(17507,17530):
@@ -93,6 +106,8 @@ def main(args):
     random.shuffle(train_files)
     test_files = [all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
+
+    
 
     """
     Define Residual Methods and Optimizer
@@ -122,15 +137,36 @@ def main(args):
                     'constant': tools.constant}
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
-    def my_collate(batch):
-        batch = list(filter (lambda x:x is not None, batch))
-        return default_collate(batch)
+    # def my_collate(batch):
+    #     batch = list(filter (lambda x:x is not None, batch))
+    #     return default_collate(batch)
 
-    training_set = TimeDatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers, collate_fn=my_collate)
+    # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
+    training_set = DatasetDisk(
+        train_files, 
+        col_names, 
+        col_names_x, 
+        col_names_y, 
+        data_stds, 
+        data_means, 
+        is_train=True, 
+        noise_std=0, 
+        multistep=int(args.multistep),
+        sample_rate=args.sample_rate)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
 
-    testing_set = TimeDatasetDisk(file_names=test_files, is_train=False, noise_std=args.noise_std, multistep=int(args.multistep))
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers, collate_fn=my_collate)
+    testing_set = DatasetDisk(
+        test_files, 
+        col_names, 
+        col_names_x, 
+        col_names_y, 
+        data_stds, 
+        data_means, 
+        is_train=False, 
+        noise_std=0, 
+        multistep=int(args.multistep),
+        sample_rate=args.sample_rate)
+    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=10,min_delta=0)
     # Train and test
     current_iters = 0
@@ -224,6 +260,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argsparser.get_argparser()
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
+    parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     args = parser.parse_args()
     print(args)
 
