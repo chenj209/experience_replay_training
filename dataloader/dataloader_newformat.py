@@ -221,7 +221,8 @@ if __name__ == '__main__':
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    col_names_y = ["qtend_check"]
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     training_set = DatasetDisk(
@@ -243,7 +244,7 @@ if __name__ == '__main__':
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         np.save('checkcode_x_new'+str(idx), x_raw.numpy())
         np.save('checkcode_y_new'+str(idx), y.numpy())
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1)
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, prev_ex_vars=prev_ex_vars)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
