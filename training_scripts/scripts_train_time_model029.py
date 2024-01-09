@@ -12,9 +12,10 @@ if __name__ == "__main__":
     if not os.path.exists(DATA_DIR):
         DATA_DIR = "/data/nncam_data/image_set/"
     if not os.path.exists(DATA_DIR):
-        DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
+        #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
+        DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"time_model029_sampled12_1204_multistep{args.multistep}"
+    name = f"time_model029_sampled12_0108_multistep{args.multistep}"
 
     for epoch in ['200']:
         for num_blocks in ['7']:
@@ -36,7 +37,7 @@ if __name__ == "__main__":
                         commands = f"python train_time_model.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint ckpts_time/{} --multistep {}'.format(str(noise_std),
+                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 12'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,

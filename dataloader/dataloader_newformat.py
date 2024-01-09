@@ -72,6 +72,7 @@ class DatasetDisk(data.Dataset):
                     self.file_names.append(file_name)
         else:
             self.file_names = self.all_files[::sample_rate]
+        print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
         self.noise_std = noise_std
         self.is_train = is_train
         self.file_name = filename
@@ -104,10 +105,10 @@ class DatasetDisk(data.Dataset):
 
     def normalize_x(self, x):
         return normalize_data_var_names(x, self.col_names_x, self.col_names, self.data_mean, self.data_std)
-    
+
     def normalize_y(self, y):
         return normalize_data_var_names(y, self.col_names_y, self.col_names, self.data_mean, self.data_std)
-    
+
     def get_xy_from_file(self, file_name):
         data = np.load(file_name)
         tx_raw = data[self.input_indices,:,:][None,]
@@ -154,7 +155,7 @@ class DatasetDisk(data.Dataset):
                 prev_inputs.extend([tx_prev, ty_prev])
                 prev_raws.append(tx_raw)
                 file_names.append(prev_file)
-            print(tx.shape, y.shape, tx_raw.shape)
+            #print(tx.shape, y.shape, tx_raw.shape)
 
             channel_axis = 1
             if self.image:
@@ -203,15 +204,15 @@ if __name__ == '__main__':
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     training_set = DatasetDisk(
-        file_names, 
-        col_names, 
-        col_names_x, 
-        col_names_y, 
-        data_stds, 
-        data_means, 
-        is_train=True, 
-        noise_std=0, 
-        filename=True, 
+        file_names,
+        col_names,
+        col_names_x,
+        col_names_y,
+        data_stds,
+        data_means,
+        is_train=True,
+        noise_std=0,
+        filename=True,
         output_normalized=False
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)

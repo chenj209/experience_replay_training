@@ -81,7 +81,9 @@ def main(args):
 
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*')
+    all_files = glob.glob(args.data_dir+'/*.npy')
+    all_files.sort()
+    all_files = all_files[:35040]
 
     print('org file num:', len(all_files))
     #for i in range(17507,17530):
@@ -91,7 +93,7 @@ def main(args):
                 all_files.remove(file_name)
     print('after file num:', len(all_files))
 
-    
+
     for i in ['00001', '00002', '00003', '08690', '08691', '17522', '17523','26210','26211']:
         for file_name in all_files:
             if i in file_name:
@@ -103,11 +105,11 @@ def main(args):
     #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
-    random.shuffle(train_files)
+    #random.shuffle(train_files)
     test_files = [all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
 
-    
+
 
     """
     Define Residual Methods and Optimizer
@@ -143,27 +145,27 @@ def main(args):
 
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
     training_set = DatasetDisk(
-        train_files, 
-        col_names, 
-        col_names_x, 
-        col_names_y, 
-        data_stds, 
-        data_means, 
-        is_train=True, 
-        noise_std=0, 
+        train_files,
+        col_names,
+        col_names_x,
+        col_names_y,
+        data_stds,
+        data_means,
+        is_train=True,
+        noise_std=0,
         multistep=int(args.multistep),
         sample_rate=args.sample_rate)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
     testing_set = DatasetDisk(
-        test_files, 
-        col_names, 
-        col_names_x, 
-        col_names_y, 
-        data_stds, 
-        data_means, 
-        is_train=False, 
-        noise_std=0, 
+        test_files,
+        col_names,
+        col_names_x,
+        col_names_y,
+        data_stds,
+        data_means,
+        is_train=False,
+        noise_std=0,
         multistep=int(args.multistep),
         sample_rate=args.sample_rate)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
@@ -250,7 +252,7 @@ def main(args):
 
         if (epoch)%5 == 0:
             tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
-            
+
 
         tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
 
