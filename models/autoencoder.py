@@ -7,18 +7,14 @@ import torch.nn as nn
 
 from models import ResMLP
 
-
 class Encoder(nn.Module):
     def __init__(self, input_size, latent_size):
         super(Encoder, self).__init__()
         self.input_size = input_size
         self.latent_size = latent_size
+        self.e0 = nn.Conv2d(input_size, 128, kernel_size=1, padding=0, stride=1)
         # Convolutional layers
-        #self.conv1 = nn.Conv2d(input_size, input_size*2, kernel_size=3, stride=2, padding=1)  # Output: 680x48x72
-        #self.conv2 = nn.Conv2d(input_size*2, 1024, kernel_size=3, stride=2, padding=1)  # Output: 1024x24x36
-        #self.conv3 = nn.Conv2d(1024, 2048, kernel_size=3, stride=2, padding=1)  # Output: 2048x12x18
-        self.e0 = nn.Conv2d(input_dim, 128, kernel_size=1, padding=1, stride=1) # output: 122x96x184
-        self.e11 = nn.Conv2d(input_dim, 256, kernel_size=3, padding=1, stride=1) # output: 122x96x184
+        self.e11 = nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=1) # output: 122x96x184
         self.e12 = nn.Conv2d(256, 256, kernel_size=3, padding=1, stride=1) # output: 256x96x184
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 256x48x92
 
@@ -35,30 +31,38 @@ class Encoder(nn.Module):
         # input: 1024x12x23
         self.e41 = nn.Conv2d(1024, 2048, kernel_size=3, padding=1, stride=1) # output: 2048x12x23
         self.e42 = nn.Conv2d(2048, 2048, kernel_size=3, padding=1, stride=1) # output: 2048x12x23
-        self.relu = nn.ReLU(inplace=True)
 
-        # Batch Normalization layers
-        #self.bn1 = nn.BatchNorm2d(input_size*2)
-        #self.bn2 = nn.BatchNorm2d(1024)
-        #self.bn3 = nn.BatchNorm2d(2048)
-        self.bn0 = nn.BatchNorm2d(64)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.bn2 = nn.BatchNorm2d(64)
-        self.bn3 = nn.BatchNorm2d(64)
-
-        # Flatten and fully connected layer
-        #self.fc = nn.Linear(2048 * 12 * 18, latent_size*96*144)
-        self.fc = nn.Linear(64 * 12 * 18, latent_size*96*144)
+        # input: 2048x12x23
+        self.fc = nn.Linear(2048*12*18, latent_size*96*144)
 
     def forward(self, x):
-        x = self.relu(self.bn1(self.conv1(x)))
-        x = self.relu(self.bn2(self.conv2(x)))
-        x = self.relu(self.bn3(self.conv3(x)))
+        e0 = self.e0(x)
+        # Encoder
+        e11 = self.e11(e0)
+        e11 = nn.ReLU(inplace=True)(e11)
+        e12 = self.e12(e11)
+        e12 = nn.ReLU(inplace=True)(e12)
+        pool1 = self.pool1(e12)
 
-        # Flatten and pass through fully connected layer
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-        return x
+        e21 = self.e21(pool1)
+        e21 = nn.ReLU(inplace=True)(e21)
+        e22 = self.e22(e21)
+        e22 = nn.ReLU(inplace=True)(e22)
+        pool2 = self.pool2(e22)
+
+        e31 = self.e31(pool2)
+        e31 = nn.ReLU(inplace=True)(e31)
+        e32 = self.e32(e31)
+        e32 = nn.ReLU(inplace=True)(e32)
+        pool3 = self.pool3(e32)
+
+        e41 = self.e41(pool3)
+        e41 = nn.ReLU(inplace=True)(e41)
+        e42 = self.e42(e41)
+        e42 = nn.ReLU(inplace=True)(e42)
+        e42 = torch.flatten(e42, 1)
+        latent = self.fc(e42)
+        return latent
 
 class Decoder(nn.Module):
     def __init__(self, input_size, latent_size):
@@ -66,31 +70,28 @@ class Decoder(nn.Module):
         self.input_size = input_size
         self.latent_size = latent_size
         # Fully connected layer
-        #self.fc = nn.Linear(latent_size*96*144, 2048 * 12 * 18)
-        self.fc = nn.Linear(latent_size*96*144, input_size * 12 * 18)
+        self.fc = nn.Linear(latent_size*96*144, 2048 * 12 * 18)
+        # Decoder
+        # input 2048x12x23
+        self.upconv1 = nn.ConvTranspose2d(2048, 1024, kernel_size=2, stride=2) # output: 1024x24x46
+        self.d11 = nn.Conv2d(2048, 1024, kernel_size=3, padding=1) # output: 1024x24x46
+        self.d12 = nn.Conv2d(1024, 1024, kernel_size=3, padding=1) # output: 1024x24x46
 
-        # Deconvolutional layers
-        #self.conv_transpose1 = nn.ConvTranspose2d(2048, 1024, kernel_size=3, stride=2, padding=1, output_padding=1)
-        #self.conv_transpose2 = nn.ConvTranspose2d(1024, 680, kernel_size=3, stride=2, padding=1, output_padding=1)
-        #self.conv_transpose3 = nn.ConvTranspose2d(input_size*2, input_size, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.conv_transpose1 = nn.ConvTranspose2d(input_size, input_size, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.conv_transpose2 = nn.ConvTranspose2d(input_size, input_size, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.conv_transpose3 = nn.ConvTranspose2d(input_size, input_size, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.relu = nn.ReLU(inplace=True)
+        self.upconv2 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2) # output: 512x48x92
+        self.d21 = nn.Conv2d(1024, 512, kernel_size=3, padding=1) # output: 512x48x92
+        self.d22 = nn.Conv2d(512, 512, kernel_size=3, padding=1) # output: 512x48x92
 
-        # Batch Normalization layers
-        #self.bn1 = nn.BatchNorm2d(1024)
-        #self.bn2 = nn.BatchNorm2d(input_size*2)
-        #self.bn3 = nn.BatchNorm2d(input_size)
-        self.bn1 = nn.BatchNorm2d(input_size)
-        self.bn2 = nn.BatchNorm2d(input_size)
-        self.bn3 = nn.BatchNorm2d(input_size)
+        self.upconv3 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2) # output: 256x96x184
+        self.d31 = nn.Conv2d(512, 256, kernel_size=3, padding=1) # output: 256x96x184
+        self.d32 = nn.Conv2d(256, 256, kernel_size=3, padding=1) # output: 256x96x184
+
+        # Output layer
+        self.outconv = nn.Conv2d(256, input_size, kernel_size=1)
 
     def forward(self, x):
         # Map from latent space to spatial dimensions
         x = self.fc(x)
-        #x = x.view(-1, 2048, 12, 18)  # Reshape to match the output of the encoder's last convolutional layer
-        x = x.view(-1, 340, 12, 18)  # Reshape to match the output of the encoder's last convolutional layer
+        x = x.view(-1, 2048, 12, 18)  # Reshape to match the output of the encoder's last convolutional layer
 
         # Apply deconvolutional layers
         x = self.relu(self.bn1(self.conv_transpose1(x)))
@@ -117,7 +118,7 @@ class AutoencoderResMLP(nn.Module):
         self.latent_size = latent_size
         self.encoder = Encoder(input_size, latent_size)
         self.decoder = Decoder(input_size, latent_size)
-        self.resmlp = ResMLP(122+latent_size, output_size, m, activation, num_blocks)
+        self.resmlp = ResMLP(input_size, output_size, m, activation, num_blocks)
 
     def forward(self, x):
         curr_x = x[:, -122:]
@@ -129,6 +130,7 @@ class AutoencoderResMLP(nn.Module):
         x = x.transpose(1,2).transpose(2,3).reshape(-1, 122+self.latent_size)
         x = self.resmlp(x)
         return x, x_rec
+
 
 if __name__ == "__main__":
     from torch.profiler import profile, record_function, ProfilerActivity

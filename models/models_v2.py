@@ -154,9 +154,9 @@ if __name__ == "__main__":
     from torchviz import make_dot
     import torch
     # Create an instance of the FCN model
-    fcn_model = FCN()
+    fcn_model = FCN(340,30)
     print(fcn_model)
-    unet_model = Unet()
+    unet_model = Unet(340,30)
     print(unet_model)
 
     inputs = torch.rand(1,122,96,184)
