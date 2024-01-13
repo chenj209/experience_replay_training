@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -A m4402
 #SBATCH -C gpu
-#SBATCH --qos=debug
-#SBATCH -t 0:20:00
+#SBATCH --qos=regular
+#SBATCH -t 8:00:00
 #SBATCH -n 1
 #SBATCH -c 32
 #SBATCH --gpus-per-task=1
