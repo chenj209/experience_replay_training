@@ -66,13 +66,13 @@ def main(args):
     cudnn.benchmark = True
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
+        # data_dir = "./data/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
     if not os.path.isdir(data_dir):
         # data_dir = "./data/"
         data_dir = "../analysis/test_data/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check"]
