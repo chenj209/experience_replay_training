@@ -130,9 +130,9 @@ class DatasetDisk(data.Dataset):
         tx_raw = data[input_indices,:,:][None,]
         tx = data[input_indices,:,:][None,]
         ty = data[self.output_indices,:,:][None,]
-        print("tx_raw shape:", tx_raw.shape)
-        print("tx shape:", tx.shape)
-        print("ty shape:", ty.shape)
+        #print("tx_raw shape:", tx_raw.shape)
+        #print("tx shape:", tx.shape)
+        #print("ty shape:", ty.shape)
         ############# normalization ###############
         #tx, ty = normalization(tx, ty)
         if self.input_normalized:
@@ -143,9 +143,9 @@ class DatasetDisk(data.Dataset):
             tx = to_inference_shape(tx)
             ty = to_inference_shape(ty)
             tx_raw = to_inference_shape(tx_raw)
-        print("tx shape:", tx.shape)
-        print("ty shape:", ty.shape)
-        print("tx_raw shape:", tx_raw.shape)
+        #print("tx shape:", tx.shape)
+        #print("ty shape:", ty.shape)
+        #print("tx_raw shape:", tx_raw.shape)
         return tx, ty, tx_raw
 
     def __getitem__(self, index):
