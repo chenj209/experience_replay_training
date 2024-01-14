@@ -110,7 +110,7 @@ class AutoencoderResMLP(nn.Module):
 
     def forward(self, x):
         latent = self.encoder(x)
-        x_resmlp = x[:, :122, :, :]
+        x_resmlp = x[:, -122:, :, :]
         x_resmlp_ex = F.relu(self.fc(latent))
         x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
         x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1)
