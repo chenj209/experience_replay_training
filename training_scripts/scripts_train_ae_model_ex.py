@@ -6,7 +6,8 @@ if __name__ == "__main__":
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
-    parser.add_argument("--ex_input", type=str, nargs="*")
+    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    parser.add_argument("--region_mask", type=str, default="all")
     args = parser.parse_args()
 
     DATA_DIR = "/home/users/data/nncam_data/image_set/"
@@ -30,7 +31,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '4'
+                        batch_size = '8'
                         lr_strategy = 'coslr'
 
                         network = 'resnet_output30'
@@ -38,12 +39,12 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 12 --ex_input {}'.format(str(noise_std),
+                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
-                                                                name, args.multistep, " ".join(args.ex_input))
+                                                                name, args.multistep, args.region_mask,  " ".join(args.ex_input))
 
                         print(commands)
                         os.system(commands)

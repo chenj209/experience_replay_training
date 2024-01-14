@@ -116,7 +116,7 @@ def main(args):
     early_stopper = EarlyStopper(patience=10,min_delta=0)
 
     region_mask = None
-    if args.region_mask is not None:
+    if args.region_mask is not None or args.region_mask == "all":
         region_mask = np.load(args.region_mask)[None, None, :, :]
         region_mask = to_inference_shape(region_mask).squeeze()
     else:
@@ -210,7 +210,7 @@ def main(args):
             # print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x)
-            loss = 2/3*loss_pred + 1/3*loss_rec
+            loss = 0.9*loss_pred + 0.1*loss_rec
             # print(points_y)
             # print(torch.min(points_y))
             # compute gradient and do SGD step
@@ -254,6 +254,7 @@ def main(args):
             model.eval()
 
             points_x, points_y = batch[:2]
+            points_x = inverse_to_inference_shape(points_x)
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
 
@@ -301,7 +302,7 @@ if __name__ == '__main__':
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_size", type=int, help="latent_size", default=4)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
-    parser.add_argument('--region_mask', type=str, help='path to region mask npy file')
+    parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
 
     args = parser.parse_args()
     print(args)
