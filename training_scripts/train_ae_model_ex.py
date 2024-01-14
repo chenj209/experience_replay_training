@@ -115,11 +115,16 @@ def main(args):
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=10,min_delta=0)
 
+    region_mask = None
+    if args.region_mask is not None:
+        region_mask = np.load(args.region_mask)[None, None, :, :]
+        region_mask = to_inference_shape(region_mask)
+
     # define model
     input_size = len(training_set.input_indices)\
                 +int(args.multistep)*(len(training_set.prev_input_indices))
     print(f"Model input size: {input_size}")
-    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_size)
+    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_size, region_mask=region_mask)
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
@@ -159,12 +164,6 @@ def main(args):
     # def my_collate(batch):
     #     batch = list(filter (lambda x:x is not None, batch))
     #     return default_collate(batch)
-    if args.region_mask == "all":
-        region_mask = np.ones((96,144))[None, None, :, :]
-    else:
-        region_mask = np.load(args.region_mask)[None, None, :, :]
-    region_mask = to_inference_shape(region_mask)
-    region_mask = (region_mask[:,0]==1)
 
     # Train and test
     current_iters = 0
