@@ -39,7 +39,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {}'.format(str(noise_std),
+                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 96 --region_mask {} --ex_input {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
