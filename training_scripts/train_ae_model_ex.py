@@ -289,7 +289,7 @@ if __name__ == '__main__':
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_size", type=int, help="latent_size", default=4)
-    parser.add_argument("--ex_input", type=str, nargs="*")
+    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     args = parser.parse_args()
     print(args)
 

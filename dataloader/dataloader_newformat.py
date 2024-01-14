@@ -206,6 +206,11 @@ def filter_collate(batch):
 if __name__ == '__main__':
     import os
     import glob
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    args = parser.parse_args()
+    print(args)
     data_dir = "/home/users/data/nncam_data/image_set/"
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
@@ -262,7 +267,7 @@ if __name__ == '__main__':
     #col_names_x = var_names
     col_names_x = ["QL"]
     col_names_y = ["FSDS"]
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True, prev_ex_vars=["CLOUD"])
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True, prev_ex_vars=args.ex_input)
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
