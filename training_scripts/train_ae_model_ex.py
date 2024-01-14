@@ -19,7 +19,7 @@ from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 import argsparser
 import tools
-from data_shape import to_inference_shape
+from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk
 
@@ -181,13 +181,13 @@ def main(args):
             batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
-                batch[1] = batch[1][:, :30]
+                batch[1] = batch[1][:, region_mask.bool(), :30]
             if args.output_type == '30-59':
-                batch[1] = batch[1][:, 30:60]
+                batch[1] = batch[1][:, region_mask.bool(), 30:60]
             if args.output_type == '60':
-                batch[1] = batch[1][:, 60:61]
+                batch[1] = batch[1][:, region_mask.bool(), 60:61]
             if args.output_type == '61-65':
-                batch[1] = batch[1][:, 61:66]
+                batch[1] = batch[1][:, region_mask.bool(), 61:66]
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
@@ -195,6 +195,9 @@ def main(args):
             model.train()
 
             points_x, points_y = batch[:2]
+            points_x = inverse_to_inference_shape(points_x)
+            print("points_x shape:", points_x.shape)
+            print("points_y shape:", points_x.shape)
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             
             
