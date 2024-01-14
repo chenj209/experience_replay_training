@@ -119,6 +119,9 @@ def main(args):
     if args.region_mask is not None:
         region_mask = np.load(args.region_mask)[None, None, :, :]
         region_mask = to_inference_shape(region_mask)
+    else:
+        region_mask = np.ones((1, 1, 96, 144))
+        region_mask = to_inference_shape(region_mask)
 
     # define model
     input_size = len(training_set.input_indices)\
