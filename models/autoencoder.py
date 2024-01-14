@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import sys
 
 sys.path.append('../utils')
-from data_shape import to_inference_shape_torch
+from data_shape import to_inference_shape_torch, to_inference_shape
 from models import ResMLP
 
 class Encoder(nn.Module):
@@ -101,26 +101,37 @@ class Autoencoder(nn.Module):
         return x
 
 class AutoencoderResMLP(nn.Module):
-    def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=4):
+    def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=4, region_mask=None):
         super(AutoencoderResMLP, self).__init__()
         self.encoder = Encoder(input_size)
         self.decoder = Decoder(input_size)
         self.resmlp = ResMLP(122+latent_dim, output_size, m, activation, num_blocks)
         self.fc = nn.Linear(256, 4*96*144)
+        if region_mask is not None:
+            # check if cuda is available
+            self.region_mask = torch.tensor(region_mask, dtype=torch.bool).squeeze()
+            if torch.cuda.is_available():
+                self.region_mask = self.region_mask.cuda()
+        else:
+            self.region_mask = None
 
     def forward(self, x):
         latent = self.encoder(x)
+        print("x shape:", x.shape)
         x_resmlp = x[:, -122:, :, :]
         x_resmlp_ex = F.relu(self.fc(latent))
         x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
         x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1)
-        # print(x_resmlp.shape)
         x_resmlp = to_inference_shape_torch(x_resmlp)
+        print("x_resmlp shape:", x_resmlp.shape)
+        if self.region_mask is not None:
+            x_resmlp = x_resmlp[:, self.region_mask]
         x_resmlp = self.resmlp(x_resmlp)
         x = self.decoder(latent)
         return x_resmlp, x
 
 if __name__ == '__main__':
+    import numpy as np
     input_size = 340
     autoencoder = Autoencoder(input_size)
     print(autoencoder)
@@ -138,6 +149,25 @@ if __name__ == '__main__':
 
 
     autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7)
+    print(autoencoder)
+
+    # Example input
+    input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
+    output1, output2 = autoencoder(input_data)
+    print(output1.shape)  # Should be the same as input_data's shape
+    print(output2.shape)  # Should be the same as input_data's shape
+
+    for name, module in autoencoder.named_modules():
+        num_params = sum(p.numel() for p in module.parameters(recurse=False))
+        if num_params > 0:
+            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+
+    region_mask = np.load("../consts/landmask.npy")[None, None]
+    region_mask = to_inference_shape(region_mask)
+    print(region_mask.shape)
+
+    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, region_mask=region_mask)
     print(autoencoder)
 
     # Example input

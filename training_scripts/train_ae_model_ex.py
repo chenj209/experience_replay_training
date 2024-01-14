@@ -19,6 +19,7 @@ from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 import argsparser
 import tools
+from data_shape import to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk
 
@@ -158,6 +159,12 @@ def main(args):
     # def my_collate(batch):
     #     batch = list(filter (lambda x:x is not None, batch))
     #     return default_collate(batch)
+    if args.region_mask == "all":
+        region_mask = np.ones((96,144))[None, None, :, :]
+    else:
+        region_mask = np.load(args.region_mask)[None, None, :, :]
+    region_mask = to_inference_shape(region_mask)
+    region_mask = (region_mask[:,0]==1)
 
     # Train and test
     current_iters = 0
@@ -290,6 +297,8 @@ if __name__ == '__main__':
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_size", type=int, help="latent_size", default=4)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    parser.add_argument('--region_mask', type=str, help='path to region mask npy file')
+
     args = parser.parse_args()
     print(args)
 

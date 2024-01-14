@@ -130,7 +130,9 @@ class DatasetDisk(data.Dataset):
         tx_raw = data[input_indices,:,:][None,]
         tx = data[input_indices,:,:][None,]
         ty = data[self.output_indices,:,:][None,]
-
+        print("tx_raw shape:", tx_raw.shape)
+        print("tx shape:", tx.shape)
+        print("ty shape:", ty.shape)
         ############# normalization ###############
         #tx, ty = normalization(tx, ty)
         if self.input_normalized:
@@ -141,14 +143,10 @@ class DatasetDisk(data.Dataset):
             tx = to_inference_shape(tx)
             ty = to_inference_shape(ty)
             tx_raw = to_inference_shape(tx_raw)
-            return tx, ty, tx_raw
-        # tx = np.transpose(tx, (0, 2, 3, 1))
-        # ty = np.transpose(ty, (0, 2, 3, 1))
-        # tx_raw = np.transpose(tx_raw, (0, 2, 3, 1))
-        # tx = np.reshape(tx, (-1, tx.shape[-1]))
-        # ty = np.reshape(ty, (-1, ty.shape[-1]))
-        # tx_raw = np.reshape(tx_raw, (-1, tx_raw.shape[-1]))
-        return tx[0], ty[0], tx_raw[0]
+            print("tx shape:", tx.shape)
+            print("ty shape:", ty.shape)
+            print("tx_raw shape:", tx_raw.shape)
+        return tx, ty, tx_raw
 
     def __getitem__(self, index):
         'Generates one sample of data'
@@ -176,8 +174,8 @@ class DatasetDisk(data.Dataset):
                 file_names.append(prev_file)
 
             channel_axis = 1
-            if self.image:
-                channel_axis = 0
+            # if self.image:
+            #     channel_axis = 0
             # print("prev inputs shape:", [x.shape for x in prev_inputs])
             # print("prev raws shape:", [x.shape for x in prev_raws])
             x = np.concatenate([*prev_inputs, tx], axis=channel_axis)
