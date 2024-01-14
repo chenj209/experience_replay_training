@@ -6,3 +6,4 @@ __pycache__/**
 *.joblib
 *.pdf
 tree_reg_*
+*.out
