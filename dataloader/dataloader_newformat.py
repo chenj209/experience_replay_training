@@ -143,9 +143,9 @@ class DatasetDisk(data.Dataset):
             tx = to_inference_shape(tx)
             ty = to_inference_shape(ty)
             tx_raw = to_inference_shape(tx_raw)
-            print("tx shape:", tx.shape)
-            print("ty shape:", ty.shape)
-            print("tx_raw shape:", tx_raw.shape)
+        print("tx shape:", tx.shape)
+        print("ty shape:", ty.shape)
+        print("tx_raw shape:", tx_raw.shape)
         return tx, ty, tx_raw
 
     def __getitem__(self, index):
@@ -173,9 +173,9 @@ class DatasetDisk(data.Dataset):
                 prev_raws.append(tx_raw_prev)
                 file_names.append(prev_file)
 
-            channel_axis = 1
-            # if self.image:
-            #     channel_axis = 0
+            channel_axis = 2
+            if self.image:
+                channel_axis = 1
             # print("prev inputs shape:", [x.shape for x in prev_inputs])
             # print("prev raws shape:", [x.shape for x in prev_raws])
             x = np.concatenate([*prev_inputs, tx], axis=channel_axis)
@@ -191,9 +191,9 @@ class DatasetDisk(data.Dataset):
                 y = y + noise_y
 
             if self.file_name:
-                return x, y, x_raw, file_names[::-1]
+                return x[0], y[0], x_raw[0], file_names[::-1]
 
-            return x, y, x_raw
+            return x[0], y[0], x_raw[0]
         return None
 
 def filter_collate(batch):
