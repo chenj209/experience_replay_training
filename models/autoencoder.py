@@ -24,7 +24,8 @@ class Encoder(nn.Module):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
-        x = x.view(-1, self.flattened_size)
+        #print("pre flatten:", x.shape)
+        x = x.reshape(-1, self.flattened_size)
         x = F.relu(self.fc(x))
         return x
 
@@ -42,7 +43,7 @@ class Decoder(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.fc(x))
-        x = x.view(-1, 2048, 12, 18)
+        x = x.reshape(-1, 2048, 12, 18)
         x = F.relu(self.bn1(self.deconv1(x)))
         x = F.relu(self.bn2(self.deconv2(x)))
         x = torch.sigmoid(self.deconv3(x))  # Using sigmoid for the final layer
@@ -110,20 +111,20 @@ class AutoencoderResMLP(nn.Module):
         if region_mask is not None:
             # check if cuda is available
             self.region_mask = torch.tensor(region_mask, dtype=torch.bool).squeeze()
-            if torch.cuda.is_available():
-                self.region_mask = self.region_mask.cuda()
+            #if torch.cuda.is_available():
+            #    self.region_mask = self.region_mask.cuda()
         else:
             self.region_mask = None
 
     def forward(self, x):
         latent = self.encoder(x)
-        print("x shape:", x.shape)
+        #print("x shape:", x.shape)
         x_resmlp = x[:, -122:, :, :]
         x_resmlp_ex = F.relu(self.fc(latent))
         x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
         x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1)
         x_resmlp = to_inference_shape_torch(x_resmlp)
-        print("x_resmlp shape:", x_resmlp.shape)
+        #print("x_resmlp shape:", x_resmlp.shape)
         if self.region_mask is not None:
             x_resmlp = x_resmlp[:, self.region_mask]
         x_resmlp = self.resmlp(x_resmlp)

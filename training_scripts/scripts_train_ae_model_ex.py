@@ -30,7 +30,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '1'
+                        batch_size = '4'
                         lr_strategy = 'coslr'
 
                         network = 'resnet_output30'

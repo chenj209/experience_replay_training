@@ -180,6 +180,7 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
+            #print(iter, "batch size:", batch[0].size(), batch[1].size(), batch[2].size())
             #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
             #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
@@ -199,8 +200,6 @@ def main(args):
 
             points_x, points_y = batch[:2]
             points_x = inverse_to_inference_shape(points_x)
-            print("points_x shape:", points_x.shape)
-            print("points_y shape:", points_x.shape)
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
 
@@ -208,7 +207,7 @@ def main(args):
 
             # compute output
             outputs_y, x_rec = model(points_x)
-            # print(outputs_y.size(), points_y.size())
+            # print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x)
             loss = 2/3*loss_pred + 1/3*loss_rec
@@ -262,7 +261,7 @@ def main(args):
 
             # compute output
             outputs_y, x_rec = model(points_x)
-            # print(outputs_y.size(), points_y.size())
+            #print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x)
             test_losses[0].update(loss_pred.item()*2/3, batch[0].size(0))

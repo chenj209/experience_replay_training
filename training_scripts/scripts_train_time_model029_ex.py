@@ -6,7 +6,7 @@ if __name__ == "__main__":
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
-    parser.add_argument("--ex_input", type=str, nargs="*")
+    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     args = parser.parse_args()
 
     DATA_DIR = "/home/users/data/nncam_data/image_set/"
