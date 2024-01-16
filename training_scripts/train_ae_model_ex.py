@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
+from datetime import datetime
 # from torch.utils.data.dataloader import default_collate
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
@@ -116,7 +117,7 @@ def main(args):
     early_stopper = EarlyStopper(patience=10,min_delta=0)
 
     region_mask = None
-    if args.region_mask is not None or args.region_mask == "all":
+    if args.region_mask is not None and args.region_mask != "all":
         region_mask = np.load(args.region_mask)[None, None, :, :]
         region_mask = to_inference_shape(region_mask).squeeze()
     else:
@@ -274,6 +275,9 @@ def main(args):
 
 
         test_time = time.time() - test_time_begin
+
+        current_datetime = datetime.now()
+        print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
         save_log = [epoch, lr, train_losses.avg]
         for i in range(2):
@@ -297,6 +301,9 @@ def main(args):
     logger.close()
 
 if __name__ == '__main__':
+    current_datetime = datetime.now()
+
+    print("Training start time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))
     parser = argsparser.get_argparser()
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
@@ -306,6 +313,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args)
+
 
     # set the fixed seed
     if args.manualSeed is None:
@@ -324,3 +332,5 @@ if __name__ == '__main__':
             f.write(k + ' : ' + str(v) + '\n')
 
     main(args)
+    current_datetime = datetime.now()
+    print("Training end time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))

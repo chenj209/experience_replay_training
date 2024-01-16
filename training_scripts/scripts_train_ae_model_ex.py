@@ -17,7 +17,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"ae_model029_sampled12_0108_multistep{args.multistep}+{'+'.join(args.ex_input)}"
+    name = f"ae_model029_sampled12_0115_multistep{args.multistep}+{'+'.join(args.ex_input)}"
 
     for epoch in ['200']:
         for num_blocks in ['7']:
@@ -39,7 +39,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 96 --region_mask {} --ex_input {}'.format(str(noise_std),
+                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
