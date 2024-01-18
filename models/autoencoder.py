@@ -107,7 +107,7 @@ class AutoencoderResMLP(nn.Module):
         self.encoder = Encoder(input_size)
         self.decoder = Decoder(input_size)
         self.resmlp = ResMLP(122+latent_dim, output_size, m, activation, num_blocks)
-        self.fc = nn.Linear(256, 4*96*144)
+        self.fc = nn.Linear(256, 4*96*144) # 4x96x144 x 4x96x144 (4xregion_mask)
         if region_mask is not None:
             # check if cuda is available
             self.region_mask = torch.tensor(region_mask, dtype=torch.bool).squeeze()
@@ -116,19 +116,23 @@ class AutoencoderResMLP(nn.Module):
         else:
             self.region_mask = None
 
-    def forward(self, x):
-        latent = self.encoder(x)
+    def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
+        # 3D conv 30 perssure
+        latent = self.encoder(x) # 256
         #print("x shape:", x.shape)
-        x_resmlp = x[:, -122:, :, :]
-        x_resmlp_ex = F.relu(self.fc(latent))
+        x_resmlp = x[:, -122:, :, :] # Q, T, ps, dqls, dtls of current step
+        x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
         x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
-        x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1)
+        x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
         x_resmlp = to_inference_shape_torch(x_resmlp)
         #print("x_resmlp shape:", x_resmlp.shape)
         if self.region_mask is not None:
-            x_resmlp = x_resmlp[:, self.region_mask]
-        x_resmlp = self.resmlp(x_resmlp)
-        x = self.decoder(latent)
+            x_resmlp = x_resmlp[:, self.region_mask] # 96x144 boolean value
+            # 3440 grid True
+            # 96x144 -> 13824 input for resmlp
+            # 3440 -> input for resmlp
+        x_resmlp = self.resmlp(x_resmlp) # predict qtend
+        x = self.decoder(latent) # reconstruct all inputs
         return x_resmlp, x
 
 if __name__ == '__main__':
