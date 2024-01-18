@@ -19,6 +19,7 @@ from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 import argsparser
 import tools
+from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk
 
@@ -173,6 +174,13 @@ def main(args):
         prev_ex_vars=prev_ex_vars)
     testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     early_stopper = EarlyStopper(patience=10,min_delta=0)
+    region_mask = None
+    if args.region_mask is not None or args.region_mask == "all":
+        region_mask = np.load(args.region_mask)[None, None, :, :]
+        region_mask = to_inference_shape(region_mask).squeeze()
+    else:
+        region_mask = np.ones((1, 1, 96, 144))
+        region_mask = to_inference_shape(region_mask).squeeze()
     # Train and test
     current_iters = 0
     for epoch in range(args.epoch):
@@ -185,17 +193,17 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
-            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
+            #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+            #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
-                batch[1] = batch[1][:, :30]
+                batch[1] = batch[1][:, region_mask.astype(bool), :30]
             if args.output_type == '30-59':
-                batch[1] = batch[1][:, 30:60]
+                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
             if args.output_type == '60':
-                batch[1] = batch[1][:, 60:61]
+                batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
             if args.output_type == '61-65':
-                batch[1] = batch[1][:, 61:66]
+                batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
@@ -219,17 +227,17 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
-            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
+            # batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+            # batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
             if args.output_type == '0-29':
-                batch[1] = batch[1][:, :30]
+                batch[1] = batch[1][:, region_mask.astype(bool), :30]
             if args.output_type == '30-59':
-                batch[1] = batch[1][:, 30:60]
+                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
             if args.output_type == '60':
-                batch[1] = batch[1][:, 60:61]
+                batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
             if args.output_type == '61-65':
-                batch[1] = batch[1][:, 61:66]
+                batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
             test_mses = tools.test_de(batch, model, criterion)
             for i in range(1):
                 test_mse = test_mses[i]
@@ -266,6 +274,7 @@ if __name__ == '__main__':
     parser = argsparser.get_argparser()
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
+    parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     args = parser.parse_args()
     print(args)
 
