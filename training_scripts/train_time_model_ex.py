@@ -197,6 +197,7 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+            batch[0] = batch[0][:, region_mask.astype(bool)]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask.astype(bool), :30]
             if args.output_type == '30-59':
@@ -229,6 +230,7 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+            batch[0] = batch[0][:, region_mask.astype(bool)]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask.astype(bool), :30]
             if args.output_type == '30-59':
