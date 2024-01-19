@@ -196,8 +196,6 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
-            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask.astype(bool), :30]
@@ -230,8 +228,6 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
-            batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask.astype(bool), :30]
