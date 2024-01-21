@@ -128,7 +128,7 @@ def main(args):
     input_size = len(training_set.input_indices)\
                 +int(args.multistep)*(len(training_set.prev_input_indices))
     print(f"Model input size: {input_size}")
-    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_size, region_mask=region_mask)
+    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_size, region_mask=region_mask, resmlp=(args.pred_weight!=0))
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
@@ -209,9 +209,11 @@ def main(args):
             # compute output
             outputs_y, x_rec = model(points_x)
             # print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = criterion(outputs_y, points_y)
+            loss_pred = 0
+            if outputs_y is not None:
+                loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x)
-            loss = 0.9*loss_pred + 0.1*loss_rec
+            loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec
             # print(points_y)
             # print(torch.min(points_y))
             # compute gradient and do SGD step
@@ -264,10 +266,12 @@ def main(args):
             # compute output
             outputs_y, x_rec = model(points_x)
             #print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = criterion(outputs_y, points_y)
-            loss_rec = criterion(x_rec, points_x)
-            test_losses[0].update(loss_pred.item()*0.9, batch[0].size(0))
-            test_losses[1].update(loss_rec.item()*0.1, batch[0].size(0))
+            loss_pred = 0
+            if outputs_y is not None:
+                loss_pred = criterion(outputs_y, points_y).item()
+            loss_rec = criterion(x_rec, points_x).item()
+            test_losses[0].update(loss_pred, batch[0].size(0))
+            test_losses[1].update(loss_rec, batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
             suffix = suffix + loss_name[0].format(test_losses[0].avg)
             suffix = suffix + loss_name[1].format(test_losses[1].avg)
@@ -310,6 +314,8 @@ if __name__ == '__main__':
     parser.add_argument("--latent_size", type=int, help="latent_size", default=4)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    parser.add_argument('--rec_weight', type=float, default=0.1)
+    parser.add_argument('--pred_weight', type=float, default=0.9)
 
     args = parser.parse_args()
     print(args)
