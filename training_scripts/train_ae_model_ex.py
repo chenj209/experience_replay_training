@@ -128,7 +128,7 @@ def main(args):
     input_size = len(training_set.input_indices)\
                 +int(args.multistep)*(len(training_set.prev_input_indices))
     print(f"Model input size: {input_size}")
-    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_size, region_mask=region_mask, resmlp=(args.pred_weight!=0))
+    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
@@ -311,7 +311,7 @@ if __name__ == '__main__':
     parser = argsparser.get_argparser()
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
-    parser.add_argument("--latent_size", type=int, help="latent_size", default=4)
+    parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
     parser.add_argument('--rec_weight', type=float, default=0.1)

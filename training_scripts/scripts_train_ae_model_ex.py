@@ -8,6 +8,9 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--region_mask", type=str, default="all")
+    parser.add_argument("--rec_weight", type=float, default=0.1)
+    parser.add_argument("--pred_weight", type=float, default=0.9)
+    parser.add_argument("--latent_dim", type=int, default=256)
     args = parser.parse_args()
 
     DATA_DIR = "/home/users/data/nncam_data/image_set/"
@@ -17,9 +20,9 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"ae_model029_sampled12_0116_multistep{args.multistep}+{'+'.join(args.ex_input)}"
+    name = f"ae_model029_sampled12_0116_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_latent{args.latent_dim}_{'+'.join(args.ex_input)}"
 
-    for epoch in ['200']:
+    for epoch in ['50']:
         for num_blocks in ['7']:
             for node_size in ['512']:
                 for noise_std in [0.0]:
@@ -39,12 +42,16 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {}'.format(str(noise_std),
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} ' \
+                                '--rec_weight {} --pred_weight {} --latent_dim {} ' \
+                                '--ex_input {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
-                                                                name, args.multistep, args.region_mask,  " ".join(args.ex_input))
+                                                                name, args.multistep, args.region_mask,
+                                                                args.rec_weight, args.pred_weight, args.latent_dim,
+                                                                " ".join(args.ex_input))
 
                         print(commands)
                         os.system(commands)

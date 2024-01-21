@@ -118,6 +118,7 @@ class AutoencoderResMLP(nn.Module):
         else:
             self.region_mask = None
         self.latent_dim = latent_dim
+        print(f"Autoencoder, resmlp: {resmlp}, latent_dim {latent_dim}")
 
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
