@@ -8,7 +8,7 @@ from data_shape import to_inference_shape_torch, to_inference_shape
 from models import ResMLP
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, latent_dim):
         super(Encoder, self).__init__()
         self.conv1 = nn.Conv2d(input_dim, 512, kernel_size=3, stride=2, padding=1)
         self.bn1 = nn.BatchNorm2d(512)  # Batch normalization for the first layer
@@ -18,7 +18,7 @@ class Encoder(nn.Module):
         self.bn3 = nn.BatchNorm2d(2048)  # Batch normalization for the third layer
         # compute the flattened size
         self.flattened_size = 2048 * 12 * 18
-        self.fc = nn.Linear(self.flattened_size, 256)
+        self.fc = nn.Linear(self.flattened_size, latent_dim)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
@@ -31,9 +31,9 @@ class Encoder(nn.Module):
 
 # write a correspoinding decoder
 class Decoder(nn.Module):
-    def __init__(self, output_dim):
+    def __init__(self, output_dim, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(256, 2048 * 12 * 18)
+        self.fc = nn.Linear(latent_dim, 2048 * 12 * 18)
 
         self.deconv1 = nn.ConvTranspose2d(2048, 1024, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.bn1 = nn.BatchNorm2d(1024)  # Batch normalization for the first layer
@@ -93,8 +93,8 @@ class Decoder3D(nn.Module):
 class Autoencoder(nn.Module):
     def __init__(self, input_size):
         super(Autoencoder, self).__init__()
-        self.encoder = Encoder(input_size)
-        self.decoder = Decoder(input_size)
+        self.encoder = Encoder(input_size, 256)
+        self.decoder = Decoder(input_size, 256)
 
     def forward(self, x):
         x = self.encoder(x)
@@ -102,14 +102,14 @@ class Autoencoder(nn.Module):
         return x
 
 class AutoencoderResMLP(nn.Module):
-    def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=4, region_mask=None, resmlp=True):
+    def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=256, region_mask=None, resmlp=True):
         super(AutoencoderResMLP, self).__init__()
-        self.encoder = Encoder(input_size)
-        self.decoder = Decoder(input_size)
+        self.encoder = Encoder(input_size, latent_dim)
+        self.decoder = Decoder(input_size, latent_dim)
         self.resmlp_flag = resmlp
         if self.resmlp_flag:
-            self.resmlp = ResMLP(122+latent_dim, output_size, m, activation, num_blocks)
-            self.fc = nn.Linear(256, 4*96*144) # 4x96x144 x 4x96x144 (4xregion_mask)
+            self.resmlp = ResMLP(122+4, output_size, m, activation, num_blocks)
+            self.fc = nn.Linear(latent_dim, 4*96*144) # 4x96x144 x 4x96x144 (4xregion_mask)
         if region_mask is not None:
             # check if cuda is available
             self.region_mask = torch.tensor(region_mask, dtype=torch.bool).squeeze()
@@ -117,6 +117,7 @@ class AutoencoderResMLP(nn.Module):
             #    self.region_mask = self.region_mask.cuda()
         else:
             self.region_mask = None
+        self.latent_dim = latent_dim
 
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
@@ -142,22 +143,22 @@ class AutoencoderResMLP(nn.Module):
 if __name__ == '__main__':
     import numpy as np
     input_size = 340
-    autoencoder = Autoencoder(input_size)
-    print(autoencoder)
+    # autoencoder = Autoencoder(input_size)
+    # print(autoencoder)
 
-    # Example input
-    input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
-    output = autoencoder(input_data)
-    print(output.shape)  # Should be the same as input_data's shape
+    # # Example input
+    # input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
+    # output = autoencoder(input_data)
+    # print(output.shape)  # Should be the same as input_data's shape
 
-    for name, module in autoencoder.named_modules():
-        num_params = sum(p.numel() for p in module.parameters(recurse=False))
-        if num_params > 0:
-            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
-            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+    # for name, module in autoencoder.named_modules():
+    #     num_params = sum(p.numel() for p in module.parameters(recurse=False))
+    #     if num_params > 0:
+    #         layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+    #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
 
-    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7)
+    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=1024)
     print(autoencoder)
 
     # Example input
