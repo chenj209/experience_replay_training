@@ -7,7 +7,7 @@ if __name__ == "__main__":
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
     parser.add_argument("--region_mask", type=str, default="all")
-    parser.add_argument("--ex_input", type=str)
+    parser.add_argument("--ex_input", type=str, nargs="?")
     args = parser.parse_args()
 
     if args.ex_input is not None:
@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     name = f"time_model029_sampled12_0118_multistep{args.multistep}_{'+'.join(ex_input)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}"
 
-    for epoch in ['200']:
+    for epoch in ['50']:
         for num_blocks in ['7']:
             for node_size in ['512']:
                 for noise_std in [0.0]:
@@ -45,7 +45,7 @@ if __name__ == "__main__":
                         commands = f"python train_time_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint ckpts_time/{} --multistep {} --sample_rate 192 --region_mask {} --ex_input {}'.format(str(noise_std),
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,

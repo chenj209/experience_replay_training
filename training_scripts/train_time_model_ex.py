@@ -177,7 +177,7 @@ def main(args):
     #     batch = list(filter (lambda x:x is not None, batch))
     #     return default_collate(batch)
     region_mask = None
-    if args.region_mask is not None or args.region_mask == "all":
+    if args.region_mask is not None and args.region_mask != "all":
         region_mask = np.load(args.region_mask)[None, None, :, :]
         region_mask = to_inference_shape(region_mask).squeeze()
     else:
