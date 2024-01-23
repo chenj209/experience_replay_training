@@ -50,7 +50,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
     else:
         region_mask = np.load(args.region_mask)[None, None, :, :]
     region_mask = to_inference_shape(region_mask)
-    region_mask = (region_mask[:,0]==1)
+    region_mask = region_mask.squeeze().astype(bool)
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')

@@ -35,9 +35,10 @@ def inverse_to_inference_shape(data):
 
 if __name__ == "__main__":
     # generate a test to validate the correctness of the functions
-    test_data_raw = np.random.rand(100, 30, 96, 144)
+    test_data_raw = np.random.rand(1, 1, 96, 144)
     test_data = to_inference_shape(test_data_raw)
+    print(test_data.shape)
     test_data_torch = to_inference_shape_torch(torch.from_numpy(test_data_raw))
     assert(np.allclose(test_data, test_data_torch.numpy()))
     test_data = inverse_to_inference_shape(test_data)
-    assert test_data.shape == (100, 30, 96, 144)
+    assert test_data.shape == (1, 1, 96, 144)
