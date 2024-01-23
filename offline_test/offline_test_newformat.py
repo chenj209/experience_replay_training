@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     cudnn.benchmark = True
 
-    all_files = glob.glob(data_dir+'/*')
+    all_files = glob.glob(data_dir+'/*.npy')
     for fn in all_files:
         if "08691" in fn or "00002" in fn:
             all_files.remove(fn)
@@ -205,7 +205,7 @@ if __name__ == "__main__":
         all_files = all_files[start_idx:]
         print(f"Starting from {start_idx}, first files {all_files[:5]}")
 
-    all_files = all_files
+    #all_files = all_files
     #print("all_files len ", len(all_files))
     #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
     #print(test_idx[:10])
@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
 
     logs, problem_files = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
-    np.savetxt("problem_files.txt", problem_files)
+    np.savetxt(f"{args.out_json.rstrip('.json')}_problem_files.txt", problem_files)
 
     with open(args.out_json, "w") as f:
         json.dump({
