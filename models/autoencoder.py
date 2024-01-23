@@ -17,23 +17,23 @@ class Encoder(nn.Module):
         self.conv3 = nn.Conv2d(1024, 2048, kernel_size=3, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(2048)  # Batch normalization for the third layer
         # compute the flattened size
-        self.flattened_size = 2048 * 12 * 18
-        self.fc = nn.Linear(self.flattened_size, latent_dim)
+        # self.flattened_size = 2048 * 12 * 18
+        # self.fc = nn.Linear(self.flattened_size, latent_dim)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
         #print("pre flatten:", x.shape)
-        x = x.reshape(-1, self.flattened_size)
-        x = F.relu(self.fc(x))
+        # x = x.reshape(-1, self.flattened_size)
+        # x = F.relu(self.fc(x))
         return x
 
 # write a correspoinding decoder
 class Decoder(nn.Module):
     def __init__(self, output_dim, latent_dim):
         super(Decoder, self).__init__()
-        self.fc = nn.Linear(latent_dim, 2048 * 12 * 18)
+        # self.fc = nn.Linear(latent_dim, 2048 * 12 * 18)
 
         self.deconv1 = nn.ConvTranspose2d(2048, 1024, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.bn1 = nn.BatchNorm2d(1024)  # Batch normalization for the first layer
@@ -42,8 +42,8 @@ class Decoder(nn.Module):
         self.deconv3 = nn.ConvTranspose2d(512, output_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
 
     def forward(self, x):
-        x = F.relu(self.fc(x))
-        x = x.reshape(-1, 2048, 12, 18)
+        # x = F.relu(self.fc(x))
+        # x = x.reshape(-1, 2048, 12, 18)
         x = F.relu(self.bn1(self.deconv1(x)))
         x = F.relu(self.bn2(self.deconv2(x)))
         x = torch.sigmoid(self.deconv3(x))  # Using sigmoid for the final layer
@@ -127,7 +127,10 @@ class AutoencoderResMLP(nn.Module):
         #print("x shape:", x.shape)
         if self.resmlp_flag:
             x_resmlp = x[:, -122:, :, :] # Q, T, ps, dqls, dtls of current step
-            x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+            x_resmlp_ex = latent
+            print(x_resmlp_ex.shape)
+            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
             x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
             x_resmlp = to_inference_shape_torch(x_resmlp)
@@ -159,7 +162,7 @@ if __name__ == '__main__':
     #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
 
-    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=1024)
+    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=96*144*4)
     print(autoencoder)
 
     # Example input
