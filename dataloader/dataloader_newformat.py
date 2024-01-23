@@ -125,7 +125,8 @@ class DatasetDisk(data.Dataset):
     def inverse_y(self):
         inverse = {}
         for yname in self.col_names_y:
-            inverse[yname] = lambda y: inverse_data_var_names(y, yname, self.col_names, self.data_mean, self.data_std)
+            print(f"gen {yname} inverse")
+            inverse[yname] = lambda y: inverse_data_var_names(y, [yname], self.col_names, self.data_mean, self.data_std)
         return inverse
 
     def get_xy_from_file(self, file_name, prev=False):

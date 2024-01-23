@@ -50,8 +50,8 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
     else:
         region_mask = np.load(args.region_mask)[None, None, :, :]
     region_mask = to_inference_shape(region_mask)
-    region_mask = (region_mask[:,0]==1)
     print("region_mask shape: ", region_mask.shape)
+    region_mask = region_mask.squeeze().astype(bool)
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')
@@ -91,7 +91,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
                                              #.cpu().numpy()))
             if get_thickness is not None:
                 points_y[:,:30] *= thickness*phys_consts.LATVAP
-                points_y[:,30:60] *= thickness
+                #points_y[:,30:60] *= thickness
             # points_y = points_y.numpy()
             y_gt.append(points_y)
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     #parser.add_argument("--resume", "-re", help="path to selected model")
     parser.add_argument("config", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
-    parser.add_argument("--sample", type=int, help="sample frequency to use", default=1)
+    parser.add_argument("--sample", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
     parser.add_argument("--save_path", type=str)
     parser.add_argument("--region_mask", type=str)
@@ -230,6 +230,7 @@ if __name__ == "__main__":
         filename=True,
         output_normalized=False,
         multistep=args.multistep,
+        sample_rate=args.sample,
         prev_ex_vars=prev_ex_vars+args.ex_input
         )
     # testing_set = DatasetDisk(test_files, col_names, col_names_x, col_names_y, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True, sample_rate=args.sample)
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
 
 
-    logs = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y)
+    logs = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
 
     with open(args.out_json, "w") as f:
         json.dump({
