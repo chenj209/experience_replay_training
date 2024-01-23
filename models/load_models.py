@@ -75,7 +75,7 @@ def load_resmlp_newformat(ckpt_path, input_size, gpu_index=0):
     print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
     model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
 
-    print('------------------------output type: {}-----------------------'.format(output_type))
+    #print('------------------------output type: {}-----------------------'.format(output_type))
     print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
 
     checkpoint = torch.load(resume)['state_dict']
