@@ -13,6 +13,7 @@ import json
 import time
 import glob
 from torch.utils import data
+from sklearn.metrics import r2_score
 
 sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
 sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
@@ -33,7 +34,7 @@ from data_shape import to_inference_shape, inverse_to_inference_shape
 
 
 def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
-
+    problem_files = []
     #test_losses = AverageMeter()
     #loss_name = [output_type + '_r2: {:.4e}']
     test_time_begin = time.time()
@@ -76,24 +77,29 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
                                                         .cpu().numpy())
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
-            y_1.append(y1)
-            y1 = inverse_to_inference_shape(y1)
-            if args.save_path is not None:
-                for b in range(y1.shape[0]):
-                    file_name = file_names[0][b].split("/")[-1]
-                    np.save(args.save_path + "/" + file_name, y1[b])
-            # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
-            #                                  .cpu().numpy())
-            # if get_thickness is not None:
-            #     y2 *= thickness
-            # y_2.append(y2)
-            #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
-                                             #.cpu().numpy()))
-            if get_thickness is not None:
                 points_y[:,:30] *= thickness*phys_consts.LATVAP
-                #points_y[:,30:60] *= thickness
-            # points_y = points_y.numpy()
-            y_gt.append(points_y)
+            r2 = r2_score(y1, points_y, multioutput="variance_weighted")
+            if r2>=0:
+                y_1.append(y1)
+                y1 = inverse_to_inference_shape(y1)
+                if args.save_path is not None:
+                    for b in range(y1.shape[0]):
+                        file_name = file_names[0][b].split("/")[-1]
+                        np.save(args.save_path + "/" + file_name, y1[b])
+                # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
+                #                                  .cpu().numpy())
+                # if get_thickness is not None:
+                #     y2 *= thickness
+                # y_2.append(y2)
+                #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
+                                                #.cpu().numpy()))
+                    #points_y[:,30:60] *= thickness
+                # points_y = points_y.numpy()
+                y_gt.append(points_y)
+            else:
+                print(f"Skipping {file_names}")
+                problem_files.append(file_names)
+
 
 
     y_1 = np.concatenate(y_1, axis=0)
@@ -132,7 +138,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
     }
     if args.region_mask == "all":
         res["qtend_log_spatial"] = qtend_log_spatial
-    return res
+    return res, problem_files
 
 if __name__ == "__main__":
     import argparse
@@ -247,7 +253,8 @@ if __name__ == "__main__":
     all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
 
 
-    logs = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
+    logs, problem_files = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
+    np.savetxt("problem_files.txt", problem_files)
 
     with open(args.out_json, "w") as f:
         json.dump({
