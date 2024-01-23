@@ -69,16 +69,19 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw, _ = batch
-            print(points_y.shape)
             if get_thickness is not None:
-                thickness = get_thickness(x_raw[:,121].numpy())
+                thickness = get_thickness(x_raw[0,:,121].numpy())
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
             y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
                                                         .cpu().numpy())
+            points_y = points_y[0]
+            y1 = y1[0]
+            print("points_y:", points_y.shape)
+            print("y1:", y1.shape)
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
-                points_y[:,:30] *= thickness*phys_consts.LATVAP
+                points_y *= thickness*phys_consts.LATVAP
             r2 = r2_score(y1, points_y, multioutput="variance_weighted")
             if r2>=0:
                 y_1.append(y1)
@@ -98,7 +101,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
                 # points_y = points_y.numpy()
                 y_gt.append(points_y)
             else:
-                print(f"Skipping {file_names}")
+                print(f"Skipping {file_names}, r2: {r2}")
                 problem_files.append(file_names)
 
 
@@ -255,7 +258,7 @@ if __name__ == "__main__":
 
 
     logs, problem_files = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
-    np.savetxt(f"{args.out_json.rstrip('.json')}_problem_files.txt", problem_files)
+    np.savetxt(f"{args.out_json.rstrip('.json')}_problem_files.txt", np.concatenate(problem_files))
 
     with open(args.out_json, "w") as f:
         json.dump({
