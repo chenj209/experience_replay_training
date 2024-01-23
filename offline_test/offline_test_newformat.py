@@ -70,7 +70,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         with torch.no_grad():
             points_x, points_y, x_raw, _ = batch
             if get_thickness is not None:
-                thickness = get_thickness(x_raw[0,:,121].numpy())
+                thickness = get_thickness(x_raw[0,region_mask,121].numpy())
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
             y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
