@@ -59,16 +59,17 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         if batch[0].shape[0] == 0:
             continue
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-        batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-        batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
-        batch[2] = batch[2].reshape(-1, batch[2].shape[-1])
-        batch[0] = batch[0][region_mask, :]
-        batch[1] = batch[1][region_mask, :]
-        batch[2] = batch[2][region_mask, :]
+        # batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
+        # batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
+        # batch[2] = batch[2].reshape(-1, batch[2].shape[-1])
+        batch[0] = batch[0][:, region_mask, :]
+        batch[1] = batch[1][:, region_mask, :]
+        batch[2] = batch[2][:, region_mask, :]
         file_names = batch[3]
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw, _ = batch
+            print(points_y.shape)
             if get_thickness is not None:
                 thickness = get_thickness(x_raw[:,121].numpy())
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
