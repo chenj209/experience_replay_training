@@ -122,6 +122,12 @@ class DatasetDisk(data.Dataset):
     def normalize_y(self, y):
         return normalize_data_var_names(y, self.col_names_y, self.col_names, self.data_mean, self.data_std)
 
+    def inverse_y(self):
+        inverse = {}
+        for yname in self.col_names_y:
+            inverse[yname] = lambda y: inverse_data_var_names(y, yname, self.col_names, self.data_mean, self.data_std)
+        return inverse
+
     def get_xy_from_file(self, file_name, prev=False):
         data = np.load(file_name)
         input_indices = self.input_indices
