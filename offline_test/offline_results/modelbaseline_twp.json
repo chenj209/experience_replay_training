@@ -1,0 +1,5 @@
+{
+    "0-29": {
+        "ckpt_path": "/pscratch/sd/c/chenjd21/ckpts_time/time_model029_sampled12_0118_multistep1__region_pacific_region_mask/checkpoint_epoch50.pth.tar"
+   }
+}

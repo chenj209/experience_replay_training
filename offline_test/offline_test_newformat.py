@@ -51,7 +51,7 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
     else:
         region_mask = np.load(args.region_mask)[None, None, :, :]
     region_mask = to_inference_shape(region_mask)
-    print("region_mask shape: ", region_mask.shape)
+    #print("region_mask shape: ", region_mask.shape)
     region_mask = region_mask.squeeze().astype(bool)
     for iter, batch in enumerate(testloader):
         # allow empty batch
@@ -69,26 +69,27 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw, _ = batch
-            print("x_raw:", x_raw.shape)
+            #print("x_raw:", x_raw.shape)
             if get_thickness is not None:
                 thickness = get_thickness(x_raw[0,:,-1].numpy())
-                print("thickness:", thickness.shape)
+                #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
-            y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
-                                                        .cpu().numpy())
+            #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
+            #                                            .cpu().numpy())
+            y1 = all_models['0_29'](points_x).detach().cpu().numpy()
             points_y = points_y[0]
             y1 = y1[0]
-            print("points_y:", points_y.shape)
-            print("y1:", y1.shape)
+            #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
+            #print("y1:", y1.shape, y1.mean(), y1.std())
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
                 points_y *= thickness*phys_consts.LATVAP
             r2 = r2_score(y1, points_y, multioutput="variance_weighted")
             if r2>=0:
                 y_1.append(y1)
-                y1 = inverse_to_inference_shape(y1)
                 if args.save_path is not None:
+                    y1 = inverse_to_inference_shape(y1)
                     for b in range(y1.shape[0]):
                         file_name = file_names[0][b].split("/")[-1]
                         np.save(args.save_path + "/" + file_name, y1[b])
@@ -240,7 +241,7 @@ if __name__ == "__main__":
         is_train=False,
         noise_std=0,
         filename=True,
-        output_normalized=False,
+        output_normalized=True,
         multistep=args.multistep,
         sample_rate=args.sample,
         prev_ex_vars=prev_ex_vars+args.ex_input
@@ -260,7 +261,9 @@ if __name__ == "__main__":
 
 
     logs, problem_files = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
-    np.savetxt(f"{args.out_json.rstrip('.json')}_problem_files.txt", np.concatenate(problem_files))
+    if len(problem_files) > 0:
+        with open(f"{args.out_json.rstrip('.json')}_problem_files.txt", "w") as f:
+            f.write(str(problem_files))
 
     with open(args.out_json, "w") as f:
         json.dump({

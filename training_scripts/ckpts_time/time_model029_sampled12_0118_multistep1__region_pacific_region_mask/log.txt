@@ -1,0 +1,2 @@
+Epoch	LR	train mse	0-29_r2	train time	val time	
+0	9.9996e-04	2.3428e+02	8.9272e+01	1.0952e+01	5.1540e+00	

@@ -1,0 +1,1 @@
+[[('/pscratch/sd/c/chenjd21/spcam_new_data/39648.npy',), ('/pscratch/sd/c/chenjd21/spcam_new_data/39649.npy',)]]

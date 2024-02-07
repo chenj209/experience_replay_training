@@ -1,0 +1,27 @@
+activation : relu
+checkpoint : ckpts_time/time_model029_sampled12_0118_multistep1__region_pacific_region_mask
+data_dir : /pscratch/sd/c/chenjd21/spcam_new_data/
+dropout : 0.0
+epoch : 200
+evaluate : False
+ex_input : []
+layers : 7
+lr : 0.001
+lr_strategy : coslr
+manualSeed : 1
+momentum : 0.9
+multistep : 1
+network : resnet_output30
+node_size : 512
+noise_std : 0.0
+norm : none
+num_blocks : 7
+optim : adam
+output_type : 0-29
+region_mask : ../consts/pacific_region_mask.npy
+resume : 
+sample_rate : 192
+start_epoch : 0
+train_batch : 32
+weight_decay : 0.0
+workers : 4

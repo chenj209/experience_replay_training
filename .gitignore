@@ -7,3 +7,5 @@ __pycache__/**
 *.pdf
 tree_reg_*
 *.out
+*.pth.tar
+**/__pycache__/**
