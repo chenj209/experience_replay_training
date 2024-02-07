@@ -1,0 +1,49 @@
+time (days since 1997-01-01)
+datesec (sec in day)
+lat
+lon
+CAPE
+CLOUD_lev (cloud fraction)
+FLDS
+FLNS
+FLNT
+FLUT
+FLUXQ (check this)
+FLUXT (check this)
+FSDS
+FSNS
+FSNT
+FSUTOA
+LWUP
+QCCL_lev (CRM input cloud liquid water)
+QIIL_lev (CRM input cloud ice)
+QL_lev (CRM input water vapor)
+Qc_lev (cloud liquid water)
+Qi_lev (cloud ice)
+SOLIN
+SOLL
+SOLLD
+SOLS
+SOLSD
+SPDT (T tendency due to CRM)
+SPPRECC (CRM convective precipitation)
+SPPS (surface pressure)
+SPQRL_lev (long wave heating rate)
+SPQRS_lev (short wave heating rate)
+SPQTLS_lev (large scale vapor tendency from CRM?)
+SPTLS_lev (large scale temperature tendency from CRM?)
+TL_lev (CRM input temperature)
+T_nn_in_lev 
+UL_lev (CRM input grid u)
+VL_lev (CRM input grid v)
+dTls_nn_in_lev
+divq_ls_lev (crm input dQls)
+divt_ls_lev (crm input dQls)
+dq_crm_lev (crm water vapor tendency)
+dqvls_nn_in_lev
+ds_crm_lev
+qtend_ac_lev (?)
+qtend_check_lev (crm )
+qv_nn_in_lev
+stend_ac_lev (?)
+stend_check_lev
