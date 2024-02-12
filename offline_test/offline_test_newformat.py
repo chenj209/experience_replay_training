@@ -35,8 +35,6 @@ from data_shape import to_inference_shape, inverse_to_inference_shape
 
 def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
     problem_files = []
-    #test_losses = AverageMeter()
-    #loss_name = [output_type + '_r2: {:.4e}']
     test_time_begin = time.time()
     epoch = 1
     criterion = nn.MSELoss()
@@ -85,27 +83,27 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
                 points_y *= thickness*phys_consts.LATVAP
-            r2 = r2_score(y1, points_y, multioutput="variance_weighted")
-            if r2>=0:
-                y_1.append(y1)
-                if args.save_path is not None:
-                    y1 = inverse_to_inference_shape(y1)
-                    for b in range(y1.shape[0]):
-                        file_name = file_names[0][b].split("/")[-1]
-                        np.save(args.save_path + "/" + file_name, y1[b])
-                # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
-                #                                  .cpu().numpy())
-                # if get_thickness is not None:
-                #     y2 *= thickness
-                # y_2.append(y2)
-                #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
-                                                #.cpu().numpy()))
-                    #points_y[:,30:60] *= thickness
-                # points_y = points_y.numpy()
-                y_gt.append(points_y)
-            else:
-                print(f"Skipping {file_names}, r2: {r2}")
-                problem_files.append(file_names)
+            # r2 = r2_score(y1, points_y, multioutput="variance_weighted")
+            # if r2>=0:
+            #     y_1.append(y1)
+            #     if args.save_path is not None:
+            #         y1 = inverse_to_inference_shape(y1)
+            #         for b in range(y1.shape[0]):
+            #             file_name = file_names[0][b].split("/")[-1]
+            #             np.save(args.save_path + "/" + file_name, y1[b])
+            #     # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
+            #     #                                  .cpu().numpy())
+            #     # if get_thickness is not None:
+            #     #     y2 *= thickness
+            #     # y_2.append(y2)
+            #     #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
+            #                                     #.cpu().numpy()))
+            #         #points_y[:,30:60] *= thickness
+            #     # points_y = points_y.numpy()
+            #     y_gt.append(points_y)
+            # else:
+            #     print(f"Skipping {file_names}, r2: {r2}")
+            #     problem_files.append(file_names)
 
 
 

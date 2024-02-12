@@ -12,6 +12,7 @@ sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from normalization import normalize_data_var_names, inverse_data_var_names
 from data_shape import to_inference_shape, inverse_to_inference_shape
 from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_filename
+from tqdm.autonotebook import tqdm
 
 
 class DatasetDisk(data.Dataset):
@@ -36,6 +37,8 @@ class DatasetDisk(data.Dataset):
         prev_ex_vars=None):
         ### load the data ###
         all_files = file_names[:]
+        self.data_std = data_std
+        self.data_mean = data_mean
         if is_train:
             for i in range(17507,17530):
                 for file_name in all_files:
@@ -48,14 +51,18 @@ class DatasetDisk(data.Dataset):
                 for file_name in all_files:
                     if i in file_name:
                         all_files.remove(file_name)
+        else:
+            for i in ['35042', '43730', '52562']:
+                for file_name in all_files:
+                    if i in file_name:
+                        all_files.remove(file_name)
+
 
         #print('hahahahahah after file num:', len(all_files))
         self.silent = silent
         self.multistep = multistep
         self.all_files = all_files[:]
         self.all_files.sort(key=filename_to_idx)
-        self.data_std = data_std
-        self.data_mean = data_mean
         self.file_names = []
         self.prev_ex_vars = prev_ex_vars
         if self.multistep > 0:
