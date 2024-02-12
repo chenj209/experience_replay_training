@@ -56,6 +56,10 @@ class DatasetDisk(data.Dataset):
                 for file_name in all_files:
                     if i in file_name:
                         all_files.remove(file_name)
+            for i in range(55015,55056):
+                for file_name in all_files:
+                    if str(i) in file_name:
+                        all_files.remove(file_name)
 
 
         #print('hahahahahah after file num:', len(all_files))

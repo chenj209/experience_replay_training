@@ -83,6 +83,8 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
             if get_thickness is not None:
                 y1 *= thickness * phys_consts.LATVAP
                 points_y *= thickness*phys_consts.LATVAP
+            y_1.append(y1)
+            y_gt.append(points_y)
             # r2 = r2_score(y1, points_y, multioutput="variance_weighted")
             # if r2>=0:
             #     y_1.append(y1)
