@@ -8,45 +8,99 @@ from data_shape import to_inference_shape_torch, to_inference_shape
 from models import ResMLP
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim, latent_dim):
+    def __init__(self, config):
         super(Encoder, self).__init__()
-        self.conv1 = nn.Conv2d(input_dim, 512, kernel_size=3, stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(512)  # Batch normalization for the first layer
-        self.conv2 = nn.Conv2d(512, 1024, kernel_size=3, stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(1024)  # Batch normalization for the second layer
-        self.conv3 = nn.Conv2d(1024, 2048, kernel_size=3, stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(2048)  # Batch normalization for the third layer
-        # compute the flattened size
-        # self.flattened_size = 2048 * 12 * 18
-        # self.fc = nn.Linear(self.flattened_size, latent_dim)
+        input_size = config["input_size"]
+        channel_sizes = config["channel_sizes"]
+        kernel_size = config["kernel_size"]
+        strides = config["stride"]
+        paddings = config["padding"]
+        output_paddings = config["output_padding"]
+        
+        conv_layers = [
+            nn.Conv2d(input_size[0], channel_sizes[0], kernel_size=kernel_size, stride=strides[0], padding=paddings[0]),
+            nn.BatchNorm2d(channel_sizes[0]),
+            nn.ReLU(True)
+        ]
+        for i in range(len(channel_sizes)-1):
+            conv_layers.extend([
+                nn.Conv2d(channel_sizes[i], channel_sizes[i+1], kernel_size=kernel_size, stride=strides[i+1], padding=paddings[i+1]),
+                nn.BatchNorm2d(channel_sizes[i+1]),
+                nn.ReLU(True),
+            ])
+        self.conv = nn.Sequential(*conv_layers)
+        
+        self.flatten = nn.Flatten(start_dim=1)
+        
+        h = input_size[1]
+        w = input_size[2]
+        for i in range(len(channel_sizes)):
+            h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1 
+            w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
+        self.flattened_size = int(channel_sizes[-1] * h * w)
+        
+        self.fc = nn.Linear(self.flattened_size, config["latent_size"])
 
     def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        #print("pre flatten:", x.shape)
-        # x = x.reshape(-1, self.flattened_size)
-        # x = F.relu(self.fc(x))
+        # print(x.shape)
+        x = self.conv(x) 
+        x = self.flatten(x)
+        x = self.fc(x)
         return x
 
 # write a correspoinding decoder
 class Decoder(nn.Module):
-    def __init__(self, output_dim, latent_dim):
+    def __init__(self, config):
         super(Decoder, self).__init__()
-        # self.fc = nn.Linear(latent_dim, 2048 * 12 * 18)
-
-        self.deconv1 = nn.ConvTranspose2d(2048, 1024, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.bn1 = nn.BatchNorm2d(1024)  # Batch normalization for the first layer
-        self.deconv2 = nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1, output_padding=1)
-        self.bn2 = nn.BatchNorm2d(512)  # Batch normalization for the second layer
-        self.deconv3 = nn.ConvTranspose2d(512, output_dim, kernel_size=3, stride=2, padding=1, output_padding=1)
+        input_size = config["input_size"]
+        channel_sizes = config["channel_sizes"][::-1]
+        kernel_size = config["kernel_size"]
+        strides = config["stride"][::-1]:w
+        paddings = config["padding"][::-1]
+        output_paddings = config["output_padding"][::-1]
+        
+        h = input_size[1]
+        w = input_size[2]
+        for i in range(len(channel_sizes)):
+            h = np.floor((h - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
+            w = np.floor((w - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
+        self.flattened_size = int(channel_sizes[0] * h * w)
+        self.fc = nn.Linear(config["latent_size"], self.flattened_size)
+        
+        self.unflatten = nn.Unflatten(
+            dim=1,
+            unflattened_size=(channel_sizes[0], int(h), int(w))
+        ) 
+        
+        deconv_layers = []
+        for i in range(len(channel_sizes)-1):
+            deconv_layers.extend([
+                nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
+                nn.BatchNorm2d(channel_sizes[i+1]),
+                nn.ReLU(True),
+            ])
+        deconv_layers.extend([
+            nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
+            nn.BatchNorm2d(input_size[0]),
+        ])
+        self.deconv = nn.Sequential(*deconv_layers)
 
     def forward(self, x):
-        # x = F.relu(self.fc(x))
-        # x = x.reshape(-1, 2048, 12, 18)
-        x = F.relu(self.bn1(self.deconv1(x)))
-        x = F.relu(self.bn2(self.deconv2(x)))
-        x = torch.sigmoid(self.deconv3(x))  # Using sigmoid for the final layer
+        x = self.fc(x)
+        x = self.unflatten(x)
+        x = self.deconv(x)
+        x = torch.sigmoid(x)  # Using sigmoid for the final layer
+        return x
+
+class Autoencoder(nn.Module):
+    def __init__(self, config):
+        super(Autoencoder, self).__init__()
+        self.encoder = Encoder(config)
+        self.decoder = Decoder(config)
+    
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
         return x
 
 class Encoder3D(nn.Module):
