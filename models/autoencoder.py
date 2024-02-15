@@ -7,6 +7,21 @@ sys.path.append('../utils')
 from data_shape import to_inference_shape_torch, to_inference_shape
 from models import ResMLP
 
+class ElementWiseMultiplyAddBias(nn.Module):
+    def __init__(self, num_features):
+        super(ElementWiseMultiplyAddBias, self).__init__()
+        # Initialize the weights and biases as learnable parameters
+        # num_features should match the number of features in the input
+        self.weights = nn.Parameter(torch.ones(num_features))
+        self.bias = nn.Parameter(torch.zeros(num_features))
+
+    def forward(self, x):
+        # Perform element-wise multiplication
+        x = x * self.weights
+        # Add bias
+        x = x + self.bias
+        return x
+
 class Encoder(nn.Module):
     def __init__(self, config):
         super(Encoder, self).__init__()
@@ -38,14 +53,16 @@ class Encoder(nn.Module):
             h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1 
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
         self.flattened_size = int(channel_sizes[-1] * h * w)
+        self.em = ElementWiseMultiplyAddBias(self.flattened_size)
         
-        self.fc = nn.Linear(self.flattened_size, config["latent_size"])
+        # self.fc = nn.Linear(self.flattened_size, config["latent_size"])
 
     def forward(self, x):
         # print(x.shape)
         x = self.conv(x) 
         x = self.flatten(x)
-        x = self.fc(x)
+        # x = self.fc(x)
+        x = self.em(x)
         return x
 
 # write a correspoinding decoder
@@ -55,7 +72,7 @@ class Decoder(nn.Module):
         input_size = config["input_size"]
         channel_sizes = config["channel_sizes"][::-1]
         kernel_size = config["kernel_size"]
-        strides = config["stride"][::-1]:w
+        strides = config["stride"][::-1]
         paddings = config["padding"][::-1]
         output_paddings = config["output_padding"][::-1]
         
@@ -65,7 +82,8 @@ class Decoder(nn.Module):
             h = np.floor((h - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
             w = np.floor((w - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
         self.flattened_size = int(channel_sizes[0] * h * w)
-        self.fc = nn.Linear(config["latent_size"], self.flattened_size)
+        self.em = ElementWiseMultiplyAddBias(self.flattened_size)
+        # self.fc = nn.Linear(config["latent_size"], self.flattened_size)
         
         self.unflatten = nn.Unflatten(
             dim=1,
@@ -86,7 +104,8 @@ class Decoder(nn.Module):
         self.deconv = nn.Sequential(*deconv_layers)
 
     def forward(self, x):
-        x = self.fc(x)
+        # x = self.fc(x)
+        x = self.em(x)
         x = self.unflatten(x)
         x = self.deconv(x)
         x = torch.sigmoid(x)  # Using sigmoid for the final layer
@@ -144,16 +163,16 @@ class Decoder3D(nn.Module):
         return x
 
 
-class Autoencoder(nn.Module):
-    def __init__(self, input_size):
-        super(Autoencoder, self).__init__()
-        self.encoder = Encoder(input_size, 256)
-        self.decoder = Decoder(input_size, 256)
+# class Autoencoder(nn.Module):
+#     def __init__(self, input_size):
+#         super(Autoencoder, self).__init__()
+#         self.encoder = Encoder(input_size, 256)
+#         self.decoder = Decoder(input_size, 256)
 
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+#     def forward(self, x):
+#         x = self.encoder(x)
+#         x = self.decoder(x)
+#         return x
 
 class AutoencoderResMLP(nn.Module):
     def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=256, region_mask=None, resmlp=True):
@@ -201,13 +220,31 @@ class AutoencoderResMLP(nn.Module):
 if __name__ == '__main__':
     import numpy as np
     input_size = 340
-    # autoencoder = Autoencoder(input_size)
-    # print(autoencoder)
+    config = {
+        "input_size": [340,29,55],
+        # "input_size": [1,28,28],
+        "channel_sizes": [512, 256, 128],
+        # "channel_sizes": [16, 32, 64],
+        "latent_size": 128*29*55,
+        "kernel_size": 3,
+        "stride": [1, 1, 1],
+        # "padding": [1, 1, 0],
+        "padding": [1, 1, 1],
+        # "output_padding": [1, 1, 0],
+        "output_padding": [0, 0, 0],
+    }
+    autoencoder = Autoencoder(config)
+    print(autoencoder)
+    for name, module in autoencoder.named_modules():
+        num_params = sum(p.numel() for p in module.parameters(recurse=False))
+        if num_params > 0:
+            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
-    # # Example input
-    # input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
-    # output = autoencoder(input_data)
-    # print(output.shape)  # Should be the same as input_data's shape
+    # Example input
+    input_data = torch.randn(1, *config["input_size"])  # Batch size of 1
+    output = autoencoder(input_data)
+    print(output.shape)  # Should be the same as input_data's shape
 
     # for name, module in autoencoder.named_modules():
     #     num_params = sum(p.numel() for p in module.parameters(recurse=False))
@@ -216,36 +253,36 @@ if __name__ == '__main__':
     #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
 
-    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=96*144*4)
-    print(autoencoder)
+    # autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=96*144*4)
+    # print(autoencoder)
 
-    # Example input
-    input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
-    output1, output2 = autoencoder(input_data)
-    print(output1.shape)  # Should be the same as input_data's shape
-    print(output2.shape)  # Should be the same as input_data's shape
+    # # Example input
+    # input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
+    # output1, output2 = autoencoder(input_data)
+    # print(output1.shape)  # Should be the same as input_data's shape
+    # print(output2.shape)  # Should be the same as input_data's shape
 
-    for name, module in autoencoder.named_modules():
-        num_params = sum(p.numel() for p in module.parameters(recurse=False))
-        if num_params > 0:
-            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
-            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+    # for name, module in autoencoder.named_modules():
+    #     num_params = sum(p.numel() for p in module.parameters(recurse=False))
+    #     if num_params > 0:
+    #         layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+    #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
-    region_mask = np.load("../consts/landmask.npy")[None, None]
-    region_mask = to_inference_shape(region_mask)
-    print(region_mask.shape)
+    # region_mask = np.load("../consts/landmask.npy")[None, None]
+    # region_mask = to_inference_shape(region_mask)
+    # print(region_mask.shape)
 
-    autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, region_mask=region_mask)
-    print(autoencoder)
+    # autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, region_mask=region_mask)
+    # print(autoencoder)
 
-    # Example input
-    input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
-    output1, output2 = autoencoder(input_data)
-    print(output1.shape)  # Should be the same as input_data's shape
-    print(output2.shape)  # Should be the same as input_data's shape
+    # # Example input
+    # input_data = torch.randn(1, 340, 96, 144)  # Batch size of 1
+    # output1, output2 = autoencoder(input_data)
+    # print(output1.shape)  # Should be the same as input_data's shape
+    # print(output2.shape)  # Should be the same as input_data's shape
 
-    for name, module in autoencoder.named_modules():
-        num_params = sum(p.numel() for p in module.parameters(recurse=False))
-        if num_params > 0:
-            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
-            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+    # for name, module in autoencoder.named_modules():
+    #     num_params = sum(p.numel() for p in module.parameters(recurse=False))
+    #     if num_params > 0:
+    #         layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+    #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
