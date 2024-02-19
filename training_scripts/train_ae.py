@@ -176,12 +176,16 @@ def validate_batch(model, batch, criterion, args):
     return loss_rec.item()
 
 # write a function that returns the min and max coordinates for the box
+import math
 def get_min_max_coords(mask, pad):
     min_x = np.min(np.where(mask)[0])
     max_x = np.max(np.where(mask)[0])
     min_y = np.min(np.where(mask)[1])
     max_y = np.max(np.where(mask)[1])
-    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
+    wid_x = math.ceil((max_x - min_x)/2)*2
+    wid_y = math.floor((max_y - min_y)/2)*2
+    return int(min_x-pad), int(min_x+wid_x+pad), \
+        int(min_y-pad), int(min_y+wid_y+pad)
 
 def main(args):
     trainloader, validloader = prep_dataloaders(args)
@@ -194,7 +198,7 @@ def main(args):
     else:
         region_mask = np.ones((1, 1, 96, 144))
     # region_mask = to_inference_shape(region_mask).squeeze()
-    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 2)
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 3)
     lon = np.linspace(0,357.5,144)
     lat = np.linspace(-90,90,96)
     print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
