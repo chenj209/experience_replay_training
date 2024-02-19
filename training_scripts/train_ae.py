@@ -24,24 +24,7 @@ from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk
 
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = np.inf
-
-    def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
-
-def main(args):
+def prep_dataloaders(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
@@ -78,14 +61,10 @@ def main(args):
                 all_files.remove(file_name)
     print('hahahahahah after file num:', len(all_files))
 
-    #test_idx = np.random.choice(len(all_files),len(all_files)//20,replace=False)
-    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
-    #test_idx = np.random.choice(len(all_files),len(all_files)//10,replace=False)
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
-    #random.shuffle(train_files)
-    test_files = [all_files[i] for i in test_idx]
-    print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
+    valid_files = [all_files[i] for i in test_idx]
+    print('train files: {} test files: {}'.format(len(train_files), len(valid_files)))
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
     training_set = DatasetDisk(
         train_files,
@@ -101,8 +80,8 @@ def main(args):
         prev_ex_vars=prev_ex_vars+args.ex_input)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
-    testing_set = DatasetDisk(
-        test_files,
+    valid_set = DatasetDisk(
+        valid_files,
         col_names,
         col_names_x,
         col_names_y,
@@ -113,20 +92,10 @@ def main(args):
         multistep=int(args.multistep),
         sample_rate=args.sample_rate,
         prev_ex_vars=prev_ex_vars+args.ex_input)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
-    early_stopper = EarlyStopper(patience=10,min_delta=0)
+    validloader = data.DataLoader(valid_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
+    return trainloader, validloader
 
-    region_mask = None
-    if args.region_mask is not None and args.region_mask != "all":
-        region_mask = np.load(args.region_mask)[None, None, :, :]
-        region_mask = to_inference_shape(region_mask).squeeze()
-    else:
-        region_mask = np.ones((1, 1, 96, 144))
-        region_mask = to_inference_shape(region_mask).squeeze()
-
-    # define model
-    input_size = len(training_set.input_indices)\
-                +int(args.multistep)*(len(training_set.prev_input_indices))
+def prep_models(input_size, args):
     print(f"Model input size: {input_size}")
     model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
 
@@ -134,9 +103,6 @@ def main(args):
 
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
-
-
-
     """
     Define Residual Methods and Optimizer
     """
@@ -164,11 +130,77 @@ def main(args):
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
 
-    # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
-    # def my_collate(batch):
-    #     batch = list(filter (lambda x:x is not None, batch))
-    #     return default_collate(batch)
+    return model, criterion, optimizer, lr_scheduler, logger
 
+
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
+def train_batch(model, criterion, optimizer, batch, args):
+    points_x, points_y = batch[:2]
+    #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+    points_x = (points_x.float()).cuda()
+
+    # compute output
+    x_rec = model(points_x)
+    loss = criterion(x_rec, points_x)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    return loss.item()
+
+def validate_batch(model, batch, criterion, args):
+    points_x = batch[0]
+    points_x = (points_x.float()).cuda()
+
+    # compute output
+    x_rec = model(points_x)
+    loss_rec = criterion(x_rec, points_x)
+    return loss_rec.item()
+
+# write a function that returns the min and max coordinates for the box
+def get_min_max_coords(mask, pad):
+    min_x = np.min(np.where(mask)[0])
+    max_x = np.max(np.where(mask)[0])
+    min_y = np.min(np.where(mask)[1])
+    max_y = np.max(np.where(mask)[1])
+    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
+
+def main(args):
+    trainloader, validloader = prep_dataloaders(args)
+    # define model
+    input_size = len(trainloader.dataset.input_indices)\
+                +int(args.multistep)*(len(trainloader.dataset.prev_input_indices))
+
+    model = prep_models(input_size, args)
+    early_stopper = EarlyStopper(patience=10,min_delta=0)
+
+    region_mask = None
+    if args.region_mask is not None and args.region_mask != "all":
+        region_mask = np.load(args.region_mask)[None, None, :, :]
+    else:
+        region_mask = np.ones((1, 1, 96, 144))
+    # region_mask = to_inference_shape(region_mask).squeeze()
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 2)
+    lon = np.linspace(0,357.5,144)
+    lat = np.linspace(-90,90,96)
+    print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
+
+    model, criterion, optimizer, lr_scheduler, logger = prep_models(args)
     # Train and test
     current_iters = 0
     for epoch in range(args.epoch):
@@ -179,11 +211,7 @@ def main(args):
         train_time_begin = time.time()
         for iter, batch in enumerate(trainloader):
             if batch[0].size() == 1 and batch[0] == 0:
-                # skip empty batch due to missing data
                 continue
-            #print(iter, "batch size:", batch[0].size(), batch[1].size(), batch[2].size())
-            #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, region_mask.astype(bool), :30]
@@ -193,35 +221,12 @@ def main(args):
                 batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
             if args.output_type == '61-65':
                 batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
-#             if args.output_type == '61-65':
-#                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
-#             else:
-            # train_mse = tools.train(batch, model, criterion, optimizer)
+            # apply the region window
+            batch[0] = batch[0][:, min_x: max_x, min_y: max_y, :]
+
             model.train()
+            train_mse = train_batch(model, criterion, optimizer, batch, args)
 
-            points_x, points_y = batch[:2]
-            points_x = inverse_to_inference_shape(points_x)
-            points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
-
-
-        #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
-
-            # compute output
-            outputs_y, x_rec = model(points_x)
-            # print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = 0
-            if outputs_y is not None:
-                loss_pred = criterion(outputs_y, points_y)
-            loss_rec = criterion(x_rec, points_x)
-            loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec
-            # print(points_y)
-            # print(torch.min(points_y))
-            # compute gradient and do SGD step
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            train_mse = loss.item()
             train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
@@ -232,19 +237,19 @@ def main(args):
         """
         #### define the loss seperately ## we have 7 mse accordingly
 
-        test_losses = {}
-        for i in range(2):
-            test_losses[i] = AverageMeter()
-        loss_name = [args.output_type + '_pred: {:.5f}']
+        valid_losses = {}
+        for i in range(1):
+            valid_losses[i] = AverageMeter()
+        loss_name = []
         loss_name.append(args.output_type + '_rec: {:.5f}')
-        test_time_begin = time.time()
-        for iter, batch in enumerate(testloader):
+        valid_time_begin = time.time()
+        for iter, batch in enumerate(validloader):
             if batch[0].size() == 1 and batch[0] == 0:
                 # skip empty batch due to missing data
                 continue
             #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
             #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
-            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+            suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
             if args.output_type == '0-29':
                 batch[1] = batch[1][:,region_mask.astype(bool),  :30]
             if args.output_type == '30-59':
@@ -254,39 +259,28 @@ def main(args):
             if args.output_type == '61-65':
                 batch[1] = batch[1][:,region_mask.astype(bool),  61:66]
             # test_mses = tools.test_de(batch, model, criterion)
+            # apply region window
+            batch[0] = batch[0][:, min_x: max_x, min_y: max_y, :]
+
             model.eval()
+            valid_loss = validate_batch(model, batch, criterion, args)
 
-            points_x, points_y = batch[:2]
-            points_x = inverse_to_inference_shape(points_x)
-            points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
-
-
-        #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
-
-            # compute output
-            outputs_y, x_rec = model(points_x)
-            #print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = 0
-            if outputs_y is not None:
-                loss_pred = criterion(outputs_y, points_y).item()
-            loss_rec = criterion(x_rec, points_x).item()
-            test_losses[0].update(loss_pred, batch[0].size(0))
-            test_losses[1].update(loss_rec, batch[0].size(0))
+            valid_losses[0].update(valid_loss, batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
-            suffix = suffix + loss_name[0].format(test_losses[0].avg)
-            suffix = suffix + loss_name[1].format(test_losses[1].avg)
+            suffix = suffix + loss_name[0].format(valid_losses[0].avg)
+            # suffix = suffix + loss_name[1].format(test_losses[1].avg)
             print(suffix)
 
 
-        test_time = time.time() - test_time_begin
+        test_time = time.time() - valid_time_begin
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
         save_log = [epoch, lr, train_losses.avg]
-        for i in range(2):
+        for i in range(1):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
-            save_log.append(test_losses[i].avg)
+            save_log.append(valid_losses[i].avg)
 
         save_log.append(train_time)
         save_log.append(test_time)
@@ -314,8 +308,8 @@ if __name__ == '__main__':
     parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
-    parser.add_argument('--rec_weight', type=float, default=0.1)
-    parser.add_argument('--pred_weight', type=float, default=0.9)
+    # parser.add_argument('--rec_weight', type=float, default=0.1)
+    # parser.add_argument('--pred_weight', type=float, default=0.9)
 
     args = parser.parse_args()
     print(args)
@@ -340,3 +334,4 @@ if __name__ == '__main__':
     main(args)
     current_datetime = datetime.now()
     print("Training end time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))
+
