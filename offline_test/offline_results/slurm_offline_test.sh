@@ -2,11 +2,13 @@
 #SBATCH -A m4359
 #SBATCH -C gpu
 #SBATCH --qos=regular
-#SBATCH -t 02:00:00
+#SBATCH -t 01:00:00
 #SBATCH -n 1
 #SBATCH -c 32
 #SBATCH --gpus-per-task=1
 #SBATCH --gpu-bind=none
+#SBATCH -J offline
+#SBATCH -o %x_%j.out
 
 module load cudatoolkit/11.7
 module load cudnn/8.9.1_cuda11
@@ -16,4 +18,4 @@ export SLURM_CPU_BIND="cores"
 conda activate mpi4py2
 python -c "import torch; print(torch.zeros(1).cuda())"
 python -c "import torch; print(torch.cuda.is_available())"
-srun --constraint=gpu --ntasks 1 -G 1 python ../offline_test_newformat.py $1 $2 --sample 12 --region_mask ../../consts/pacific_region_mask.npy --start_ts 35042
+srun --constraint=gpu --ntasks 1 -G 1 python ../offline_test_newformat.py $1 $2 --sample 12 --region_mask ../../consts/pacific_region_mask.npy --start_ts 35042 --thick --ex_input $3

@@ -26,15 +26,10 @@ sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk
 
 def prep_dataloaders(args):
-    data_dir = args.data_dir
-    if not os.path.isdir(data_dir):
-        data_dir = "/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
+    #data_dir = args.data_dir
+    #if not os.path.isdir(data_dir):
         # data_dir = "./data/"
-        data_dir = "../analysis/test_data/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
@@ -43,7 +38,7 @@ def prep_dataloaders(args):
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*.npy')
+    all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
     all_files = all_files[:35040]
 
@@ -78,7 +73,8 @@ def prep_dataloaders(args):
         noise_std=0,
         multistep=int(args.multistep),
         sample_rate=args.sample_rate,
-        prev_ex_vars=prev_ex_vars+args.ex_input)
+        prev_ex_vars=prev_ex_vars+args.ex_input,
+        image=True)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
     valid_set = DatasetDisk(
@@ -92,15 +88,16 @@ def prep_dataloaders(args):
         noise_std=0,
         multistep=int(args.multistep),
         sample_rate=args.sample_rate,
-        prev_ex_vars=prev_ex_vars+args.ex_input)
+        prev_ex_vars=prev_ex_vars+args.ex_input,
+        image=True)
     validloader = data.DataLoader(valid_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     return trainloader, validloader
 
-def prep_models(input_size, args):
-    print(f"Model input size: {input_size}")
-    #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
+def prep_models(args):
     with open(args.ae_config, 'r') as f:
         ae_config = json.load(f)
+    print(f"Model input size: {ae_config['input_size']}")
+    #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
     model = autoencoder.Autoencoder(ae_config)
     print("Model structure:")
@@ -188,11 +185,7 @@ def get_min_max_coords(mask, pad):
 
 def main(args):
     trainloader, validloader = prep_dataloaders(args)
-    # define model
-    input_size = len(trainloader.dataset.input_indices)\
-                +int(args.multistep)*(len(trainloader.dataset.prev_input_indices))
 
-    model = prep_models(input_size, args)
     early_stopper = EarlyStopper(patience=10,min_delta=0)
 
     region_mask = None
@@ -206,6 +199,7 @@ def main(args):
     lat = np.linspace(-90,90,96)
     print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
 
+    # define model
     model, criterion, optimizer, lr_scheduler, logger = prep_models(args)
     # Train and test
     current_iters = 0
@@ -219,16 +213,9 @@ def main(args):
             if batch[0].size() == 1 and batch[0] == 0:
                 continue
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:, region_mask.astype(bool), :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
             # apply the region window
-            batch[0] = batch[0][:, min_x: max_x, min_y: max_y, :]
+            batch[0] = batch[0][:, :, min_x: max_x, min_y: max_y]
+            print("input_shape:", batch[0].shape)
 
             model.train()
             train_mse = train_batch(model, criterion, optimizer, batch, args)
@@ -256,16 +243,8 @@ def main(args):
             #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
             #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(validloader))
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:,region_mask.astype(bool),  :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:,region_mask.astype(bool),  60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:,region_mask.astype(bool),  61:66]
             # apply region window
-            batch[0] = batch[0][:, min_x: max_x, min_y: max_y, :]
+            batch[0] = batch[0][:, :, min_x: max_x, min_y: max_y]
 
             model.eval()
             valid_loss = validate_batch(model, batch, criterion, args)

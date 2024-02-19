@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
+import numpy as np
 
 sys.path.append('../utils')
 from data_shape import to_inference_shape_torch, to_inference_shape
@@ -31,10 +32,10 @@ class Encoder(nn.Module):
         strides = config["stride"]
         paddings = config["padding"]
         output_paddings = config["output_padding"]
-        self.fc_sizes = config["fc_sizes"]
+        self.fc_sizes = config["fc_sizes"][:]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
-        
+
         conv_layers = [
             nn.Conv2d(input_size[0], channel_sizes[0], kernel_size=kernel_size, stride=strides[0], padding=paddings[0]),
             nn.BatchNorm2d(channel_sizes[0]),
@@ -47,13 +48,13 @@ class Encoder(nn.Module):
                 nn.ReLU(True),
             ])
         self.conv = nn.Sequential(*conv_layers)
-        
+
         self.flatten = nn.Flatten(start_dim=1)
-        
+
         h = input_size[1]
         w = input_size[2]
         for i in range(len(channel_sizes)):
-            h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1 
+            h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
         self.flattened_size = int(channel_sizes[-1] * h * w)
 
@@ -61,7 +62,7 @@ class Encoder(nn.Module):
         for i in range(self.num_em_layers):
             em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
             # em_layers.append(nn.ReLU(True))
-        self.em = nn.Sequential(*em_layers) 
+        self.em = nn.Sequential(*em_layers)
 
         fc_layers = []
         self.fc_sizes.insert(0, self.flattened_size)
@@ -71,8 +72,9 @@ class Encoder(nn.Module):
         self.fc = nn.Sequential(*fc_layers)
 
     def forward(self, x):
-        # print(x.shape)
-        x = self.conv(x) 
+        print("input:", x.shape)
+        x = self.conv(x)
+        print("conv: ", x.shape)
         x = self.flatten(x)
         if self.num_em_layers > 0:
             x = self.em(x)
@@ -90,10 +92,10 @@ class Decoder(nn.Module):
         strides = config["stride"][::-1]
         paddings = config["padding"][::-1]
         output_paddings = config["output_padding"][::-1]
-        self.fc_sizes = config["fc_sizes"]
+        self.fc_sizes = config["fc_sizes"][::-1]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
-        
+
         h = input_size[1]
         w = input_size[2]
         for i in range(len(channel_sizes)):
@@ -103,7 +105,7 @@ class Decoder(nn.Module):
 
         fc_layers = []
         self.fc_sizes.append(self.flattened_size)
-        for i in range(len(self.fc_sizes)):
+        for i in range(len(self.fc_sizes)-1):
             fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
             # fc_layers.append(nn.ReLU(True))
         self.fc = nn.Sequential(*fc_layers)
@@ -113,12 +115,12 @@ class Decoder(nn.Module):
             em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
             # em_layers.append(nn.ReLU(True))
         self.em = nn.Sequential(*em_layers)
-        
+
         self.unflatten = nn.Unflatten(
             dim=1,
             unflattened_size=(channel_sizes[0], int(h), int(w))
-        ) 
-        
+        )
+
         deconv_layers = []
         for i in range(len(channel_sizes)-1):
             deconv_layers.extend([
@@ -147,7 +149,7 @@ class Autoencoder(nn.Module):
         super(Autoencoder, self).__init__()
         self.encoder = Encoder(config)
         self.decoder = Decoder(config)
-    
+
     def forward(self, x):
         x = self.encoder(x)
         x = self.decoder(x)

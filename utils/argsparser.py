@@ -9,16 +9,16 @@ def get_argparser():
     parser.add_argument('--noise_std', default=0.05, type=float, metavar='M',
                         help='white noise added to the data')
     parser.add_argument('--data_dir', type=str, metavar='PATH',
-                        help='path to dataset')
+                        help='path to dataset', default="./training_data")
     parser.add_argument('--output_type', default='0-29', type=str,
                         help='0-29,30-59,60,61,62,63,64')
-    
+
     # Optimization options
     parser.add_argument('--epoch', default=100, type=int, metavar='N',
                         help='number of epochs to run')
     parser.add_argument('--train_batch', default=10, type=int, metavar='N',
                         help='train batchsize')
-    parser.add_argument('--lr', default=0.1, type=float,
+    parser.add_argument('--lr', default=0.001, type=float,
                         metavar='LR', help='initial learning rate')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                         help='momentum')
@@ -26,7 +26,7 @@ def get_argparser():
                         metavar='W', help='weight decay')
     parser.add_argument('--optim', default='adam', type=str,
                         help='function to approximate')
-    parser.add_argument('--lr_strategy', default='', type=str,
+    parser.add_argument('--lr_strategy', default='coslr', type=str,
                         help='lr strategy: coslr')
     # model potions
     parser.add_argument('--network', default='resnet', type=str,
