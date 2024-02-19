@@ -219,7 +219,6 @@ def main(args):
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
             # apply the region window
             batch[0] = batch[0][:, :, min_x: max_x, min_y: max_y]
-            print("input_shape:", batch[0].shape)
 
             model.train()
             train_mse = train_batch(model, criterion, optimizer, batch, args)

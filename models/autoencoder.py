@@ -61,20 +61,19 @@ class Encoder(nn.Module):
         em_layers = []
         for i in range(self.num_em_layers):
             em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            # em_layers.append(nn.ReLU(True))
-        self.em = nn.Sequential(*em_layers)
+            em_layers.append(nn.ReLU(True))
+        # not applying activation to latent space
+        self.em = nn.Sequential(*em_layers[:-1])
 
         fc_layers = []
         self.fc_sizes.insert(0, self.flattened_size)
         for i in range(len(self.fc_sizes)-1):
             fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            # fc_layers.append(nn.ReLU(True))
-        self.fc = nn.Sequential(*fc_layers)
+            fc_layers.append(nn.ReLU(True))
+        self.fc = nn.Sequential(*fc_layers[:-1])
 
     def forward(self, x):
-        print("input:", x.shape)
         x = self.conv(x)
-        print("conv: ", x.shape)
         x = self.flatten(x)
         if self.num_em_layers > 0:
             x = self.em(x)
@@ -107,14 +106,14 @@ class Decoder(nn.Module):
         self.fc_sizes.append(self.flattened_size)
         for i in range(len(self.fc_sizes)-1):
             fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            # fc_layers.append(nn.ReLU(True))
-        self.fc = nn.Sequential(*fc_layers)
+            fc_layers.append(nn.ReLU(True))
+        self.fc = nn.Sequential(*fc_layers[:-1])
 
         em_layers = []
         for i in range(self.num_em_layers):
             em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            # em_layers.append(nn.ReLU(True))
-        self.em = nn.Sequential(*em_layers)
+            em_layers.append(nn.ReLU(True))
+        self.em = nn.Sequential(*em_layers[:-1])
 
         self.unflatten = nn.Unflatten(
             dim=1,
