@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import glob
 import random
 import sys
@@ -97,8 +98,13 @@ def prep_dataloaders(args):
 
 def prep_models(input_size, args):
     print(f"Model input size: {input_size}")
-    model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
-
+    #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
+    with open(args.ae_config, 'r') as f:
+        ae_config = json.load(f)
+    print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
+    model = autoencoder.Autoencoder(ae_config)
+    print("Model structure:")
+    print(model)
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
     model = torch.nn.DataParallel(model).cuda()
@@ -258,7 +264,6 @@ def main(args):
                 batch[1] = batch[1][:,region_mask.astype(bool),  60:61]
             if args.output_type == '61-65':
                 batch[1] = batch[1][:,region_mask.astype(bool),  61:66]
-            # test_mses = tools.test_de(batch, model, criterion)
             # apply region window
             batch[0] = batch[0][:, min_x: max_x, min_y: max_y, :]
 
@@ -266,9 +271,7 @@ def main(args):
             valid_loss = validate_batch(model, batch, criterion, args)
 
             valid_losses[0].update(valid_loss, batch[0].size(0))
-                # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
             suffix = suffix + loss_name[0].format(valid_losses[0].avg)
-            # suffix = suffix + loss_name[1].format(test_losses[1].avg)
             print(suffix)
 
 
@@ -303,6 +306,7 @@ if __name__ == '__main__':
 
     print("Training start time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))
     parser = argsparser.get_argparser()
+    parser.add_argument("--ae_config", type=str, help="path to ae config file")
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
