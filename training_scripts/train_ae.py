@@ -62,6 +62,8 @@ def prep_dataloaders(args):
     valid_files = [all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(valid_files)))
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
+    with open(args.ae_config, 'r') as f:
+        ae_config = json.load(f)
     training_set = DatasetDisk(
         train_files,
         col_names,
@@ -72,7 +74,7 @@ def prep_dataloaders(args):
         is_train=True,
         noise_std=0,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
+        sample_rate=ae_config["sample_rate"],
         prev_ex_vars=prev_ex_vars+args.ex_input,
         image=True)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
@@ -87,7 +89,7 @@ def prep_dataloaders(args):
         is_train=False,
         noise_std=0,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
+        sample_rate=ae_config["sample_rate"],
         prev_ex_vars=prev_ex_vars+args.ex_input,
         image=True)
     validloader = data.DataLoader(valid_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
@@ -111,9 +113,9 @@ def prep_models(args):
     """
     criterion = nn.MSELoss()
     if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=ae_config["lr"], momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        optimizer = optim.Adam(model.parameters(), lr=ae_config["lr"], betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     else:
         optimizer = None
 
@@ -188,6 +190,14 @@ def get_min_max_coords(mask, pad):
         int(min_y-pad), int(min_y+wid_y+pad)
 
 def main(args):
+    checkpoint_name = f"/pscratch/sd/c/chenjd21/ae_training/{args.ae_config.rstrip(".json")}"
+    if not os.path.isdir(checkpoint_name):
+        mkdir_p(checkpoint_name)
+
+    with open(checkpoint_name + "/configs.txt", 'w+') as f:
+        for (k, v) in args._get_kwargs():
+            f.write(k + ' : ' + str(v) + '\n')
+
     trainloader, validloader = prep_dataloaders(args)
 
     early_stopper = EarlyStopper(patience=10,min_delta=0)
@@ -271,14 +281,14 @@ def main(args):
         save_log.append(test_time)
         logger.append(save_log)
         if False and early_stopper.early_stop(test_losses[i].avg):
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=checkpoint_name, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
             break
 
         if (epoch)%5 == 0:
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=checkpoint_name, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
 
-        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=checkpoint_name)
 
 
     logger.close()
@@ -289,8 +299,8 @@ if __name__ == '__main__':
     print("Training start time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))
     parser = argsparser.get_argparser()
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
-    parser.add_argument("--multistep", type=int, help="multistep", default=1)
-    parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
+    # parser.add_argument("--multistep", type=int, help="multistep", default=1)
+    # parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
@@ -310,12 +320,6 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.manualSeed)
 
-    if not os.path.isdir(args.checkpoint):
-        mkdir_p(args.checkpoint)
-
-    with open(args.checkpoint + "/configs.txt", 'w+') as f:
-        for (k, v) in args._get_kwargs():
-            f.write(k + ' : ' + str(v) + '\n')
 
     main(args)
     current_datetime = datetime.now()

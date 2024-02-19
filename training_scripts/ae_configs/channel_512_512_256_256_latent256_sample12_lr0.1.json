@@ -1,0 +1,37 @@
+{
+    "input_size": [
+        309,
+        32,
+        56
+    ],
+    "channel_sizes": [
+        512,
+        512,
+        256,
+        256
+    ],
+    "latent_size": 256,
+    "kernel_size": 3,
+    "stride": [
+        1,
+        1,
+        1,
+        1
+    ],
+    "padding": [
+        1,
+        1,
+        1,
+        1
+    ],
+    "output_padding": [
+        0,
+        0,
+        0,
+        0
+    ],
+    "sample_rate": 12,
+    "lr": 0.1,
+    "fc_sizes": [],
+    "num_em_layers": 2
+}

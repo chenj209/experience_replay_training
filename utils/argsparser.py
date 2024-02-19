@@ -26,7 +26,7 @@ def get_argparser():
                         metavar='W', help='weight decay')
     parser.add_argument('--optim', default='adam', type=str,
                         help='function to approximate')
-    parser.add_argument('--lr_strategy', default='coslr', type=str,
+    parser.add_argument('--lr_strategy', default='constant', type=str,
                         help='lr strategy: coslr')
     # model potions
     parser.add_argument('--network', default='resnet', type=str,
