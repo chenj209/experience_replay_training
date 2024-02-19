@@ -190,7 +190,7 @@ def get_min_max_coords(mask, pad):
         int(min_y-pad), int(min_y+wid_y+pad)
 
 def main(args):
-    checkpoint_name = f"/pscratch/sd/c/chenjd21/ae_training/{args.ae_config.rstrip(".json")}"
+    checkpoint_name = f"/pscratch/sd/c/chenjd21/ae_training/{args.ae_config.split("/")[-1].rstrip(".json")}"
     if not os.path.isdir(checkpoint_name):
         mkdir_p(checkpoint_name)
 
