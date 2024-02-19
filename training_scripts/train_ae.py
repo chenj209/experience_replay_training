@@ -128,7 +128,7 @@ def prep_models(args):
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
-        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_rec', 'train time', 'val time'])
 
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
