@@ -129,3 +129,16 @@ def main(args):
     avg_mse_by_variable /= current_iters
     np.save(f"{args.save_path}/offline_test_ae_avg_mse.npy", avg_mse)
     print(f"Average MSE: {avg_mse}")
+
+if __name__ == "__main__":
+    args = argsparser.argsparser()
+    parser = argsparser.prepare_parser()
+    parser.add_argument("--ae_config", type=str, help="path to ae config file")
+    parser.add_argument("--multistep", type=int, help="multistep", default=1)
+    parser.add_argument("--resume", type=str, help="path to ae model file")
+    parser.add_argument("--save_path", type=str, help="path to save results", default="offline_test")
+    # parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
+    #parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
+    #parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    main(args)
