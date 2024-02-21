@@ -271,9 +271,17 @@ if __name__ == '__main__':
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
-        # np.save('checkcode_x_new'+str(idx), x.numpy())
-        np.save('checkcode_x_new_ts1'+str(idx), x_raw.numpy())
-        np.save('checkcode_y_new_ts1'+str(idx), y.numpy())
+        np.save('checkcode_x_new_ts1_'+str(idx), x.numpy())
+        np.save('checkcode_x_new_ts1_raw_'+str(idx), x_raw.numpy())
+        np.save('checkcode_y_new_ts1_raw_'+str(idx), y.numpy())
+    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, prev_ex_vars=prev_ex_vars)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    for idx, batch in enumerate(trainloader):
+        x, y, x_raw, filenames = batch
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        # np.save('checkcode_x_new_ts'+str(idx), x.numpy())
+        # np.save('checkcode_x_new_ts1_raw'+str(idx), x_raw.numpy())
+        np.save('checkcode_y_new_ts1_'+str(idx), y.numpy())
     # var_names = []
     # pattern = f"^(.*?)(?=_lev\d+|$)"
     # for col_name in col_names:
