@@ -8,6 +8,10 @@ import numpy as np
 
 __all__ = ['Logger', 'LoggerMonitor', 'savefig']
 
+def debug_print(msg, debug):
+    if debug:
+        print(msg)
+
 def savefig(fname, dpi=None):
     dpi = 150 if dpi == None else dpi
     plt.savefig(fname, dpi=dpi)

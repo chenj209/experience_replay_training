@@ -1,6 +1,16 @@
 import numpy as np
 import torch
 
+def to_inference_shape2(data):
+    """
+    the raw data is in format of (batch, channels, lat, lon)
+    the output data is in shape of (batch, lat*lon, channels)
+    """
+    # complete this function
+    data = np.transpose(data, (1, 2, 0))
+    data = np.reshape(data, (-1, data.shape[-1]))
+    return data
+
 def to_inference_shape(data):
     """
     the raw data is in format of (batch, channels, lat, lon)

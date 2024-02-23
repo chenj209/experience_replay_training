@@ -20,25 +20,22 @@ class DatasetDisk(data.Dataset):
     def __init__(
         self,
         file_names,
-        col_names, # list of all column names in the dataset
-        col_names_x, # list of column names for input
-        col_names_y, # list of column names for output
-        data_std,
-        data_mean,
+        curr_input_indices,
+        prev_input_indices,
+        output_indices,
         is_train,
         noise_std = 0,
-        input_normalized=True,
-        output_normalized=True,
+        transform=None,
         silent=True,
-        filename=False,
         multistep=0,
         sample_rate=1,
         image=False,
-        prev_ex_vars=None):
+        include_raw=False,
+        include_filename=False):
         ### load the data ###
         all_files = file_names[:]
-        self.data_std = data_std
-        self.data_mean = data_mean
+        # self.data_std = data_std
+        # self.data_mean = data_mean
         if is_train:
             for i in range(17507,17530):
                 for file_name in all_files:
@@ -62,7 +59,6 @@ class DatasetDisk(data.Dataset):
                         all_files.remove(file_name)
 
 
-        #print('hahahahahah after file num:', len(all_files))
         self.silent = silent
         self.multistep = multistep
         self.all_files = all_files[:]
@@ -88,50 +84,24 @@ class DatasetDisk(data.Dataset):
         print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
         self.noise_std = noise_std
         self.is_train = is_train
-        self.file_name = filename
+        self.include_filename = include_filename
         self.size = len(self.file_names)
-        self.output_normalized = output_normalized
-        self.input_normalized = input_normalized
         pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
         self.col_names = col_names
         self.col_names_x = col_names_x
         self.col_names_y = col_names_y
-        prev_input_indices = []
-        curr_input_indices = []
-        for cn in col_names_x:
-            start_idx, end_idx = get_index_from_colnames(col_names, cn)
-            print(cn, start_idx, end_idx)
-            prev_input_indices.extend(list(range(start_idx, end_idx)))
-            curr_input_indices.extend(list(range(start_idx, end_idx)))
-        if prev_ex_vars is not None:
-            for cn in prev_ex_vars:
-                start_idx, end_idx = get_index_from_colnames(col_names, cn)
-                print(cn, start_idx, end_idx)
-                prev_input_indices.extend(list(range(start_idx, end_idx)))
-        output_indices = []
-        for cn in col_names_y:
-            start_idx, end_idx = get_index_from_colnames(col_names, cn)
-            print(cn, start_idx, end_idx)
-            output_indices.extend(list(range(start_idx, end_idx)))
         self.input_indices = curr_input_indices
         self.prev_input_indices = prev_input_indices
         self.output_indices = output_indices
         self.image = image # if True, the shape would be (CxHxW)
+        self.transform = transform
+        self.include_raw = include_raw
 
     def __len__(self):
         'Denotes the total number of samples'
         return self.size
-
-    def normalize_x(self, x, prev=False):
-        col_names_x = self.col_names_x[:]
-        if prev and self.prev_ex_vars is not None:
-            col_names_x = col_names_x + self.prev_ex_vars
-        return normalize_data_var_names(x, col_names_x, self.col_names, self.data_mean, self.data_std)
-
-    def normalize_y(self, y):
-        return normalize_data_var_names(y, self.col_names_y, self.col_names, self.data_mean, self.data_std)
 
     def inverse_y(self):
         inverse = {}
@@ -140,79 +110,69 @@ class DatasetDisk(data.Dataset):
             inverse[yname] = lambda y: inverse_data_var_names(y, [yname], self.col_names, self.data_mean, self.data_std)
         return inverse
 
-    def get_xy_from_file(self, file_name, prev=False):
-        data = np.load(file_name)
-        input_indices = self.input_indices
-        if prev:
-            input_indices = self.prev_input_indices
-        tx_raw = data[input_indices,:,:][None,]
-        tx = data[input_indices,:,:][None,]
-        ty = data[self.output_indices,:,:][None,]
-        #print("tx_raw shape:", tx_raw.shape)
-        #print("tx shape:", tx.shape)
-        #print("ty shape:", ty.shape)
-        ############# normalization ###############
-        #tx, ty = normalization(tx, ty)
-        if self.input_normalized:
-            tx = self.normalize_x(tx)
-        if self.output_normalized:
-            ty = self.normalize_y(ty)
-        if not self.image:
-            tx = to_inference_shape(tx)
-            ty = to_inference_shape(ty)
-            tx_raw = to_inference_shape(tx_raw)
-        #print("tx shape:", tx.shape)
-        #print("ty shape:", ty.shape)
-        #print("tx_raw shape:", tx_raw.shape)
-        return tx, ty, tx_raw
+    def load_data(self, index):
+        target_file = self.file_names[index]
+        file_names = [target_file]
+        if not os.path.exists(target_file):
+            raise ValueError(f"File {target_file} does not exist")
+        data = np.load(target_file)
+        tx = data[self.input_indices, :, :]
+        y = data[self.output_indices, :, :]
+
+        tokens = target_file.split("/")
+        target_fileidx = filename_to_idx(tokens[-1])
+        prev_inputs = []
+        for p in range(1,self.multistep+1):
+            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
+            data = np.load(prev_file)
+            tx_prev = data[self.prev_input_indices, :, :]
+            prev_inputs.append(tx_prev)
+            # prev_raws.append(tx_raw_prev)
+            file_names.append(prev_file)
+
+        x = np.concatenate([*prev_inputs, tx], axis=0)
+
+        if self.is_train and self.noise_std>0:
+            # print(self.noise_std)
+            noise_x = np.random.randn(x.shape[0]) * self.noise_std
+            noise_y = np.random.randn(y.shape[0]) * self.noise_std
+            x = x + noise_x
+            y = y + noise_y
+
+        return x, y, file_names[::-1]
+
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        x = []
-        y = []
-        x_raw = []
-        target_file = self.file_names[index]
-        file_names = [target_file]
-        if os.path.exists(target_file):
-        #for idx, file_name in enumerate(file_names):
-            tx, y, tx_raw = self.get_xy_from_file(target_file)
-            # print(target_file, tx.shape, y.shape, tx_raw.shape)
+        x, y, file_names = self.load_data(index)
+        sample = (x, y)
+        if self.transform:
+            sample = self.transform(sample)
+        ex_sample = []
+        if self.include_raw:
+            ex_sample.append(x)
+        if self.include_filename:
+            ex_sample.append(file_names)
+        return *sample, *ex_sample
 
-            tokens = target_file.split("/")
-            # curr_tidx = filename_to_idx(target_file)
-            target_fileidx = filename_to_idx(tokens[-1])
-            prev_inputs = []
-            prev_raws = []
-            for p in range(1,self.multistep+1):
-                prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-                tx_prev, ty_prev, tx_raw_prev = self.get_xy_from_file(prev_file, prev=True)
-                # print(prev_file, tx_prev.shape, ty_prev.shape, tx_raw_prev.shape)
-                prev_inputs.append(tx_prev)
-                prev_raws.append(tx_raw_prev)
-                file_names.append(prev_file)
+def gen_multistep_col_names(col_names, prev_ex_vars, col_names_x, col_names_y, multistep):
+    prev_input_indices = []
+    curr_input_indices = []
+    for cn in col_names_x:
+        start_idx, end_idx = get_index_from_colnames(col_names, cn)
+        prev_input_indices.extend(list(range(start_idx, end_idx)))
+        curr_input_indices.extend(list(range(start_idx, end_idx)))
+    if prev_ex_vars is not None:
+        for cn in prev_ex_vars:
+            start_idx, end_idx = get_index_from_colnames(col_names, cn)
+            prev_input_indices.extend(list(range(start_idx, end_idx)))
+    output_indices = []
+    for cn in col_names_y:
+        start_idx, end_idx = get_index_from_colnames(col_names, cn)
+        output_indices.extend(list(range(start_idx, end_idx)))
+    input_indices = curr_input_indices
+    return input_indices, prev_input_indices, output_indices
 
-            channel_axis = 2
-            if self.image:
-                channel_axis = 1
-            # print("prev inputs shape:", [x.shape for x in prev_inputs])
-            # print("prev raws shape:", [x.shape for x in prev_raws])
-            x = np.concatenate([*prev_inputs, tx], axis=channel_axis)
-            x_raw = np.concatenate([*prev_raws, tx_raw], axis=channel_axis)
-            # print("x shape:", x.shape)
-            # print("x raw shape:", x_raw.shape)
-
-            if self.is_train and self.noise_std>0:
-                # print(self.noise_std)
-                noise_x = np.random.randn(x.shape[0]) * self.noise_std
-                noise_y = np.random.randn(y.shape[0]) * self.noise_std
-                x = x + noise_x
-                y = y + noise_y
-
-            if self.file_name:
-                return x[0], y[0], x_raw[0], file_names[::-1]
-
-            return x[0], y[0], x_raw[0]
-        return None
 
 def filter_collate(batch):
     batch = list(filter (lambda x:x is not None, batch))
@@ -223,6 +183,9 @@ if __name__ == '__main__':
     import os
     import glob
     import argparse
+    from preprocess import FlattenSpatialTransform, StandardizeTransform
+    # import torch transforms
+    import torchvision.transforms as transforms
     parser = argparse.ArgumentParser()
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     args = parser.parse_args()
@@ -244,44 +207,64 @@ if __name__ == '__main__':
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check"]
+    # varaibles that are used as input in the previous time step
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_names(col_names, prev_ex_vars, col_names_x, col_names_y, 1)
+    print("input_indices:", col_names[input_indices])
+    print("prev_input_indices:", col_names[prev_input_indices])
+    print("output_indices:", col_names[output_indices])
+
+    transform = transforms.Compose([
+        StandardizeTransform(
+            data_stds,
+            data_means,
+            col_names_x,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True
+            ),
+        FlattenSpatialTransform()
+        ])
+
     training_set = DatasetDisk(
         file_names,
-        col_names,
-        col_names_x,
-        col_names_y,
-        data_stds,
-        data_means,
+        input_indices,
+        prev_input_indices,
+        output_indices,
+        multistep=0,
         is_train=True,
-        noise_std=0,
-        filename=True,
-        output_normalized=False
+        transform=transform,
+        include_raw=True,
+        include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         # np.save('checkcode_x_new'+str(idx), x.numpy())
-        np.save('checkcode_x_new'+str(idx), x_raw.numpy())
-        np.save('checkcode_y_new'+str(idx), y.numpy())
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, prev_ex_vars=prev_ex_vars)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
-    for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
-        np.save('checkcode_x_new_ts1_'+str(idx), x.numpy())
-        np.save('checkcode_x_new_ts1_raw_'+str(idx), x_raw.numpy())
-        np.save('checkcode_y_new_ts1_raw_'+str(idx), y.numpy())
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, prev_ex_vars=prev_ex_vars)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
-    for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
-        # np.save('checkcode_x_new_ts'+str(idx), x.numpy())
-        # np.save('checkcode_x_new_ts1_raw'+str(idx), x_raw.numpy())
-        np.save('checkcode_y_new_ts1_'+str(idx), y.numpy())
+        np.save('checkcodes/checkcode_x'+str(idx), x_raw.numpy())
+        np.save('checkcodes/checkcode_y'+str(idx), y.numpy())
+    # training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, prev_ex_vars=prev_ex_vars)
+    # trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    # for idx, batch in enumerate(trainloader):
+    #     x, y, x_raw, filenames = batch
+    #     print(idx, x.size(), y.size(), x_raw.size(), filenames)
+    #     np.save('checkcode_x_new_ts1_'+str(idx), x.numpy())
+    #     np.save('checkcode_x_new_ts1_raw_'+str(idx), x_raw.numpy())
+    #     np.save('checkcode_y_new_ts1_raw_'+str(idx), y.numpy())
+    # training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, prev_ex_vars=prev_ex_vars)
+    # trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    # for idx, batch in enumerate(trainloader):
+    #     x, y, x_raw, filenames = batch
+    #     print(idx, x.size(), y.size(), x_raw.size(), filenames)
+    #     # np.save('checkcode_x_new_ts'+str(idx), x.numpy())
+    #     # np.save('checkcode_x_new_ts1_raw'+str(idx), x_raw.numpy())
+    #     np.save('checkcode_y_new_ts1_'+str(idx), y.numpy())
     # var_names = []
     # pattern = f"^(.*?)(?=_lev\d+|$)"
     # for col_name in col_names:
@@ -289,16 +272,16 @@ if __name__ == '__main__':
     #     if match and match.group(1) not in var_names:
     #         var_names.append(match.group(1))
     #col_names_x = var_names
-    col_names_x = ["QL"]
-    col_names_y = ["FSDS"]
-    training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True, prev_ex_vars=args.ex_input)
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
-    for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
-        np.save('checkcode_x_new_image'+str(idx), x.numpy())
-        # np.save('checkcode_x_new_image'+str(idx), x_raw.numpy())
-        np.save('checkcode_y_new_image'+str(idx), y.numpy())
+    # col_names_x = ["QL"]
+    # col_names_y = ["FSDS"]
+    # training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=True, multistep=1, image=True, prev_ex_vars=args.ex_input)
+    # trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    # for idx, batch in enumerate(trainloader):
+    #     x, y, x_raw, filenames = batch
+    #     print(idx, x.size(), y.size(), x_raw.size(), filenames)
+    #     np.save('checkcode_x_new_image'+str(idx), x.numpy())
+    #     # np.save('checkcode_x_new_image'+str(idx), x_raw.numpy())
+    #     np.save('checkcode_y_new_image'+str(idx), y.numpy())
 #         if idx == 1:
 #             break
 #         print(idx, x.size(), y.size())
