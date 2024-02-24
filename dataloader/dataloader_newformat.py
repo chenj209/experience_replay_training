@@ -185,7 +185,7 @@ if __name__ == '__main__':
         data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
-    file_names = file_names[:10]
+    # file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
@@ -205,8 +205,8 @@ if __name__ == '__main__':
 
     transform = transforms.Compose([
         StandardizeTransform(
-            data_stds,
             data_means,
+            data_stds,
             col_names_x,
             col_names_y,
             col_names,
@@ -222,18 +222,26 @@ if __name__ == '__main__':
         prev_input_indices,
         output_indices,
         multistep=0,
+        sample_rate=12,
         is_train=True,
         transform=transform,
         include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    dqvls_norm = []
+    dqvls = []
+    # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         x, y, x_raw, filenames = batch
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        dqvls_norm.append(x[:,:,60:90].numpy())
+        dqvls.append(x_raw[:,60:90].numpy())
+    np.save("dqvls_norm.npy", np.concatenate(dqvls_norm, axis=0))
+    np.save("dqvls_raw.npy", np.concatenate(dqvls, axis=0))
         # np.save('checkcode_x_new'+str(idx), x.numpy())
-        np.save('checkcodes/checkcode_x'+str(idx), x_raw.numpy())
-        np.save('checkcodes/checkcode_y'+str(idx), y.numpy())
+        #np.save('checkcodes/checkcode_x'+str(idx), x_raw.numpy())
+        #np.save('checkcodes/checkcode_y'+str(idx), y.numpy())
     # training_set = DatasetDisk(file_names, col_names, col_names_x, col_names_y, data_stds, data_means, is_train=True, noise_std=0, filename=True, output_normalized=False, multistep=1, prev_ex_vars=prev_ex_vars)
     # trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     # for idx, batch in enumerate(trainloader):

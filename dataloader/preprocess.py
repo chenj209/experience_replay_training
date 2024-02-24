@@ -77,6 +77,7 @@ class StandardizeTransform:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std)
             x_mean = x.mean(axis=(1,2))
+            debug_print(f"x_mean shape: {x_mean.shape}", DEBUG)
             if x_mean.max() > 2 or x_mean.min() < -2:
                 print("Warning: Input data is not normalized correctly")
         y = data_y.copy()

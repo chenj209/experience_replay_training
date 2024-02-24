@@ -6,12 +6,13 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std):
     x = data.copy()
     cur_idx = 0
     for var_name in var_names:
-        debug_print(f"Normalizing {var_name}", DEBUG)
         start, end = get_index_from_colnames(col_names, var_name)
         data_range = end - start
         cur_data = x[cur_idx:cur_idx+data_range]
+        debug_print(f"Normalizing {var_name}, idx ({cur_idx}:{cur_idx+data_range})", DEBUG)
         debug_print(f"Current data mean {cur_data.mean()}", DEBUG)
         cur_data = (cur_data - data_mean[var_name]) / data_std[var_name]
+        debug_print(f"Stored data mean/std {data_mean[var_name]}/{data_std[var_name]}", DEBUG)
         debug_print(f"Normalized data mean {cur_data.mean()}", DEBUG)
         x[cur_idx:cur_idx+data_range] = cur_data
         cur_idx += data_range
