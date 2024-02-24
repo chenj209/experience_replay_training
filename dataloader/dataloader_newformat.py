@@ -8,7 +8,7 @@ import re
 from torch.utils.data.dataloader import default_collate
 #sys.path.append(
 #from rh import get_pmid_from_x, cal_rh
-sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 from normalization import normalize_data_var_names, inverse_data_var_names
 from data_shape import to_inference_shape, inverse_to_inference_shape
 from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_filename, \
@@ -65,7 +65,6 @@ class DatasetDisk(data.Dataset):
         self.all_files = all_files[:]
         self.all_files.sort(key=filename_to_idx)
         self.file_names = []
-        self.prev_ex_vars = prev_ex_vars
         if self.multistep > 0:
             for file_name in self.all_files[::sample_rate]:
                 cur_idx = filename_to_idx(file_name)
@@ -87,16 +86,12 @@ class DatasetDisk(data.Dataset):
         self.is_train = is_train
         self.include_filename = include_filename
         self.size = len(self.file_names)
-        pconsts = np.load(os.path.join(sys.path[0], "..", "consts", "phys_consts.npz"))
+        pconsts = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "phys_consts.npz"))
         self.hyam = pconsts["hyam"]
         self.hybm = pconsts["hybm"]
-        self.col_names = col_names
-        self.col_names_x = col_names_x
-        self.col_names_y = col_names_y
         self.input_indices = curr_input_indices
         self.prev_input_indices = prev_input_indices
         self.output_indices = output_indices
-        self.image = image # if True, the shape would be (CxHxW)
         self.transform = transform
         self.include_raw = include_raw
 
@@ -108,7 +103,8 @@ class DatasetDisk(data.Dataset):
         inverse = {}
         for yname in self.col_names_y:
             print(f"gen {yname} inverse")
-            inverse[yname] = lambda y: inverse_data_var_names(y, [yname], self.col_names, self.data_mean, self.data_std)
+            inverse[yname] = lambda y: inverse_data_var_names(y, [yname], \
+                self.col_names, self.data_mean, self.data_std)
         return inverse
 
     def load_data(self, index):

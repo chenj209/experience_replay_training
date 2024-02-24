@@ -71,20 +71,19 @@ class StandardizeTransform:
             start_idx, end_idx = get_index_from_colnames(self.col_names, col)
             target_shape += end_idx - start_idx
         debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
-        assert x.shape[0] == target_shape, f"Input data shape does not match the expected shape {target_shape}"
+        assert x.shape[0] == target_shape, f"Input data shape does not match \
+            the expected shape {target_shape}"
 
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std)
-            x_mean = x.mean(axis=(1,2))
-            debug_print(f"x_mean shape: {x_mean.shape}", DEBUG)
-            if x_mean.max() > 2 or x_mean.min() < -2:
-                print("Warning: Input data is not normalized correctly")
+            x_means = []
+            for col in self.data_cols_x:
+                start_idx, end_idx = get_index_from_colnames(self.col_names, col)
+
         y = data_y.copy()
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
                                     self.data_mean, self.data_std)
             y_mean = y.mean(axis=(1,2))
-            if y_mean.max() > 2 or y_mean.min() < -2:
-                print("Warning: Output data is not normalized correctly")
         return x, y, *sample[2:]
