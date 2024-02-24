@@ -11,7 +11,8 @@ from torch.utils.data.dataloader import default_collate
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from normalization import normalize_data_var_names, inverse_data_var_names
 from data_shape import to_inference_shape, inverse_to_inference_shape
-from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_filename
+from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_filename, \
+    gen_multistep_col_indices
 from tqdm.autonotebook import tqdm
 
 
@@ -155,23 +156,6 @@ class DatasetDisk(data.Dataset):
             ex_sample.append(file_names)
         return *sample, *ex_sample
 
-def gen_multistep_col_names(col_names, prev_ex_vars, col_names_x, col_names_y, multistep):
-    prev_input_indices = []
-    curr_input_indices = []
-    for cn in col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, cn)
-        prev_input_indices.extend(list(range(start_idx, end_idx)))
-        curr_input_indices.extend(list(range(start_idx, end_idx)))
-    if prev_ex_vars is not None:
-        for cn in prev_ex_vars:
-            start_idx, end_idx = get_index_from_colnames(col_names, cn)
-            prev_input_indices.extend(list(range(start_idx, end_idx)))
-    output_indices = []
-    for cn in col_names_y:
-        start_idx, end_idx = get_index_from_colnames(col_names, cn)
-        output_indices.extend(list(range(start_idx, end_idx)))
-    input_indices = curr_input_indices
-    return input_indices, prev_input_indices, output_indices
 
 
 def filter_collate(batch):
@@ -213,7 +197,8 @@ if __name__ == '__main__':
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_names(col_names, prev_ex_vars, col_names_x, col_names_y, 1)
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, prev_ex_vars, col_names_x, col_names_y, 1)
     print("input_indices:", col_names[input_indices])
     print("prev_input_indices:", col_names[prev_input_indices])
     print("output_indices:", col_names[output_indices])

@@ -2,9 +2,10 @@ import sys
 import os
 
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
-from normalization import normalize_data_var_names
+from normalization import normalize_data_var_names2
 from data_shape import to_inference_shape2
 from logger import debug_print
+from dataloader_utils import get_index_from_colnames
 
 DEBUG = True
 
@@ -27,6 +28,7 @@ class StandardizeTransform:
             data_cols_x,
             data_cols_y,
             col_names,
+            multistep=0,
             normalize_input=True,
             normalize_output=True
             ):
@@ -50,6 +52,7 @@ class StandardizeTransform:
         self.data_cols_x = data_cols_x
         self.data_cols_y = data_cols_y
         self.col_names = col_names
+        self.multistep = multistep
         self.normalize_input = normalize_input
         self.normalize_output = normalize_output
 
@@ -62,16 +65,23 @@ class StandardizeTransform:
         """
         data_x, data_y = sample[:2]
         x = data_x.copy()
+        # check multistep shape here
+        target_shape = 0
+        for col in self.data_cols_x:
+            start_idx, end_idx = get_index_from_colnames(self.col_names, col)
+            target_shape += end_idx - start_idx
         debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
+        assert x.shape[0] == target_shape, f"Input data shape does not match the expected shape {target_shape}"
+
         if self.normalize_input:
-            x = normalize_data_var_names(x, self.data_cols_x, self.col_names, 
+            x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std)
             x_mean = x.mean(axis=(1,2))
             if x_mean.max() > 2 or x_mean.min() < -2:
                 print("Warning: Input data is not normalized correctly")
         y = data_y.copy()
         if self.normalize_output:
-            y = normalize_data_var_names(y, self.data_cols_y, self.col_names, 
+            y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
                                     self.data_mean, self.data_std)
             y_mean = y.mean(axis=(1,2))
             if y_mean.max() > 2 or y_mean.min() < -2:
