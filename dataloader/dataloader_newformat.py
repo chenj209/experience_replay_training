@@ -30,7 +30,6 @@ class DatasetDisk(data.Dataset):
         silent=True,
         multistep=0,
         sample_rate=1,
-        image=False,
         include_raw=False,
         include_filename=False):
         ### load the data ###
@@ -45,7 +44,7 @@ class DatasetDisk(data.Dataset):
 
             #print('after file num:', len(all_files))
 
-            for i in ['00001', '08690', '17522', '26210']:
+            for i in ['00001', '08690', '17522', '26210', '09242']:
                 for file_name in all_files:
                     if i in file_name:
                         all_files.remove(file_name)
