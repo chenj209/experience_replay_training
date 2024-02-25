@@ -24,7 +24,7 @@ from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk, filter_collate
 from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMaskTransform
-from dataloader_utils import gen_multistep_col_indices, gen_index_from_colnames
+from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -128,8 +128,8 @@ def main(args):
         is_train=True,
         transform=transform,
         include_filename=True)
-    trainloader = data.DataLoader(training_set, shuffle=True, 
-                                  batch_size=args.train_batch, 
+    trainloader = data.DataLoader(training_set, shuffle=True,
+                                  batch_size=args.train_batch,
                                   num_workers=args.workers,
                                   collate_fn=filter_collate)
 
@@ -144,8 +144,8 @@ def main(args):
         transform=transform,
         include_filename=True)
 
-    testloader = data.DataLoader(testing_set, shuffle=False, 
-                                 batch_size=args.train_batch, 
+    testloader = data.DataLoader(testing_set, shuffle=False,
+                                 batch_size=args.train_batch,
                                  num_workers=args.workers,
                                  collate_fn=filter_collate)
 
@@ -225,7 +225,7 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
-            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, 
+            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr,
                                                 current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :, :30]
