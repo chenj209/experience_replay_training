@@ -31,7 +31,8 @@ def test_single_column_multistep0():
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS", \
+                   "CLOUD", "CAPE", "LWUP", "SPPRECC", "FLNS", "FLNT", "SPQRL", "SPQRS"]
     col_names_y = ["qtend_check"]
     # varaibles that are used as input in the previous time step
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
@@ -164,7 +165,9 @@ def test_single_column_multistep1():
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS", \
+                   "CLOUD", "CAPE", "LWUP", "SPPRECC", "FLNS", "FLNT", "SPQRL", "SPQRS"]
+    col_names_y = ["qtend_check"]
     col_names_y = ["qtend_check"]
     # varaibles that are used as input in the previous time step
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
@@ -292,8 +295,8 @@ def test_image_multistep1():
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
-    # test_single_column_multistep0()
+    test_single_column_multistep0()
     # test_image_multistep0()
     test_single_column_multistep1()
-    test_image_multistep1()
+    # test_image_multistep1()
 
