@@ -22,6 +22,8 @@ class FlattenSpatialTransform:
         returns:
             data_x: input data, shape (lat*lon, n_features)
         """
+        if sample is None:
+            return None
         data_x, data_y = sample[:2]
         data_x = data_x.reshape(data_x.shape[0], -1).T
         data_y = data_y.reshape(data_y.shape[0], -1).T
@@ -45,6 +47,8 @@ class RegionMaskTransform:
         data_x: input data, shape (n_features, lat, lon)
         data_y: output data, shape (n_features, lat, lon)
         """
+        if sample is None:
+            return None
         # debug_print(f"RegionMaskTransform: sample {len(sample)}", DEBUG)
         data_x, data_y = sample[:2]
         if self.include_raw:
@@ -88,6 +92,8 @@ class RectRegionMaskTransform:
         data_x: input data, shape (n_features, lat, lon)
         data_y: output data, shape (n_features, lat, lon)
         """
+        if sample is None:
+            return None
         data_x, data_y = sample[:2]
         if self.include_raw:
             return data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
@@ -141,6 +147,8 @@ class StandardizeTransform:
         data_x: input data, shape (n_samples, n_features, lat, lon)
         data_y: output data, shape (n_samples, n_features, lat, lon)
         """
+        if sample is None:
+            return None
         # debug_print("StandardizeTransform: sample {}".format(len(sample)), DEBUG)
         err_header = "StandardizeTransform:"
         if len(sample) > 2:
@@ -164,11 +172,11 @@ class StandardizeTransform:
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std, err_header=err_header)
-            for col in self.data_cols_x:
-                start_idx, end_idx = get_index_from_colnames(self.col_names, col)
 
         y = data_y.copy()
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
                                     self.data_mean, self.data_std, err_header=err_header)
+        if x is None or y is None:
+            return None
         return x, y, *sample[2:]

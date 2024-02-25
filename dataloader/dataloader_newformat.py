@@ -43,7 +43,8 @@ class DatasetDisk(data.Dataset):
 
             #print('after file num:', len(all_files))
 
-            for i in ['00001', '08690', '17522', '26210', '09242']:
+            #for i in ['00001', '08690', '17522', '26210', '09242']:
+            for i in ['00001', '08690', '17522', '26210']:
                 for file_name in all_files:
                     if i in file_name:
                         all_files.remove(file_name)
@@ -150,6 +151,8 @@ class DatasetDisk(data.Dataset):
 
 def filter_collate(batch):
     batch = list(filter (lambda x:x is not None, batch))
+    if not batch:
+        return None
     return default_collate(batch)
 
 

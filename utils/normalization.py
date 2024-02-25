@@ -8,6 +8,7 @@ DEBUG = False
 def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
     x = data.copy()
     cur_idx = 0
+    err_flag = False
     for var_name in var_names:
         start, end = get_index_from_colnames(col_names, var_name)
         data_range = end - start
@@ -20,9 +21,12 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, e
         if cur_data.mean() > 2 or cur_data.mean() < -2:
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}", file=norm_err_file, flush=True)
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}")
+            err_flag = True
         x[cur_idx:cur_idx+data_range] = cur_data
         cur_idx += data_range
     data_norm = x
+    if err_flag:
+        return None
     return data_norm
 
 def normalize_data_var_names(data, var_names, col_names, data_mean, data_std):

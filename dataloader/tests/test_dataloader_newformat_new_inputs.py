@@ -11,7 +11,7 @@ from torch.utils import data
 
 from preprocess import FlattenSpatialTransform, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
-from dataloader_newformat import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
 # import torch transforms
 
 data_dir = "/home/users/data/nncam_data/image_set/"
@@ -70,11 +70,13 @@ def test_single_column_multistep0():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, filenames = batch
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -137,11 +139,13 @@ def test_image_multistep0():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, filenames = batch
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -204,11 +208,13 @@ def test_single_column_multistep1():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, filenames = batch
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -270,11 +276,13 @@ def test_image_multistep1():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, filenames = batch
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())

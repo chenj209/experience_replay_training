@@ -12,7 +12,7 @@ from torch.utils import data
 from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMaskTransform, \
     RectRegionMaskTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
-from dataloader_newformat import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
 from logger import debug_print
 # import torch transforms
 
@@ -78,12 +78,14 @@ def test_single_column_multistep0_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     raw_data_x = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -151,12 +153,14 @@ def test_single_column_multistep0_pacific_region_rect():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     raw_data_x = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         debug_print(f"batch elements: {len(batch)}", DEBUG)
         x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
@@ -225,11 +229,13 @@ def test_image_multistep0_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -291,11 +297,13 @@ def test_single_column_multistep1_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -357,11 +365,13 @@ def test_image_multistep1_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
+        if batch is None:
+            continue
         x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
