@@ -31,8 +31,8 @@ def prep_dataloaders(args):
         # data_dir = "./data/"
     data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"] + args.ex_input
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"] + args.ex_input_prev
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
@@ -75,7 +75,7 @@ def prep_dataloaders(args):
         noise_std=0,
         multistep=int(args.multistep),
         sample_rate=ae_config["sample_rate"],
-        prev_ex_vars=prev_ex_vars+args.ex_input,
+        prev_ex_vars=prev_ex_vars,
         image=True)
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
 
@@ -90,7 +90,7 @@ def prep_dataloaders(args):
         noise_std=0,
         multistep=int(args.multistep),
         sample_rate=ae_config["sample_rate"],
-        prev_ex_vars=prev_ex_vars+args.ex_input,
+        prev_ex_vars=prev_ex_vars,
         image=True)
     validloader = data.DataLoader(valid_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
     return trainloader, validloader
@@ -302,6 +302,7 @@ if __name__ == '__main__':
     # parser.add_argument("--multistep", type=int, help="multistep", default=1)
     # parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
+    parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
     # parser.add_argument('--rec_weight', type=float, default=0.1)

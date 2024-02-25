@@ -30,7 +30,6 @@ class DatasetDisk(data.Dataset):
         silent=True,
         multistep=0,
         sample_rate=1,
-        include_raw=False,
         include_filename=False):
         ### load the data ###
         all_files = file_names[:]
@@ -92,7 +91,6 @@ class DatasetDisk(data.Dataset):
         self.prev_input_indices = prev_input_indices
         self.output_indices = output_indices
         self.transform = transform
-        self.include_raw = include_raw
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -141,15 +139,12 @@ class DatasetDisk(data.Dataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         x, y, file_names = self.load_data(index)
-        sample = (x, y)
+        sample = [x, y]
+        if self.include_filename:
+            sample.append(file_names)
         if self.transform:
             sample = self.transform(sample)
-        ex_sample = []
-        if self.include_raw:
-            ex_sample.append(x)
-        if self.include_filename:
-            ex_sample.append(file_names)
-        return *sample, *ex_sample
+        return sample
 
 
 

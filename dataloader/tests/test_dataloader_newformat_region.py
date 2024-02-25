@@ -54,7 +54,7 @@ def test_single_column_multistep0_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RegionMaskTransform(region_mask),
+        RegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -76,7 +76,6 @@ def test_single_column_multistep0_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -85,8 +84,8 @@ def test_single_column_multistep0_pacific_region():
     raw_data_x = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw_region, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, x_raw_region, filenames = batch
+        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
         raw_data_x.append(x_raw_region.numpy())
@@ -128,7 +127,7 @@ def test_single_column_multistep0_pacific_region_rect():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RectRegionMaskTransform(region_mask),
+        RectRegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -150,7 +149,6 @@ def test_single_column_multistep0_pacific_region_rect():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -160,7 +158,7 @@ def test_single_column_multistep0_pacific_region_rect():
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         debug_print(f"batch elements: {len(batch)}", DEBUG)
-        x, y, x_raw_region, x_raw, filenames = batch
+        x, y, x_raw_region, filenames = batch
         print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -213,7 +211,7 @@ def test_image_multistep0_pacific_region():
             normalize_input=True,
             normalize_output=True
             ),
-        RectRegionMaskTransform(region_mask)
+        RectRegionMaskTransform(region_mask, include_raw=True)
         ])
 
     training_set = DatasetDisk(
@@ -225,7 +223,6 @@ def test_image_multistep0_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -233,8 +230,8 @@ def test_image_multistep0_pacific_region():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw_region, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, x_raw_region, filenames = batch
+        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -270,7 +267,7 @@ def test_single_column_multistep1_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RegionMaskTransform(region_mask),
+        RegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -292,7 +289,6 @@ def test_single_column_multistep1_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -300,8 +296,8 @@ def test_single_column_multistep1_pacific_region():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw_region, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, x_raw_region, filenames = batch
+        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -338,7 +334,7 @@ def test_image_multistep1_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RectRegionMaskTransform(region_mask),
+        RectRegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -359,7 +355,6 @@ def test_image_multistep1_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -367,8 +362,8 @@ def test_image_multistep1_pacific_region():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw_regin, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, x_raw_region, filenames = batch
+        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)

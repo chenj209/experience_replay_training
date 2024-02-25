@@ -28,7 +28,7 @@ class FlattenSpatialTransform:
         return data_x, data_y, *sample[2:]
 
 class RegionMaskTransform:
-    def __init__(self, mask, include_raw=True):
+    def __init__(self, mask, include_raw=False):
         """
         Takes a mask and applies it to the data.
 
@@ -67,7 +67,7 @@ def get_min_max_coords(mask, pad):
     return min_x-pad, max_x+pad, min_y-pad, max_y+pad
 
 class RectRegionMaskTransform:
-    def __init__(self, mask, pad=2, include_raw=True):
+    def __init__(self, mask, pad=2, include_raw=False):
         """
         Takes a mask, find a rectangle region box for the mask and applies it to the data.
 
@@ -142,6 +142,14 @@ class StandardizeTransform:
         data_y: output data, shape (n_samples, n_features, lat, lon)
         """
         # debug_print("StandardizeTransform: sample {}".format(len(sample)), DEBUG)
+        err_header = "StandardizeTransform:"
+        if len(sample) > 2:
+            # the last element is the filenames
+            filenames = sample[-1]
+            # check if the filenames are in the correct format
+            if type(filenames[0]) == str:
+                err_header = f"{err_header} {filenames}: "
+
         data_x, data_y = sample[:2]
         x = data_x.copy()
         # check multistep shape here
@@ -155,12 +163,12 @@ class StandardizeTransform:
 
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
-                                 self.data_mean, self.data_std)
+                                 self.data_mean, self.data_std, err_header=err_header)
             for col in self.data_cols_x:
                 start_idx, end_idx = get_index_from_colnames(self.col_names, col)
 
         y = data_y.copy()
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
-                                    self.data_mean, self.data_std)
+                                    self.data_mean, self.data_std, err_header=err_header)
         return x, y, *sample[2:]

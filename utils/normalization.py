@@ -1,8 +1,11 @@
 from dataloader_utils import get_index_from_colnames
 from logger import debug_print
+import sys
+
+norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
-def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std):
+def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
     x = data.copy()
     cur_idx = 0
     for var_name in var_names:
@@ -15,7 +18,8 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std):
         debug_print(f"Stored data mean/std {data_mean[var_name]}/{data_std[var_name]}", DEBUG)
         debug_print(f"Normalized data mean {cur_data.mean()}", DEBUG)
         if cur_data.mean() > 2 or cur_data.mean() < -2:
-            print(f"Warning: {var_name} mean out of range {cur_data.mean()}")
+            print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}", file=norm_err_file, flush=True)
+            print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}")
         x[cur_idx:cur_idx+data_range] = cur_data
         cur_idx += data_range
     data_norm = x

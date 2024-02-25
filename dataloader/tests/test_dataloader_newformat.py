@@ -67,7 +67,6 @@ def test_single_column_multistep0():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -75,8 +74,8 @@ def test_single_column_multistep0():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, filenames = batch
+        print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -135,7 +134,6 @@ def test_image_multistep0():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -143,8 +141,8 @@ def test_image_multistep0():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, filenames = batch
+        print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -201,7 +199,6 @@ def test_single_column_multistep1():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -209,8 +206,8 @@ def test_single_column_multistep1():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, filenames = batch
+        print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -268,7 +265,6 @@ def test_image_multistep1():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
         include_filename=True
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
@@ -276,8 +272,8 @@ def test_image_multistep1():
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        x, y, filenames = batch
+        print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
