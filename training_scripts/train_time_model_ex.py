@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
+import torchvision.transforms as transforms
 import numpy as np
 from torch.utils import data
 # from torch.utils.data.dataloader import default_collate
@@ -21,7 +22,9 @@ import argsparser
 import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
-from dataloader_newformat import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
+from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMaskTransform
+from dataloader_utils import gen_multistep_col_indices, gen_index_from_colnames
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -40,6 +43,7 @@ class EarlyStopper:
                 return True
         return False
 
+
 def main(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
@@ -50,12 +54,6 @@ def main(args):
     if not os.path.isdir(data_dir):
         # data_dir = "./data/"
         data_dir = "../analysis/test_data/"
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
-    col_names_y = ["qtend_check"]
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
     all_files = glob.glob(args.data_dir+'/*.npy')
@@ -86,34 +84,72 @@ def main(args):
     test_files = [all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
+    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    col_names_y = ["qtend_check"]
+    data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
+    print("input_indices:", col_names[input_indices])
+    print("prev_input_indices:", col_names[prev_input_indices])
+    print("output_indices:", col_names[output_indices])
+
+    region_mask = None
+    if args.region_mask is not None and args.region_mask != "all":
+        region_mask = np.load(args.region_mask)
+    else:
+        region_mask = np.ones((96, 144))
+
+    transform = transforms.Compose([
+        RegionMaskTransform(region_mask),
+        StandardizeTransform(
+            data_means,
+            data_stds,
+            col_names_x,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True
+            ),
+        FlattenSpatialTransform()
+        ])
+
+
     training_set = DatasetDisk(
         train_files,
-        col_names,
-        col_names_x,
-        col_names_y,
-        data_stds,
-        data_means,
-        is_train=True,
-        noise_std=0,
+        input_indices,
+        prev_input_indices,
+        output_indices,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
-        prev_ex_vars=prev_ex_vars+args.ex_input)
-    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
+        sample_rate=int(args.sample_rate),
+        is_train=True,
+        transform=transform,
+        include_filename=True)
+    trainloader = data.DataLoader(training_set, shuffle=True, 
+                                  batch_size=args.train_batch, 
+                                  num_workers=args.workers,
+                                  collate_fn=filter_collate)
 
     testing_set = DatasetDisk(
         test_files,
-        col_names,
-        col_names_x,
-        col_names_y,
-        data_stds,
-        data_means,
-        is_train=False,
-        noise_std=0,
+        input_indices,
+        prev_input_indices,
+        output_indices,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
-        prev_ex_vars=prev_ex_vars+args.ex_input)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=args.train_batch, num_workers=args.workers)
-    early_stopper = EarlyStopper(patience=10,min_delta=0)
+        sample_rate=int(args.sample_rate),
+        is_train=False,
+        transform=transform,
+        include_filename=True)
+
+    testloader = data.DataLoader(testing_set, shuffle=False, 
+                                 batch_size=args.train_batch, 
+                                 num_workers=args.workers,
+                                 collate_fn=filter_collate)
+
+    #early_stopper = EarlyStopper(patience=10,min_delta=0)
 
     # define model
     if args.network == 'resnet':
@@ -176,13 +212,6 @@ def main(args):
     # def my_collate(batch):
     #     batch = list(filter (lambda x:x is not None, batch))
     #     return default_collate(batch)
-    region_mask = None
-    if args.region_mask is not None and args.region_mask != "all":
-        region_mask = np.load(args.region_mask)[None, None, :, :]
-        region_mask = to_inference_shape(region_mask).squeeze()
-    else:
-        region_mask = np.ones((1, 1, 96, 144))
-        region_mask = to_inference_shape(region_mask).squeeze()
 
     # Train and test
     current_iters = 0
@@ -193,19 +222,19 @@ def main(args):
         train_losses = AverageMeter()
         train_time_begin = time.time()
         for iter, batch in enumerate(trainloader):
-            if batch[0].size() == 1 and batch[0] == 0:
+            if batch is None:
                 # skip empty batch due to missing data
                 continue
-            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            batch[0] = batch[0][:, region_mask.astype(bool)]
+            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, 
+                                                current_iters, len(trainloader) * args.epoch)
             if args.output_type == '0-29':
-                batch[1] = batch[1][:, region_mask.astype(bool), :30]
+                batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
-                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
+                batch[1] = batch[1][:, :, 30:60]
             if args.output_type == '60':
-                batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
+                batch[1] = batch[1][:, :, 60:61]
             if args.output_type == '61-65':
-                batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
+                batch[1] = batch[1][:, :, 61:66]
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
@@ -226,19 +255,18 @@ def main(args):
         loss_name = [args.output_type + '_r2: {:.5f}']
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
-            if batch[0].size() == 1 and batch[0] == 0:
+            if batch is None:
                 # skip empty batch due to missing data
                 continue
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-            batch[0] = batch[0][:, region_mask.astype(bool)]
             if args.output_type == '0-29':
-                batch[1] = batch[1][:, region_mask.astype(bool), :30]
+                batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
-                batch[1] = batch[1][:, region_mask.astype(bool), 30:60]
+                batch[1] = batch[1][:, :, 30:60]
             if args.output_type == '60':
-                batch[1] = batch[1][:, region_mask.astype(bool), 60:61]
+                batch[1] = batch[1][:, :, 60:61]
             if args.output_type == '61-65':
-                batch[1] = batch[1][:, region_mask.astype(bool), 61:66]
+                batch[1] = batch[1][:, :, 61:66]
             test_mses = tools.test_de(batch, model, criterion)
             for i in range(1):
                 test_mse = test_mses[i]
@@ -258,9 +286,9 @@ def main(args):
         save_log.append(train_time)
         save_log.append(test_time)
         logger.append(save_log)
-        if False and early_stopper.early_stop(test_losses[i].avg):
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
-            break
+        # if False and early_stopper.early_stop(test_losses[i].avg):
+            # tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
+            # break
 
         if (epoch)%5 == 0:
             tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
@@ -276,6 +304,7 @@ if __name__ == '__main__':
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--ex_input", type=str, nargs="*")
+    parser.add_argument("--ex_input_prev", type=str, nargs="*")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     args = parser.parse_args()
     print(args)
