@@ -1,5 +1,7 @@
 import sys
 import os
+import math
+import numpy as np
 
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
 from normalization import normalize_data_var_names2
@@ -14,11 +16,87 @@ class FlattenSpatialTransform:
         """
         Takes in data_x and data_y and flattens the spatial dimensions.
 
-        data_x: input data, shape (n_samples, n_features, lat, lon)
-        data_y: output data, shape (n_samples, n_features, lat, lon)
+        data_x: input data, shape (n_features, lat, lon)
+        data_y: output data, shape (n_features, lat, lon)
+
+        returns:
+            data_x: input data, shape (lat*lon, n_features)
         """
         data_x, data_y = sample[:2]
-        return to_inference_shape2(data_x), to_inference_shape2(data_y), *sample[2:]
+        data_x = data_x.reshape(data_x.shape[0], -1).T
+        data_y = data_y.reshape(data_y.shape[0], -1).T
+        return data_x, data_y, *sample[2:]
+
+class RegionMaskTransform:
+    def __init__(self, mask, include_raw=True):
+        """
+        Takes a mask and applies it to the data.
+
+        mask: mask to apply to the data, shape (lat, lon)
+        include_raw: whether to include the raw input data in the output as the third element
+        """
+        self.mask = mask
+        self.include_raw = include_raw
+
+    def __call__(self, sample):
+        """
+        Takes in data_x and data_y and masks the data to the region of interest.
+
+        data_x: input data, shape (n_features, lat, lon)
+        data_y: output data, shape (n_features, lat, lon)
+        """
+        # debug_print(f"RegionMaskTransform: sample {len(sample)}", DEBUG)
+        data_x, data_y = sample[:2]
+        if self.include_raw:
+            return data_x[:, (self.mask).astype(bool)], \
+                data_y[:, (self.mask).astype(bool)], \
+                data_x[:, (self.mask).astype(bool)], *sample[2:]
+
+        return data_x[:, (self.mask).astype(bool)], \
+            data_y[:, (self.mask).astype(bool)], *sample[2:]
+
+def get_min_max_coords(mask, pad):
+    min_x = np.min(np.where(mask)[0])
+    max_x = np.max(np.where(mask)[0])
+    min_y = np.min(np.where(mask)[1])
+    max_y = np.max(np.where(mask)[1])
+    # wid_x = math.ceil((max_x - min_x)/2)*2
+    # wid_y = math.floor((max_y - min_y)/2)*2
+    # return int(min_x-pad), int(min_x+wid_x+pad), \
+    #     int(min_y-pad), int(min_y+wid_y+pad)
+    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
+
+class RectRegionMaskTransform:
+    def __init__(self, mask, pad=2, include_raw=True):
+        """
+        Takes a mask, find a rectangle region box for the mask and applies it to the data.
+
+        mask: mask to apply to the data
+        include_raw: whether to include the raw input data in the output as the third element
+        """
+        self.mask = mask
+        self.min_x, self.max_x, self.min_y, self.max_y = get_min_max_coords(mask, pad)
+        debug_print(f"min_x: {self.min_x}, max_x: {self.max_x}, \
+                    min_y: {self.min_y}, max_y: {self.max_y}", DEBUG)
+        self.include_raw = include_raw
+
+
+    def __call__(self, sample):
+        """
+        Takes in data_x and data_y and masks the data to the region of interest.
+
+        data_x: input data, shape (n_features, lat, lon)
+        data_y: output data, shape (n_features, lat, lon)
+        """
+        data_x, data_y = sample[:2]
+        if self.include_raw:
+            return data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
+                data_y[:, self.min_x:self.max_x, self.min_y:self.max_y], \
+                data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], *sample[2:]
+
+        return data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
+            data_y[:, self.min_x:self.max_x, self.min_y:self.max_y], *sample[2:]
+
 
 class StandardizeTransform:
     def __init__(
@@ -63,6 +141,7 @@ class StandardizeTransform:
         data_x: input data, shape (n_samples, n_features, lat, lon)
         data_y: output data, shape (n_samples, n_features, lat, lon)
         """
+        # debug_print("StandardizeTransform: sample {}".format(len(sample)), DEBUG)
         data_x, data_y = sample[:2]
         x = data_x.copy()
         # check multistep shape here
@@ -70,14 +149,13 @@ class StandardizeTransform:
         for col in self.data_cols_x:
             start_idx, end_idx = get_index_from_colnames(self.col_names, col)
             target_shape += end_idx - start_idx
-        debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
+        # debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
         assert x.shape[0] == target_shape, f"Input data shape does not match \
             the expected shape {target_shape}"
 
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std)
-            x_means = []
             for col in self.data_cols_x:
                 start_idx, end_idx = get_index_from_colnames(self.col_names, col)
 
@@ -85,5 +163,4 @@ class StandardizeTransform:
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
                                     self.data_mean, self.data_std)
-            y_mean = y.mean(axis=(1,2))
         return x, y, *sample[2:]
