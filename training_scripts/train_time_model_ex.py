@@ -163,7 +163,8 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
-    model = torch.nn.DataParallel(model).cuda()
+    #model = torch.nn.DataParallel(model).cuda()
+    model = model.cuda()
     cudnn.benchmark = True
 
 
