@@ -103,12 +103,17 @@ def main(args):
     else:
         region_mask = np.ones((96, 144))
 
+    multistep_col_names_x = []
+    for i in range(int(args.multistep)):
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(prev_ex_vars)
+    multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
         RegionMaskTransform(region_mask),
         StandardizeTransform(
             data_means,
             data_stds,
-            col_names_x,
+            multistep_col_names_x,
             col_names_y,
             col_names,
             normalize_input=True,
