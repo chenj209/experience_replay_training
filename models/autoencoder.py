@@ -207,23 +207,27 @@ class Decoder3D(nn.Module):
 #         return x
 
 class AutoencoderResMLP(nn.Module):
-    def __init__(self, input_size, output_size, m, activation, num_blocks, latent_dim=256, region_mask=None, resmlp=True):
+    def __init__(self, config, input_size, output_size, m, activation, \
+                 num_blocks, sub_region_mask=None, resmlp=True):
         super(AutoencoderResMLP, self).__init__()
-        self.encoder = Encoder(input_size, latent_dim)
-        self.decoder = Decoder(input_size, latent_dim)
+        self.encoder = Encoder(config)
+        self.decoder = Decoder(config)
         self.resmlp_flag = resmlp
+        self.latent_size = config["latent_size"]
+        self.latent_window = config["input_size"][1:]
+        self.input_size = input_size
         if self.resmlp_flag:
-            self.resmlp = ResMLP(122+4, output_size, m, activation, num_blocks)
-            self.fc = nn.Linear(latent_dim, 4*96*144) # 4x96x144 x 4x96x144 (4xregion_mask)
-        if region_mask is not None:
+            self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
+                                  m, activation, num_blocks)
+        if sub_region_mask is not None:
             # check if cuda is available
-            self.region_mask = torch.tensor(region_mask, dtype=torch.bool).squeeze()
+            self.sub_region_mask = torch.tensor(sub_region_mask, 
+                                                dtype=torch.bool).squeeze()
             #if torch.cuda.is_available():
             #    self.region_mask = self.region_mask.cuda()
         else:
-            self.region_mask = None
-        self.latent_dim = latent_dim
-        print(f"Autoencoder, resmlp: {resmlp}, latent_dim {latent_dim}")
+            self.sub_region_mask = None
+        print(f"Autoencoder, resmlp: {resmlp}, latent_dim {self.latent_size}")
 
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
@@ -231,39 +235,44 @@ class AutoencoderResMLP(nn.Module):
         x = self.decoder(latent) # reconstruct all inputs
         #print("x shape:", x.shape)
         if self.resmlp_flag:
-            x_resmlp = x[:, -122:, :, :] # Q, T, ps, dqls, dtls of current step
+            x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = latent
             print(x_resmlp_ex.shape)
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
-            x_resmlp_ex = x_resmlp_ex.view(-1, 4, 96, 144)
+            x_resmlp_ex = x_resmlp_ex.view(
+                x_resmlp_ex.shape[0], 
+                self.latent_size, self.latent_window[0], self.latent_window[1])
             x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
-            x_resmlp = to_inference_shape_torch(x_resmlp)
-        #print("x_resmlp shape:", x_resmlp.shape)
-            if self.region_mask is not None:
-                x_resmlp = x_resmlp[:, self.region_mask] # 96x144 boolean value
-                # 3440 grid True
-                # 96x144 -> 13824 input for resmlp
-                # 3440 -> input for resmlp
+            if self.sub_region_mask is not None:
+                x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
+            # print("x_resmlp shape:", x_resmlp.shape)
+            x_resmlp = x_resmlp.permute(0, 2, 1).view(-1, x_resmlp.shape[1])
             x_resmlp = self.resmlp(x_resmlp) # predict qtend
             return x_resmlp, x
         return None, x
 
 if __name__ == '__main__':
     import numpy as np
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), "..", "dataloader"))
+    from preprocess import get_min_max_coords
     input_size = 340
     config = {
         "input_size": [340,29,55],
         # "input_size": [1,28,28],
         "channel_sizes": [512, 256, 128],
         # "channel_sizes": [16, 32, 64],
-        "latent_size": 128*29*55,
+        "latent_size": 128,
         "kernel_size": 3,
         "stride": [1, 1, 1],
         # "padding": [1, 1, 0],
         "padding": [1, 1, 1],
         # "output_padding": [1, 1, 0],
         "output_padding": [0, 0, 0],
+        "fc_sizes": [],
+        "num_em_layers": 2,
     }
     autoencoder = Autoencoder(config)
     print(autoencoder)
@@ -278,12 +287,30 @@ if __name__ == '__main__':
     output = autoencoder(input_data)
     print(output.shape)  # Should be the same as input_data's shape
 
-    # for name, module in autoencoder.named_modules():
-    #     num_params = sum(p.numel() for p in module.parameters(recurse=False))
-    #     if num_params > 0:
-    #         layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
-    #         print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+    region_mask = np.load("../consts/pacific_region_mask.npy")
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
+    sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
+    autoencoderresmlp = AutoencoderResMLP(
+        config, 
+        input_size=122,
+        output_size=30,
+        m=512,
+        activation='relu',
+        num_blocks=7,
+        sub_region_mask=sub_region_mask
+        )
+    print(autoencoderresmlp)
 
+    for name, module in autoencoderresmlp.named_modules():
+        num_params = sum(p.numel() for p in module.parameters(recurse=False))
+        if num_params > 0:
+            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
+
+    input_data = torch.randn(1, *config["input_size"])  # Batch size of 1
+    pred, rec = autoencoderresmlp(input_data)
+    print(pred.shape)  # Should be the same as input_data's shape
+    print(rec.shape)  # Should be the same as input_data's shape
 
     # autoencoder = AutoencoderResMLP(input_size, 30, 512, 'relu', 7, latent_dim=96*144*4)
     # print(autoencoder)

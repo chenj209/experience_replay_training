@@ -19,6 +19,17 @@ def to_inference_shape(data):
     data = np.reshape(data, (data.shape[0], -1, data.shape[-1]))
     return data
 
+def to_inference_shape_torch2(data):
+    """
+    the raw data is in format of (batch, channels, lat, lon)
+    the output data is in shape of (batch, lat*lon, channels)
+    """
+    # complete this function
+    data = data.permute(0,2,3,1)
+
+    data = torch.reshape(data, (data.shape[0], -1, data.shape[-1]))
+    return data
+
 # write a torch version of to_inference_shape
 def to_inference_shape_torch(data):
     """
