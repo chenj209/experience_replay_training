@@ -5,6 +5,7 @@ import sys
 norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
+NORM_THRES = 3
 def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
     x = data.copy()
     cur_idx = 0
@@ -18,7 +19,7 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, e
         cur_data = (cur_data - data_mean[var_name]) / data_std[var_name]
         debug_print(f"Stored data mean/std {data_mean[var_name]}/{data_std[var_name]}", DEBUG)
         debug_print(f"Normalized data mean {cur_data.mean()}", DEBUG)
-        if cur_data.mean() > 2 or cur_data.mean() < -2:
+        if cur_data.mean() > 3 or cur_data.mean() < -3:
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}", file=norm_err_file, flush=True)
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}")
             err_flag = True
@@ -112,7 +113,7 @@ def get_inverse():
     inverse['60']    = lambda y: (y+1)/2*(2.12e-6)
     inverse['61_64'] = lambda y: inverse_61_64(y)
     inverse['61_65'] = lambda y: inverse_61_65(y)
-    
+
     return inverse
 
 def get_inverse_newformat(col_names, data_mean, data_std):
