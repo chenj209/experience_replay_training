@@ -29,7 +29,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"time_model029_sampled1_0226_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}"
+    name = f"time_model029_sampled1_0226_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}_test"
 
     for epoch in ['50']:
         for num_blocks in ['7']:
@@ -43,7 +43,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '32'
+                        batch_size = '2048'
                         lr_strategy = 'constant'
 
                         network = 'resnet_output30'
