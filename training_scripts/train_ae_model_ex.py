@@ -81,6 +81,9 @@ def main(args):
     print("input_indices:", col_names[input_indices])
     print("prev_input_indices:", col_names[prev_input_indices])
     print("output_indices:", col_names[output_indices])
+    with open(args.ae_config, "r") as f:
+        ae_config = json.load(f)
+    ae_config["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
 
     region_mask = None
     if args.region_mask is not None and args.region_mask != "all":
@@ -121,9 +124,9 @@ def main(args):
         include_filename=True)
 
     trainloader = data.DataLoader(
-        training_set, 
-        shuffle=True, 
-        batch_size=args.train_batch, 
+        training_set,
+        shuffle=True,
+        batch_size=args.train_batch,
         num_workers=args.workers,
         collate_fn=filter_collate)
 
@@ -138,19 +141,17 @@ def main(args):
         transform=transform,
         include_filename=True)
     testloader = data.DataLoader(
-        testing_set, 
-        shuffle=False, 
-        batch_size=args.train_batch, 
+        testing_set,
+        shuffle=False,
+        batch_size=args.train_batch,
         num_workers=args.workers,
         collate_fn=filter_collate)
     #early_stopper = EarlyStopper(patience=10,min_delta=0)
 
-    with open(args.ae_config, "r") as f:
-        ae_confg = json.load(f)
     # define model
-    print("Model config:", json.dumps(ae_confg, indent=4))
+    print("Model config:", json.dumps(ae_config, indent=4))
     model = autoencoder.AutoencoderResMLP(
-        config=ae_confg,
+        config=ae_config,
         input_size=len(training_set.input_indices),
         output_size=len(training_set.output_indices),
         m=512,
@@ -227,9 +228,9 @@ def main(args):
 
             points_x, points_y = batch[:2]
             # points_y: shape (batch, features, lat, lon)
-            points_y = points_y[:, :, model.sub_region_mask] 
+            points_y = points_y[:, :, model.module.sub_region_mask]
             # points_y: shape (batch, features, n_samples)
-            points_y = points_y.permute(0, 2, 1).view(-1, points_y.shape[1])
+            points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             # points_y: shape (batch*n_sample, features)
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
@@ -256,7 +257,7 @@ def main(args):
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
                   train pred mse:{:.6f}| train rec mse: {:.6f} |'.format(
-                      epoch, args.epoch, iter+1, len(trainloader), 
+                      epoch, args.epoch, iter+1, len(trainloader),
                       lr, loss_pred.item(), loss_rec.item()))
         train_time = time.time() - train_time_begin
 
@@ -290,8 +291,8 @@ def main(args):
             model.eval()
 
             points_x, points_y = batch[:2]
-            points_y = points_y[:, :, model.sub_region_mask]
-            points_y = points_y.permute(0, 2, 1).view(-1, points_y.shape[1])
+            points_y = points_y[:, :, model.module.sub_region_mask]
+            points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
 

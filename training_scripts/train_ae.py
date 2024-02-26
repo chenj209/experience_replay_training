@@ -194,7 +194,7 @@ def get_min_max_coords(mask, pad):
         int(min_y-pad), int(min_y+wid_y+pad)
 
 def main(args):
-    checkpoint_name = f"/pscratch/sd/c/chenjd21/ae_training/{args.ae_config.split("/")[-1].rstrip(".json")}"
+    checkpoint_name = f"/pscratch/sd/c/chenjd21/ae_training/{args.ae_config.split('/')[-1].rstrip('.json')}"
     if not os.path.isdir(checkpoint_name):
         mkdir_p(checkpoint_name)
 
@@ -303,8 +303,8 @@ if __name__ == '__main__':
     print("Training start time:", current_datetime.strftime("%Y-%m-%d %H:%M:%S"))
     parser = argsparser.get_argparser()
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
-    # parser.add_argument("--multistep", type=int, help="multistep", default=1)
-    # parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
+    parser.add_argument("--multistep", type=int, help="multistep", default=1)
+    parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])

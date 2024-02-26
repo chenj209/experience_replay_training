@@ -221,7 +221,7 @@ class AutoencoderResMLP(nn.Module):
                                   m, activation, num_blocks)
         if sub_region_mask is not None:
             # check if cuda is available
-            self.sub_region_mask = torch.tensor(sub_region_mask, 
+            self.sub_region_mask = torch.tensor(sub_region_mask,
                                                 dtype=torch.bool).squeeze()
             #if torch.cuda.is_available():
             #    self.region_mask = self.region_mask.cuda()
@@ -238,16 +238,16 @@ class AutoencoderResMLP(nn.Module):
             x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = latent
-            print(x_resmlp_ex.shape)
+            #print(x_resmlp_ex.shape)
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = x_resmlp_ex.view(
-                x_resmlp_ex.shape[0], 
+                x_resmlp_ex.shape[0],
                 self.latent_size, self.latent_window[0], self.latent_window[1])
             x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
             if self.sub_region_mask is not None:
                 x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
             # print("x_resmlp shape:", x_resmlp.shape)
-            x_resmlp = x_resmlp.permute(0, 2, 1).view(-1, x_resmlp.shape[1])
+            x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
             x_resmlp = self.resmlp(x_resmlp) # predict qtend
             return x_resmlp, x
         return None, x
@@ -291,7 +291,7 @@ if __name__ == '__main__':
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
     autoencoderresmlp = AutoencoderResMLP(
-        config, 
+        config,
         input_size=122,
         output_size=30,
         m=512,
