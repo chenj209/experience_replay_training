@@ -16,6 +16,7 @@ from datetime import datetime
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import autoencoder
+import variational_autoencoder
 sys.path.append(os.path.join(sys.path[0], ".."))
 from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
@@ -101,7 +102,10 @@ def prep_models(args):
     print(f"Model input size: {ae_config['input_size']}")
     #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
-    model = autoencoder.Autoencoder(ae_config)
+    if "variational" in ae_config and ae_config["variational"] is True:
+        model = variational_autoencoder.VAE(ae_config)
+    else:
+        model = autoencoder.Autoencoder(ae_config)
     print("Model structure:")
     print(model)
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
