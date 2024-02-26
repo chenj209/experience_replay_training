@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torchvision.transforms as transforms
 import numpy as np
+from collections import OrderedDict
 from torch.utils import data
 # from torch.utils.data.dataloader import default_collate
 
@@ -187,8 +188,16 @@ def main(args):
         print('==> Resuming from checkpoint..')
         assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['state_dict'])
+        try:
+            model.load_state_dict(checkpoint['state_dict'])
+        except Exception as e:
+            print("Model loading error:", e)
+            print("Retrying using by removing module prefix")
+            new_state_dict = OrderedDict()
+            for k, v in checkpoint['state_dict'].items():
+                name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
+                new_state_dict[name] = v
+        optimizer.load_state_dict(checkpoint['optimizer'])
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
