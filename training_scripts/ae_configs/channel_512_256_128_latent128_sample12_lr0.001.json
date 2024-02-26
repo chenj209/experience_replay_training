@@ -1,8 +1,8 @@
 {
     "input_size": [
         309,
-        32,
-        56
+        29,
+        55
     ],
     "channel_sizes": [
         512,
