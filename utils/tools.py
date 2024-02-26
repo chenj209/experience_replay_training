@@ -9,7 +9,7 @@ def cosine_lr(opt, base_lr, e, epochs):
     return lr
 
 def constant(opt, base_lr, e, epochs):
-    return base_lr
+    return opt.param_groups[-1]['lr']
 
 def train(batch, model, criterion, optimizer):
 
