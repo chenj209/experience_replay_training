@@ -15,6 +15,13 @@ from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_fi
     gen_multistep_col_indices
 from tqdm.autonotebook import tqdm
 
+def region_slice2d(region_mask2d):
+    mask, pad = region_mask2d
+    min_x = np.min(np.where(mask)[0])
+    max_x = np.max(np.where(mask)[0])
+    min_y = np.min(np.where(mask)[1])
+    max_y = np.max(np.where(mask)[1])
+    return min_x-pad, max_x+pad, min_y-pad, max_y+pad 
 
 class DatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
@@ -30,7 +37,9 @@ class DatasetDisk(data.Dataset):
         silent=True,
         multistep=0,
         sample_rate=1,
-        include_filename=False):
+        include_filename=False,
+        region_mask1d=None,
+        region_mask2d=None):
         ### load the data ###
         all_files = file_names[:]
         # self.data_std = data_std
@@ -92,6 +101,9 @@ class DatasetDisk(data.Dataset):
         self.prev_input_indices = prev_input_indices
         self.output_indices = output_indices
         self.transform = transform
+        self.region_mask1d = region_mask1d
+        if region_mask2d:
+            self.region_mask2d = region_slice2d(region_mask2d)
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -104,23 +116,31 @@ class DatasetDisk(data.Dataset):
             inverse[yname] = lambda y: inverse_data_var_names(y, [yname], \
                 self.col_names, self.data_mean, self.data_std)
         return inverse
+    
+    
+    def load_slice(self, filename, slice):
+        data = np.load(filename, mmap_mode="r")
+        if self.region_mask1d is not None:
+            return data[slice, self.region_mask1d]
+        if self.region_mask2d is not None:
+            min_x, max_x, min_y, max_y = self.region_mask2d
+            return data[slice, min_x:max_x, min_y:max_y]
+        return data[slice]
 
     def load_data(self, index):
         target_file = self.file_names[index]
         file_names = [target_file]
         if not os.path.exists(target_file):
             raise ValueError(f"File {target_file} does not exist")
-        data = np.load(target_file)
-        tx = data[self.input_indices, :, :]
-        y = data[self.output_indices, :, :]
+        tx = self.load_slice(target_file, self.input_indices)
+        y = self.load_slice(target_file, self.output_indices)
 
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
         prev_inputs = []
         for p in range(1,self.multistep+1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            data = np.load(prev_file)
-            tx_prev = data[self.prev_input_indices, :, :]
+            tx_prev = self.load_slice(prev_file, self.prev_input_indices)
             prev_inputs.append(tx_prev)
             # prev_raws.append(tx_raw_prev)
             file_names.append(prev_file)
@@ -206,8 +226,10 @@ if __name__ == '__main__':
             normalize_input=True,
             normalize_output=True
             ),
-        FlattenSpatialTransform()
+        # FlattenSpatialTransform()
         ])
+
+    region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "pacific_region_mask.npy"))
 
     training_set = DatasetDisk(
         file_names,
@@ -218,20 +240,20 @@ if __name__ == '__main__':
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_raw=True,
-        include_filename=True
+        include_filename=True,
+        region_mask2d=(region_mask, 2)
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
     dqvls_norm = []
     dqvls = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
-        x, y, x_raw, filenames = batch
-        print(idx, x.size(), y.size(), x_raw.size(), filenames)
-        dqvls_norm.append(x[:,:,60:90].numpy())
-        dqvls.append(x_raw[:,60:90].numpy())
-    np.save("dqvls_norm.npy", np.concatenate(dqvls_norm, axis=0))
-    np.save("dqvls_raw.npy", np.concatenate(dqvls, axis=0))
+        x, y, filenames = batch
+        print(idx, x.size(), y.size(), filenames)
+        # dqvls_norm.append(x[:,:,60:90].numpy())
+        # dqvls.append(x_raw[:,60:90].numpy())
+    # np.save("dqvls_norm.npy", np.concatenate(dqvls_norm, axis=0))
+    # np.save("dqvls_raw.npy", np.concatenate(dqvls, axis=0))
         # np.save('checkcode_x_new'+str(idx), x.numpy())
         #np.save('checkcodes/checkcode_x'+str(idx), x_raw.numpy())
         #np.save('checkcodes/checkcode_y'+str(idx), y.numpy())
