@@ -21,4 +21,18 @@ conda activate mpi4py2
 python -c "import torch; print(torch.zeros(1).cuda())"
 python -c "import torch; print(torch.cuda.is_available())"
 echo "ex_input_prev" $1 "ex_input" $2
-srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask ../consts/pacific_region_mask.npy --ex_input $2 --ex_input_prev $1
+memory_usage_file="memory_usage_$SLURM_JOB_ID.txt"
+
+echo "Timestamp, Total, Used, Free, Shared, Buff/Cache, Available" > "$memory_usage_file"
+
+# Loop by running the `free` command every second and append the output to the file
+while true; do
+  echo "$(date '+%Y-%m-%d %H:%M:%S'), $(free -h | awk 'NR==2{printf "%s, %s, %s, %s, %s, %s\n", $2, $3, $4, $5, $6, $7}')" >> "$memory_usage_file"
+  sleep 1
+done &
+monitor_pid=$!
+
+
+srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask ../consts/pacific_region_mask.npy --resume True --ex_input $2 --ex_input_prev $1
+
+kill $monitor_pid
