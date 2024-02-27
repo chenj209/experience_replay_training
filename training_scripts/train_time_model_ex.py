@@ -241,10 +241,12 @@ def main(args):
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
+            bp_time = time.time()
             train_mse = tools.train(batch, model, criterion, optimizer)
+            bp_time = time.time() - bp_time
             train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
-            print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}|'.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse))
+            print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}| bp time: {:.2f} '.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse, bp_time))
         train_time = time.time() - train_time_begin
 
         """
