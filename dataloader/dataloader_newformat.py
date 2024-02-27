@@ -121,7 +121,7 @@ class DatasetDisk(data.Dataset):
     def load_slice(self, filename, slice):
         data = np.load(filename, mmap_mode="r")
         if self.region_mask1d is not None:
-            return data[slice, self.region_mask1d]
+            return np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
         if self.region_mask2d is not None:
             min_x, max_x, min_y, max_y = self.region_mask2d
             return data[slice, min_x:max_x, min_y:max_y]
@@ -241,7 +241,7 @@ if __name__ == '__main__':
         is_train=True,
         transform=transform,
         include_filename=True,
-        region_mask2d=(region_mask, 2)
+        region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
     dqvls_norm = []
