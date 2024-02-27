@@ -119,7 +119,8 @@ def main(args):
     trainloader = data.DataLoader(training_set, shuffle=True,
                                   batch_size=args.train_batch,
                                   num_workers=args.workers,
-                                  collate_fn=filter_collate)
+                                  collate_fn=filter_collate,
+                                  pin_memory=True)
 
     testing_set = DatasetDisk(
         test_files,
@@ -135,9 +136,11 @@ def main(args):
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=args.train_batch,
                                  num_workers=args.workers,
-                                 collate_fn=filter_collate)
+                                 collate_fn=filter_collate,
+                                 pin_memory=True)
 
     #early_stopper = EarlyStopper(patience=10,min_delta=0)
+    model_load_start = time.time()
 
     # define model
     if args.network == 'resnet':
@@ -205,11 +208,13 @@ def main(args):
 
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
+    print("Model load time:", time.time() - model_load_start)
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
     # def my_collate(batch):
     #     batch = list(filter (lambda x:x is not None, batch))
     #     return default_collate(batch)
+    total_train_time = time.time()
 
     # Train and test
     current_iters = 0
