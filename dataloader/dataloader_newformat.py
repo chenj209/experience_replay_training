@@ -102,6 +102,7 @@ class DatasetDisk(data.Dataset):
         self.output_indices = output_indices
         self.transform = transform
         self.region_mask1d = region_mask1d
+        self.region_mask2d = None
         if region_mask2d:
             self.region_mask2d = region_slice2d(region_mask2d)
 
