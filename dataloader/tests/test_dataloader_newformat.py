@@ -12,6 +12,7 @@ from torch.utils import data
 from preprocess import FlattenSpatialTransform, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
 from dataloader_newformat import DatasetDisk, filter_collate
+from debug_utils import print_mean_std_by_var
 # import torch transforms
 
 data_dir = "/home/users/data/nncam_data/image_set/"
@@ -76,7 +77,9 @@ def test_single_column_multistep0():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y = batch[:2]
+        x, y = batch[:2] # x: (batch, n_samples, n_features)
+        x = x.reshape(-1, x.shape[-1]) # x: (batch * n_samples, n_features)
+        y = y.reshape(-1, y.shape[-1])
         filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
@@ -84,13 +87,14 @@ def test_single_column_multistep0():
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     print("norm_data_x shape: ", norm_data_x.shape)
-    cur_idx = 0
-    for col in col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    # cur_idx = 0
+    # for col in col_names_x:
+    #     start_idx, end_idx = get_index_from_colnames(col_names, col)
+    #     data_range = end_idx - start_idx
+    #     print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
+    #           norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
+    #     cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
     
 
@@ -146,19 +150,20 @@ def test_image_multistep0():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y = batch[:2]
+        x, y = batch[:2] # x: (batch, n_samples, n_features, lat, lon)
         filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    print("Q: ", norm_data_x[:,:30].mean(), norm_data_x[:,:30].std())
-    print("T: ", norm_data_x[:,30:60].mean(), norm_data_x[:,30:60].std())
-    print("dqvls: ", norm_data_x[:,60:90].mean(), norm_data_x[:,60:90].std())
-    print("dTls: ", norm_data_x[:,90:120].mean(), norm_data_x[:,90:120].std())
-    print("SOLIN: ", norm_data_x[:,120].mean(), norm_data_x[:,120].std())
-    print("SPPS: ", norm_data_x[:,121].mean(), norm_data_x[:,121].std())
+    # print("Q: ", norm_data_x[:,:30].mean(), norm_data_x[:,:30].std())
+    # print("T: ", norm_data_x[:,30:60].mean(), norm_data_x[:,30:60].std())
+    # print("dqvls: ", norm_data_x[:,60:90].mean(), norm_data_x[:,60:90].std())
+    # print("dTls: ", norm_data_x[:,90:120].mean(), norm_data_x[:,90:120].std())
+    # print("SOLIN: ", norm_data_x[:,120].mean(), norm_data_x[:,120].std())
+    # print("SPPS: ", norm_data_x[:,121].mean(), norm_data_x[:,121].std())
+    print_mean_std_by_var(norm_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_single_column_multistep1():
@@ -214,20 +219,16 @@ def test_single_column_multistep1():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y = batch[:2]
+        x, y = batch[:2] # x: (batch, n_samples, n_features)
+        x = x.reshape(-1, x.shape[-1]) # x: (batch * n_samples, n_features)
+        y = y.reshape(-1, y.shape[-1])
         filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    cur_idx = 0
-    for col in col_names_x + prev_ex_vars + col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_image_multistep1():
@@ -290,13 +291,14 @@ def test_image_multistep1():
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    cur_idx = 0
-    for col in col_names_x + prev_ex_vars + col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    # cur_idx = 0
+    # for col in col_names_x + prev_ex_vars + col_names_x:
+    #     start_idx, end_idx = get_index_from_colnames(col_names, col)
+    #     data_range = end_idx - start_idx
+    #     print(col, norm_data_x[:,cur_idx:cur_idx+data_range].mean(), \
+    #           norm_data_x[:,cur_idx:cur_idx+data_range].std())
+    #     cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
