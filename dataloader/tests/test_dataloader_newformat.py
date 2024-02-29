@@ -76,7 +76,8 @@ def test_single_column_multistep0():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, filenames = batch
+        x, y = batch[:2]
+        filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -145,7 +146,8 @@ def test_image_multistep0():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, filenames = batch
+        x, y = batch[:2]
+        filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -212,7 +214,8 @@ def test_single_column_multistep1():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, filenames = batch
+        x, y = batch[:2]
+        filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -280,7 +283,8 @@ def test_image_multistep1():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, filenames = batch
+        x, y = batch[:2]
+        filenames = batch[-1]
         print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())

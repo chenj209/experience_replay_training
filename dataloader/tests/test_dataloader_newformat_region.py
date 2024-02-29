@@ -129,7 +129,7 @@ def test_single_column_multistep0_pacific_region_rect():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RectRegionMaskTransform(region_mask, include_raw=True),
+        # RectRegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -151,7 +151,8 @@ def test_single_column_multistep0_pacific_region_rect():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
@@ -273,7 +274,7 @@ def test_single_column_multistep1_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RegionMaskTransform(region_mask, include_raw=True),
+        # RegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -295,7 +296,8 @@ def test_single_column_multistep1_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
@@ -342,7 +344,7 @@ def test_image_multistep1_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RectRegionMaskTransform(region_mask, include_raw=True),
+        # RectRegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -363,7 +365,8 @@ def test_image_multistep1_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask2d=(region_mask, 2)
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
     norm_data_x = []

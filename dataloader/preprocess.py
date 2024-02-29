@@ -114,7 +114,8 @@ class StandardizeTransform:
             col_names,
             multistep=0,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=False
             ):
         """
         Takes a set of input and output from SPCAM data and standardizes it.
@@ -139,6 +140,7 @@ class StandardizeTransform:
         self.multistep = multistep
         self.normalize_input = normalize_input
         self.normalize_output = normalize_output
+        self.include_raw = include_raw
 
     def __call__(self, sample):
         """
@@ -179,4 +181,7 @@ class StandardizeTransform:
                                     self.data_mean, self.data_std, err_header=err_header)
         if x is None or y is None:
             return None
+
+        if self.include_raw:
+            return x, y, data_x, data_y, *sample[2:]
         return x, y, *sample[2:]
