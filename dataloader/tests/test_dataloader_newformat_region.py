@@ -14,6 +14,7 @@ from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMask
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
 from dataloader_newformat import DatasetDisk, filter_collate
 from logger import debug_print
+from debug_utils import print_mean_std_by_var
 # import torch transforms
 
 DEBUG = True
@@ -54,7 +55,7 @@ def test_single_column_multistep0_pacific_region():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        RegionMaskTransform(region_mask, include_raw=True),
+        # RegionMaskTransform(region_mask, include_raw=True),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -62,7 +63,9 @@ def test_single_column_multistep0_pacific_region():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True,
+            region_mask1d=region_mask
             ),
         FlattenSpatialTransform()
         ])
@@ -78,33 +81,34 @@ def test_single_column_multistep0_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(
+        training_set, shuffle=False, batch_size=1, 
+        num_workers=1, collate_fn=filter_collate)
+
     norm_data_x = []
     norm_data_y = []
     raw_data_x = []
+    raw_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, x_raw_region, filenames = batch
-        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
+        x, y = batch[:2]
+        filenames = batch[1]
+        x_raw, y_raw = batch[2:4]
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
-        raw_data_x.append(x_raw_region.numpy())
+        raw_data_x.append(x_raw.numpy())
+        raw_data_y.append(y_raw.numpy())
+
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     raw_data_x = np.concatenate(raw_data_x, axis=0)
+    raw_data_y = np.concatenate(raw_data_y, axis=0)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("raw_data_x shape: ", raw_data_x.shape)
-    cur_idx = 0
-    for col in col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
-        print("raw: ", col, raw_data_x[:,cur_idx:cur_idx+data_range].mean(), \
-              raw_data_x[:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_single_column_multistep0_pacific_region_rect():
@@ -137,7 +141,8 @@ def test_single_column_multistep0_pacific_region_rect():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True
             ),
         FlattenSpatialTransform()
         ])
@@ -152,37 +157,35 @@ def test_single_column_multistep0_pacific_region_rect():
         is_train=True,
         transform=transform,
         include_filename=True,
-        region_mask1d=region_mask
+        region_mask2d=(region_mask, 2)
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+                                  num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     raw_data_x = []
+    raw_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
         debug_print(f"batch elements: {len(batch)}", DEBUG)
-        x, y, x_raw_region, filenames = batch
-        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
+        x, y, x_raw, y_raw, filenames = batch
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
-        raw_data_x.append(x_raw_region.numpy())
+        raw_data_x.append(x_raw.numpy())
+        raw_data_y.append(y_raw.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     raw_data_x = np.concatenate(raw_data_x, axis=0)
+    raw_data_y = np.concatenate(raw_data_y, axis=0)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("raw_data_x shape: ", raw_data_x.shape)
-    cur_idx = 0
-    for col in col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
-        print("raw: ", col, raw_data_x[:,cur_idx:cur_idx+data_range].mean(), \
-              raw_data_x[:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x, col_names)
+    print_mean_std_by_var(raw_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
+    print_mean_std_by_var(raw_data_y, col_names_y, col_names)
     
 
 def test_image_multistep0_pacific_region():
@@ -214,9 +217,11 @@ def test_image_multistep0_pacific_region():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True,
+            region_mask2d=(region_mask,2)
             ),
-        RectRegionMaskTransform(region_mask, include_raw=True)
+        # RectRegionMaskTransform(region_mask, include_raw=True)
         ])
 
     training_set = DatasetDisk(
@@ -230,15 +235,18 @@ def test_image_multistep0_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+                                  num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, x_raw_region, filenames = batch
-        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
+        x, y = batch
+        x_raw = batch[2]
+        filenames = batch[-1]
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
@@ -282,7 +290,8 @@ def test_single_column_multistep1_pacific_region():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True
             ),
         FlattenSpatialTransform()
         ])
@@ -299,26 +308,24 @@ def test_single_column_multistep1_pacific_region():
         include_filename=True,
         region_mask1d=region_mask
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+                                  num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, x_raw_region, filenames = batch
-        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
+        x, y = batch
+        x_raw = batch[2]
+        filenames = batch[-1]
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    cur_idx = 0
-    for col in col_names_x + prev_ex_vars + col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, 
+                          col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_image_multistep1_pacific_region():
@@ -352,7 +359,8 @@ def test_image_multistep1_pacific_region():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True
             ),
         ])
 
@@ -375,19 +383,14 @@ def test_image_multistep1_pacific_region():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y, x_raw_region, filenames = batch
-        print(idx, x.size(), y.size(), x_raw_region.size(), filenames)
+        x, y, x_raw, _, filenames = batch
+        print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    cur_idx = 0
-    for col in col_names_x + prev_ex_vars + col_names_x:
-        start_idx, end_idx = get_index_from_colnames(col_names, col)
-        data_range = end_idx - start_idx
-        print(col, norm_data_x[:,cur_idx:cur_idx+data_range].mean(), \
-              norm_data_x[:,cur_idx:cur_idx+data_range].std())
-        cur_idx += data_range
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x,
+                          col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
