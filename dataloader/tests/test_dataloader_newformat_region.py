@@ -94,8 +94,11 @@ def test_single_column_multistep0_pacific_region():
         if batch is None:
             continue
         x, y = batch[:2]
+        x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
         filenames = batch[1]
         x_raw, y_raw = batch[2:4]
+        x_raw, y_raw = x_raw.reshape(-1, x_raw.shape[-1]), \
+                       y_raw.reshape(-1, y_raw.shape[-1])
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -171,6 +174,9 @@ def test_single_column_multistep0_pacific_region_rect():
             continue
         debug_print(f"batch elements: {len(batch)}", DEBUG)
         x, y, x_raw, y_raw, filenames = batch
+        x, y, x_raw, y_raw = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1]), \
+                                x_raw.reshape(-1, x_raw.shape[-1]), \
+                                y_raw.reshape(-1, y_raw.shape[-1])
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -318,6 +324,8 @@ def test_single_column_multistep1_pacific_region():
             continue
         x, y = batch
         x_raw = batch[2]
+        x, y, x_raw = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1]), \
+                        x_raw.reshape(-1, x_raw.shape[-1])
         filenames = batch[-1]
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
