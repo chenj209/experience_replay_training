@@ -17,6 +17,7 @@ import torchvision.transforms as transforms
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import autoencoder
+import variational_autoencoder
 sys.path.append(os.path.join(sys.path[0], ".."))
 from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
@@ -100,7 +101,7 @@ def main(args):
     multistep_col_names_x.extend(col_names_x)
 
     transform = transforms.Compose([
-        RectRegionMaskTransform(region_mask),
+        # RectRegionMaskTransform(region_mask),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -121,7 +122,9 @@ def main(args):
         sample_rate=args.sample_rate,
         is_train=True,
         transform=transform,
-        include_filename=True)
+        include_filename=True,
+        region_mask2d=(region_mask,2)
+        )
 
     trainloader = data.DataLoader(
         training_set,
@@ -139,7 +142,10 @@ def main(args):
         sample_rate=args.sample_rate,
         is_train=False,
         transform=transform,
-        include_filename=True)
+        include_filename=True,
+        region_mask2d=(region_mask,2)
+        )
+
     testloader = data.DataLoader(
         testing_set,
         shuffle=False,
@@ -150,7 +156,11 @@ def main(args):
 
     # define model
     print("Model config:", json.dumps(ae_config, indent=4))
-    model = autoencoder.AutoencoderResMLP(
+    if "variational" in ae_config and ae_config["variational"]:
+        model_struc = variational_autoencoder.AutoencoderResMLP
+    else:
+        model_struc = autoencoder.AutoencoderResMLP
+    model = model_struc(
         config=ae_config,
         input_size=len(training_set.input_indices),
         output_size=len(training_set.output_indices),
@@ -186,6 +196,7 @@ def main(args):
         assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
         model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
