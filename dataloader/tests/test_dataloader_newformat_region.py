@@ -97,8 +97,6 @@ def test_single_column_multistep0_pacific_region():
         x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
         filenames = batch[1]
         x_raw, y_raw = batch[2:4]
-        x_raw, y_raw = x_raw.reshape(-1, x_raw.shape[-1]), \
-                       y_raw.reshape(-1, y_raw.shape[-1])
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -174,9 +172,7 @@ def test_single_column_multistep0_pacific_region_rect():
             continue
         debug_print(f"batch elements: {len(batch)}", DEBUG)
         x, y, x_raw, y_raw, filenames = batch
-        x, y, x_raw, y_raw = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1]), \
-                                x_raw.reshape(-1, x_raw.shape[-1]), \
-                                y_raw.reshape(-1, y_raw.shape[-1])
+        x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
@@ -188,7 +184,9 @@ def test_single_column_multistep0_pacific_region_rect():
     raw_data_y = np.concatenate(raw_data_y, axis=0)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("raw_data_x shape: ", raw_data_x.shape)
+    print("Norm data:")
     print_mean_std_by_var(norm_data_x, col_names_x, col_names)
+    print("Raw data:")
     print_mean_std_by_var(raw_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
     print_mean_std_by_var(raw_data_y, col_names_y, col_names)
@@ -324,8 +322,7 @@ def test_single_column_multistep1_pacific_region():
             continue
         x, y = batch
         x_raw = batch[2]
-        x, y, x_raw = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1]), \
-                        x_raw.reshape(-1, x_raw.shape[-1])
+        x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
         filenames = batch[-1]
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
         norm_data_x.append(x.numpy())
