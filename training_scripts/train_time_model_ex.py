@@ -80,11 +80,7 @@ def main(args):
     print("prev_input_indices:", col_names[prev_input_indices])
     print("output_indices:", col_names[output_indices])
 
-    region_mask = None
-    if args.region_mask is not None and args.region_mask != "all":
-        region_mask = np.load(args.region_mask)
-    else:
-        region_mask = np.ones((96, 144))
+    region_mask = np.load(args.region_mask)
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -92,7 +88,7 @@ def main(args):
         multistep_col_names_x.extend(prev_ex_vars)
     multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
-        RegionMaskTransform(region_mask),
+        #RegionMaskTransform(region_mask),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -115,7 +111,10 @@ def main(args):
         sample_rate=int(args.sample_rate),
         is_train=True,
         transform=transform,
-        include_filename=True)
+        include_filename=True,
+        region_mask1d=None if args.region_mask=="all"
+                           else np.load(args.region_mask))
+
     trainloader = data.DataLoader(training_set, shuffle=True,
                                   batch_size=args.train_batch,
                                   num_workers=args.workers,
@@ -131,7 +130,9 @@ def main(args):
         sample_rate=int(args.sample_rate),
         is_train=False,
         transform=transform,
-        include_filename=True)
+        include_filename=True,
+        region_mask1d=None if args.region_mask=="all"
+                           else np.load(args.region_mask))
 
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=args.train_batch,

@@ -131,7 +131,8 @@ def main(args):
         shuffle=True,
         batch_size=args.train_batch,
         num_workers=args.workers,
-        collate_fn=filter_collate)
+        collate_fn=filter_collate,
+        pin_memory=True)
 
     testing_set = DatasetDisk(
         test_files,
@@ -151,7 +152,8 @@ def main(args):
         shuffle=False,
         batch_size=args.train_batch,
         num_workers=args.workers,
-        collate_fn=filter_collate)
+        collate_fn=filter_collate,
+        pin_memory=True)
     #early_stopper = EarlyStopper(patience=10,min_delta=0)
 
     # define model
@@ -182,9 +184,9 @@ def main(args):
     """
     criterion = nn.MSELoss()
     if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=ae_config["lr"], momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        optimizer = optim.Adam(model.parameters(), lr=ae_config["lr"], betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     else:
         optimizer = None
 
@@ -255,7 +257,8 @@ def main(args):
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x)
-            loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec
+            l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
+            loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec + ae_config["l1"]*l1_penalty
             # print(points_y)
             # print(torch.min(points_y))
             # compute gradient and do SGD step
@@ -267,9 +270,9 @@ def main(args):
             train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
-                  train pred mse:{:.6f}| train rec mse: {:.6f} |'.format(
+                  train pred mse:{:.6f}| train rec mse: {:.6f} | l1: {:.2e}'.format(
                       epoch, args.epoch, iter+1, len(trainloader),
-                      lr, loss_pred.item(), loss_rec.item()))
+                      lr, loss_pred.item(), loss_rec.item(), l1_penalty.item()))
         train_time = time.time() - train_time_begin
 
         """
@@ -345,7 +348,7 @@ def main(args):
             tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
 
-        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        #tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
 
 
     logger.close()
