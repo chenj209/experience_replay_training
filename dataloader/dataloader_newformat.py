@@ -44,28 +44,27 @@ class DatasetDisk(data.Dataset):
         all_files = file_names[:]
         # self.data_std = data_std
         # self.data_mean = data_mean
-        if is_train:
-            for i in range(17507,17530):
-                for file_name in all_files:
-                    if str(i) in file_name:
-                        all_files.remove(file_name)
+        # if is_train:
+        for i in range(17507,17530):
+            for file_name in all_files:
+                if str(i) in file_name:
+                    all_files.remove(file_name)
 
-            #print('after file num:', len(all_files))
+        #print('after file num:', len(all_files))
 
-            #for i in ['00001', '08690', '17522', '26210', '09242']:
-            for i in ['00001', '08690', '17522', '26210']:
-                for file_name in all_files:
-                    if i in file_name:
-                        all_files.remove(file_name)
-        else:
-            for i in ['35042', '43730', '52562']:
-                for file_name in all_files:
-                    if i in file_name:
-                        all_files.remove(file_name)
-            for i in range(55015,55056):
-                for file_name in all_files:
-                    if str(i) in file_name:
-                        all_files.remove(file_name)
+        #for i in ['00001', '08690', '17522', '26210', '09242']:
+        for i in ['00001', '08690', '17522', '26210']:
+            for file_name in all_files:
+                if i in file_name:
+                    all_files.remove(file_name)
+        for i in ['35042', '43730', '52562']:
+            for file_name in all_files:
+                if i in file_name:
+                    all_files.remove(file_name)
+        for i in range(55015,55056):
+            for file_name in all_files:
+                if str(i) in file_name:
+                    all_files.remove(file_name)
 
 
         self.silent = silent

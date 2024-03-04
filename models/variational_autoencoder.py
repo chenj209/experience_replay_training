@@ -268,8 +268,8 @@ class AutoencoderResMLP(nn.Module):
             # print("x_resmlp shape:", x_resmlp.shape)
             x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
             x_resmlp = self.resmlp(x_resmlp) # predict qtend
-            return x_resmlp, x
-        return None, x
+            return x_resmlp, x, mu, logvar
+        return None, x, mu, logvar
 
 if __name__ == '__main__':
     import numpy as np

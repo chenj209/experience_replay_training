@@ -11,11 +11,13 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
+from torchvision.transforms import Compose
 from datetime import datetime
 # from torch.utils.data.dataloader import default_collate
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
 import autoencoder
+import variational_autoencoder
 sys.path.append(os.path.join(sys.path[0], ".."))
 from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
@@ -23,60 +25,61 @@ import argsparser
 import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
-from dataloader_newformat import DatasetDisk
+from preprocess import StandardizeTransform, get_min_max_coords
+from dataloader_newformat import DatasetDisk, filter_collate
+from dataloader_utils import gen_multistep_col_indices
 
-def prep_dataloaders(args):
-    #data_dir = args.data_dir
-    #if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
-    col_names_y = ["qtend_check"]
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    #################### 屏蔽掉一些可能存在异常的数据集 ###############################
-    #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(data_dir+'/*.npy')
-    all_files.sort()
-    all_files = all_files[35040:]
-
-    print('org file num:', len(all_files))
-    #for i in range(17507,17530):
-    for i in range(17507,17531):
-        for file_name in all_files:
-            if str(i) in file_name:
-                all_files.remove(file_name)
-    print('after file num:', len(all_files))
+def prep_dataloaders(
+    args, 
+    test_files,
+    input_indices, 
+    prev_input_indices, 
+    output_indices,
+    region_mask):
 
     testing_set = DatasetDisk(
-        all_files,
-        col_names,
-        col_names_x,
-        col_names_y,
-        data_stds,
-        data_means,
+        test_files,
+        input_indices,
+        prev_input_indices,
+        output_indices,
         is_train=False,
-        noise_std=0,
         multistep=int(args.multistep),
-        sample_rate=192,
-        prev_ex_vars=prev_ex_vars+args.ex_input,
-        image=True)
-    testloader = data.DataLoader(testing_set, shuffle=True, batch_size=args.train_batch, num_workers=args.workers)
+        sample_rate=int(args.sample_rate),
+        include_filename=True,
+        region_mask2d=(region_mask,2)
+        )
+    testloader = data.DataLoader(testing_set, shuffle=True, 
+                                 batch_size=args.train_batch, 
+                                 num_workers=args.workers,
+                                 collate_fn=filter_collate,
+                                 pin_memory=True)
 
-    return testloader 
+    return testloader
 
-def prep_models(args):
+def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_mask):
     with open(args.ae_config, 'r') as f:
         ae_config = json.load(f)
+    ae_config['input_size'] = ae_input_size
     print(f"Model input size: {ae_config['input_size']}")
     #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
-    model = autoencoder.Autoencoder(ae_config)
+    if "variational" in ae_config and ae_config["variational"] is True:
+        model_struc = variational_autoencoder.AutoencoderResMLP
+    else:
+        model_struc = autoencoder.AutoencoderResMLP
+    model = model_struc(
+        config=ae_config,
+        input_size=resmlp_input_size,
+        output_size=output_size,
+        m=512,
+        activation='relu',
+        num_blocks=7,
+        sub_region_mask=sub_region_mask
+    )
     print("Model structure:")
     print(model)
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
+
 
     model = torch.nn.DataParallel(model).cuda()
     model.load_state_dict(torch.load(args.resume))
@@ -84,21 +87,37 @@ def prep_models(args):
 
     return model
 
-import math
-def get_min_max_coords(mask, pad):
-    min_x = np.min(np.where(mask)[0])
-    max_x = np.max(np.where(mask)[0])
-    min_y = np.min(np.where(mask)[1])
-    max_y = np.max(np.where(mask)[1])
-    wid_x = math.ceil((max_x - min_x)/2)*2
-    wid_y = math.floor((max_y - min_y)/2)*2
-    return int(min_x-pad), int(min_x+wid_x+pad), \
-        int(min_y-pad), int(min_y+wid_y+pad)
-
 def main(args):
     # region_mask = to_inference_shape(region_mask).squeeze()
-    testloader = prep_dataloaders(args)
-    model = prep_models(args)
+    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    col_names_y = ["qtend_check"]
+    data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+
+    all_files = glob.glob(data_dir+'/*.npy')
+    all_files.sort()
+    # testing data starts from 35040
+    test_files = all_files[35040:]
+
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
+    )
+    print("Input indices: ", col_names[input_indices])
+    print("Prev input indices: ", col_names[prev_input_indices])
+    print("Output indices: ", col_names[output_indices])
+
+
+    testloader = prep_dataloaders(args, test_files, input_indices, 
+                                  prev_input_indices, output_indices)
+
+    ae_input_size = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    resmlp_input_size = len(input_indices)
+    model = prep_models(args, resmlp_input_size, ae_input_size, 
+                        len(output_indices), region_mask)
+
     region_mask = np.load(args.region_mask)
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 3)
     lon = np.linspace(0,357.5,144)

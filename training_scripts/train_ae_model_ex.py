@@ -251,14 +251,19 @@ def main(args):
         #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
 
             # compute output
-            outputs_y, x_rec = model(points_x)
+            outputs_y, x_rec, mu, log_var = model(points_x)
             # print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = 0
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, points_y)
-            loss_rec = criterion(x_rec, points_x)
             l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
-            loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec + ae_config["l1"]*l1_penalty
+            kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+            loss_rec = criterion(x_rec, points_x)+kl_divergence
+            # loss = args.pred_weight*loss_pred + args.rec_weight*(loss_rec)
+            if iter < 2:
+                loss = loss_rec + ae_config["l1"]*l1_penalty
+            else:
+                loss = args.pred_weight*loss_pred + args.rec_weight*loss_rec + ae_config["l1"]*l1_penalty
             # print(points_y)
             # print(torch.min(points_y))
             # compute gradient and do SGD step
@@ -273,6 +278,10 @@ def main(args):
                   train pred mse:{:.6f}| train rec mse: {:.6f} | l1: {:.2e}'.format(
                       epoch, args.epoch, iter+1, len(trainloader),
                       lr, loss_pred.item(), loss_rec.item(), l1_penalty.item()))
+            # print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
+            #       train pred mse:{:.6f}| train rec mse: {:.6f}'.format(
+            #           epoch, args.epoch, iter+1, len(trainloader),
+            #           lr, loss_pred.item(), loss_rec.item()))
         train_time = time.time() - train_time_begin
 
         """
@@ -313,12 +322,13 @@ def main(args):
         #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
 
             # compute output
-            outputs_y, x_rec = model(points_x)
+            outputs_y, x_rec, mu, log_var = model(points_x)
             #print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = 0
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, points_y).item()
-            loss_rec = criterion(x_rec, points_x).item()
+            kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+            loss_rec = criterion(x_rec, points_x).item() + kl_divergence.item()
             test_losses[0].update(loss_pred, batch[0].size(0))
             test_losses[1].update(loss_rec, batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
