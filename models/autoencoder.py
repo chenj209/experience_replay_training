@@ -232,7 +232,7 @@ class AutoencoderResMLP(nn.Module):
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
         latent = self.encoder(x) # 256
-        x = self.decoder(latent) # reconstruct all inputs
+        x_rec = self.decoder(latent) # reconstruct all inputs
         #print("x shape:", x.shape)
         if self.resmlp_flag:
             x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
@@ -249,8 +249,8 @@ class AutoencoderResMLP(nn.Module):
             # print("x_resmlp shape:", x_resmlp.shape)
             x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
             x_resmlp = self.resmlp(x_resmlp) # predict qtend
-            return x_resmlp, x
-        return None, x
+            return x_resmlp, x_rec
+        return None, x_rec
 
 if __name__ == '__main__':
     import numpy as np
