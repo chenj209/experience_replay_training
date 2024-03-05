@@ -11,6 +11,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
+from torch.optim.lr_scheduler import _LRScheduler
 from datetime import datetime
 import torchvision.transforms as transforms
 # from torch.utils.data.dataloader import default_collate
@@ -46,6 +47,23 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
+
+
+class LinearWarmupScheduler(_LRScheduler):
+    def __init__(self, optimizer, warmup_epochs, warmup_start_lr, base_lr, last_epoch=-1):
+        self.warmup_epochs = warmup_epochs
+        self.warmup_start_lr = warmup_start_lr
+        self.base_lr = base_lr
+        super(LinearWarmupScheduler, self).__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if self.last_epoch < self.warmup_epochs:
+            # Warmup phase: linearly increase lr
+            lr = (self.base_lr - self.warmup_start_lr) * self.last_epoch / self.warmup_epochs + self.warmup_start_lr
+            return [lr for _ in self.base_lrs]
+        else:
+            # Post-warmup: keep lr constant
+            return [self.base_lr for _ in self.base_lrs]
 
 def main(args):
     data_dir = args.data_dir
@@ -190,6 +208,12 @@ def main(args):
     else:
         optimizer = None
 
+    warmup_epochs = 5
+    warmup_start_lr = 1e-4
+    base_lr = ae_config["lr"]  # The lr Adam will use after warmup
+    scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
+
+
     # Resume
     title = ''
     if args.resume:
@@ -204,8 +228,8 @@ def main(args):
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
 
-    lr_scheduler = {'coslr': tools.cosine_lr,
-                    'constant': tools.constant}
+    #lr_scheduler = {'coslr': tools.cosine_lr,
+    #                'constant': tools.constant}
 
     # test_variance = {'0-29': 0.41921, '30-59': 0.96519, '60': 0.96958, '61-65':0.54228}
     # def my_collate(batch):
@@ -224,7 +248,8 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
-            lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+            #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+            lr = scheduler.get_lr()[-1]
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
@@ -260,10 +285,10 @@ def main(args):
             kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             loss_rec = criterion(x_rec, points_x)
             # loss = args.pred_weight*loss_pred + args.rec_weight*(loss_rec)
-            if epoch < 1:
-                loss = loss_rec + kl_divergence + ae_config["l1"]*l1_penalty
-            else:
-                loss = args.pred_weight*loss_pred + args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
+            #if epoch < 1:
+            #    loss = loss_rec + kl_divergence + ae_config["l1"]*l1_penalty
+            #else:
+            loss = args.pred_weight*loss_pred + args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
             # print(points_y)
             # print(torch.min(points_y))
             # compute gradient and do SGD step
@@ -282,6 +307,7 @@ def main(args):
             #       train pred mse:{:.6f}| train rec mse: {:.6f}'.format(
             #           epoch, args.epoch, iter+1, len(trainloader),
             #           lr, loss_pred.item(), loss_rec.item()))
+        scheduler.step()
         train_time = time.time() - train_time_begin
 
         """

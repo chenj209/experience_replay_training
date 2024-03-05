@@ -6,13 +6,24 @@ if __name__ == "__main__":
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
-    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
-    parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
+    parser.add_argument("--ex_input", type=str, nargs="?")
+    parser.add_argument("--ex_input_prev", type=str, nargs="?")
     parser.add_argument("--region_mask", type=str, default="all")
     parser.add_argument("--rec_weight", type=float, default=0.2)
     parser.add_argument("--pred_weight", type=float, default=0.8)
     parser.add_argument("--ae_config", type=str, default=str)
+    parser.add_argument("--resume", type=str, default="")
     args = parser.parse_args()
+
+    if args.ex_input is not None:
+        ex_input = args.ex_input.split("+")
+    else:
+        ex_input = []
+
+    if args.ex_input_prev is not None:
+        ex_input_prev = args.ex_input_prev.split("+")
+    else:
+        ex_input_prev = []
 
     DATA_DIR = "/home/users/data/nncam_data/image_set/"
     if not os.path.exists(DATA_DIR):
@@ -21,9 +32,9 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"ae_model029_sampled12_0301_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(args.ex_input)}_EXPREV_{'+'.join(args.ex_input_prev)}"
+    name = f"ae_model029_sampled1_0301_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(args.ex_input)}_EXPREV_{'+'.join(args.ex_input_prev)}"
 
-    for epoch in ['50']:
+    for epoch in ['100']:
         for num_blocks in ['7']:
             for node_size in ['512']:
                 for noise_std in [0.0]:
@@ -53,6 +64,9 @@ if __name__ == "__main__":
                                                                 name, args.multistep, args.region_mask,
                                                                 args.rec_weight, args.pred_weight, args.ae_config,
                                                                 " ".join(args.ex_input), " ".join(args.ex_input_prev))
+                        if args.resume:
+                            commands += f" --resume {args.resume}"
+
 
                         print(commands)
                         os.system(commands)
