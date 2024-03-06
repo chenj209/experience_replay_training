@@ -242,9 +242,12 @@ class AutoencoderResMLP(nn.Module):
         print(f"Autoencoder, resmlp: {resmlp}, latent_dim {self.latent_size}")
 
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
+        if self.training:
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return mu + eps * std
+        else:
+            return mu
 
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
