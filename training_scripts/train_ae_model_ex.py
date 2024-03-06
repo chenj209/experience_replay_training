@@ -288,6 +288,8 @@ def main(args):
                     args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
             else:
                 outputs_y, x_rec = model(points_x)
+                loss_pred = criterion(outputs_y, points_y)
+                loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
 
@@ -307,10 +309,10 @@ def main(args):
                         epoch, args.epoch, iter+1, len(trainloader),
                         lr, loss_pred.item(), loss_rec.item(), kl_divergence.item(), l1_penalty.item()))
             else:
-                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
-                    train pred mse:{:.6f}| train rec mse: {:.6f} | l1: {:.2e}'.format(
+                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
+                    train pred mse:{:.2e}| train rec mse: {:.2e} | l1: {:.2e}'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred.item(), loss_rec.item()), l1_penalty.item())
+                        lr, loss_pred.item(), loss_rec.item(), l1_penalty.item()))
         scheduler.step()
         train_time = time.time() - train_time_begin
 
