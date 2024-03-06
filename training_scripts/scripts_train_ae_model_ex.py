@@ -32,7 +32,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"ae_model029_sampled1_0301_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(args.ex_input)}_EXPREV_{'+'.join(args.ex_input_prev)}"
+    name = f"ae_model029_sampled1_0301_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['100']:
         for num_blocks in ['7']:
@@ -46,7 +46,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '256'
+                        batch_size = '128'
                         lr_strategy = 'constant'
 
                         network = 'resnet_output30'
@@ -63,7 +63,7 @@ if __name__ == "__main__":
                                                                 weight_decay,
                                                                 name, args.multistep, args.region_mask,
                                                                 args.rec_weight, args.pred_weight, args.ae_config,
-                                                                " ".join(args.ex_input), " ".join(args.ex_input_prev))
+                                                                " ".join(ex_input), " ".join(ex_input_prev))
                         if args.resume:
                             commands += f" --resume {args.resume}"
 
