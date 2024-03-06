@@ -232,16 +232,16 @@ def main(args):
     """
     Define Residual Methods and Optimizer
     """
+    warmup_epochs = 5
+    warmup_start_lr = 1e-4
     criterion = nn.MSELoss()
     if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=ae_config["lr"], momentum=args.momentum, weight_decay=args.weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=warmup_start_lr, momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=ae_config["lr"], betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        optimizer = optim.Adam(model.parameters(), lr=warmup_start_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     else:
         optimizer = None
 
-    warmup_epochs = 5
-    warmup_start_lr = 1e-4
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
     # scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
     scheduler = WarmupThenReduceLROnPlateau(optimizer, warmup_epochs, warmup_start_lr, base_lr, reduce_lr_factor=0.1, reduce_lr_patience=10)
