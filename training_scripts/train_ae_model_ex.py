@@ -184,7 +184,8 @@ def main(args):
         variational_flag = False
     model = model_struc(
         config=ae_config,
-        input_size=len(training_set.input_indices),
+        #input_size=len(training_set.input_indices),
+        input_size=ae_config["input_size"][0],
         output_size=len(training_set.output_indices),
         m=512,
         activation='relu',
