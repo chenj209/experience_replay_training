@@ -11,7 +11,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import numpy as np
 from torch.utils import data
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import _LRScheduler, ReduceLROnPlateau
 from datetime import datetime
 import torchvision.transforms as transforms
 # from torch.utils.data.dataloader import default_collate
@@ -64,6 +64,35 @@ class LinearWarmupScheduler(_LRScheduler):
         else:
             # Post-warmup: keep lr constant
             return [self.base_lr for _ in self.base_lrs]
+
+class WarmupThenReduceLROnPlateau:
+    def __init__(self, optimizer, warmup_epochs, warmup_start_lr, target_lr, reduce_lr_factor, reduce_lr_patience, verbose=True):
+        self.optimizer = optimizer
+        self.warmup_epochs = warmup_epochs
+        self.warmup_start_lr = warmup_start_lr
+        self.target_lr = target_lr
+        self.current_epoch = 0
+        self.scheduler_after_warmup = ReduceLROnPlateau(optimizer, mode='min', factor=reduce_lr_factor, patience=reduce_lr_patience, verbose=verbose)
+        
+        # Calculate the linear increment for each epoch during warmup
+        self.lr_increment = (self.target_lr - self.warmup_start_lr) / self.warmup_epochs
+
+    def step(self, val_loss=None):
+        if self.current_epoch < self.warmup_epochs:
+            # Warmup phase
+            lr = self.warmup_start_lr + self.current_epoch * self.lr_increment
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] = lr
+        else:
+            # ReduceLROnPlateau phase
+            if val_loss is not None:
+                self.scheduler_after_warmup.step(val_loss)
+        
+        self.current_epoch += 1
+
+    def get_lr(self):
+        # Optional: Call this to get the current learning rate
+        return [group['lr'] for group in self.optimizer.param_groups]
 
 def main(args):
     data_dir = args.data_dir
@@ -214,7 +243,8 @@ def main(args):
     warmup_epochs = 5
     warmup_start_lr = 1e-4
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
-    scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
+    # scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
+    scheduler = WarmupThenReduceLROnPlateau(optimizer, warmup_epochs, warmup_start_lr, base_lr, reduce_lr_factor=0.1, reduce_lr_patience=10)
 
 
     # Resume
@@ -314,7 +344,6 @@ def main(args):
                     train pred mse:{:.2e}| train rec mse: {:.2e} | l1: {:.2e}'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
                         lr, loss_pred.item(), loss_rec.item(), l1_penalty.item()))
-        scheduler.step()
         train_time = time.time() - train_time_begin
 
         """
@@ -362,9 +391,9 @@ def main(args):
             else:
                 outputs_y, x_rec = model(points_x)
             #print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = criterion(outputs_y, points_y).item()
+            loss_pred = criterion(outputs_y, points_y)
             loss_rec = criterion(x_rec, points_x).item()
-            test_losses[0].update(loss_pred, batch[0].size(0))
+            test_losses[0].update(loss_pred.item(), batch[0].size(0))
             test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
@@ -374,6 +403,7 @@ def main(args):
 
 
         test_time = time.time() - test_time_begin
+        scheduler.step(loss_pred)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
