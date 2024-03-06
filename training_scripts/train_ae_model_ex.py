@@ -65,35 +65,6 @@ class LinearWarmupScheduler(_LRScheduler):
             # Post-warmup: keep lr constant
             return [self.base_lr for _ in self.base_lrs]
 
-class WarmupThenReduceLROnPlateau:
-    def __init__(self, optimizer, warmup_epochs, warmup_start_lr, target_lr, reduce_lr_factor, reduce_lr_patience, verbose=True):
-        self.optimizer = optimizer
-        self.warmup_epochs = warmup_epochs
-        self.warmup_start_lr = warmup_start_lr
-        self.target_lr = target_lr
-        self.current_epoch = 0
-        self.scheduler_after_warmup = ReduceLROnPlateau(optimizer, mode='min', factor=reduce_lr_factor, patience=reduce_lr_patience, verbose=verbose)
-        
-        # Calculate the linear increment for each epoch during warmup
-        self.lr_increment = (self.target_lr - self.warmup_start_lr) / self.warmup_epochs
-
-    def step(self, val_loss=None):
-        if self.current_epoch < self.warmup_epochs:
-            # Warmup phase
-            lr = self.warmup_start_lr + self.current_epoch * self.lr_increment
-            for param_group in self.optimizer.param_groups:
-                param_group['lr'] = lr
-        else:
-            # ReduceLROnPlateau phase
-            if val_loss is not None:
-                self.scheduler_after_warmup.step(val_loss)
-        
-        self.current_epoch += 1
-
-    def get_lr(self):
-        # Optional: Call this to get the current learning rate
-        return [group['lr'] for group in self.optimizer.param_groups]
-
 def main(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
@@ -243,8 +214,8 @@ def main(args):
         optimizer = None
 
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
-    # scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
-    scheduler = WarmupThenReduceLROnPlateau(optimizer, warmup_epochs, warmup_start_lr, base_lr, reduce_lr_factor=0.1, reduce_lr_patience=10)
+    warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
+    reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, min_lr=1e-6)
 
 
     # Resume
@@ -403,7 +374,10 @@ def main(args):
 
 
         test_time = time.time() - test_time_begin
-        scheduler.step(loss_pred)
+        if epoch < warmup_epochs:
+            warmup_scheduler.step()
+        else:
+            reduce_on_plateau_scheduler.step(loss_pred)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -421,7 +395,12 @@ def main(args):
         #     break
 
         if (epoch)%5 == 0:
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
+            tools.save_checkpoint({
+                'state_dict': model.state_dict(), 
+                'optimizer': optimizer.state_dict(),
+                # 'scheduler': reduce_on_plateau_scheduler.state_dict(),
+                # 'epoch': epoch
+                }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
 
         #tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
