@@ -253,7 +253,8 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            lr = scheduler.get_lr()[-1]
+            # lr = scheduler.get_lr()[-1]
+            lr = optimizer.param_groups[0]['lr']
             if args.output_type == '0-29':
                 batch[1] = batch[1][:, :, :30]
             if args.output_type == '30-59':
