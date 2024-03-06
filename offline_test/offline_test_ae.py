@@ -35,6 +35,7 @@ def prep_dataloaders(
     input_indices, 
     prev_input_indices, 
     output_indices,
+    transform,
     region_mask):
 
     testing_set = DatasetDisk(
@@ -43,12 +44,13 @@ def prep_dataloaders(
         prev_input_indices,
         output_indices,
         is_train=False,
+        transform=transform,
         multistep=int(args.multistep),
         sample_rate=int(args.sample_rate),
         include_filename=True,
         region_mask2d=(region_mask,2)
         )
-    testloader = data.DataLoader(testing_set, shuffle=True, 
+    testloader = data.DataLoader(testing_set, shuffle=False, 
                                  batch_size=args.train_batch, 
                                  num_workers=args.workers,
                                  collate_fn=filter_collate,
@@ -65,8 +67,10 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
     if "variational" in ae_config and ae_config["variational"] is True:
         model_struc = variational_autoencoder.AutoencoderResMLP
+        variational_flag = True
     else:
         model_struc = autoencoder.AutoencoderResMLP
+        variational_flag = False
     model = model_struc(
         config=ae_config,
         input_size=resmlp_input_size,
@@ -85,7 +89,7 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
     model.load_state_dict(torch.load(args.resume))
     cudnn.benchmark = True
 
-    return model
+    return model, variational_flag
 
 def main(args):
     # region_mask = to_inference_shape(region_mask).squeeze()
@@ -109,45 +113,94 @@ def main(args):
     print("Prev input indices: ", col_names[prev_input_indices])
     print("Output indices: ", col_names[output_indices])
 
+    multistep_col_names_x = []
+    for i in range(int(args.multistep)):
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(prev_ex_vars)
+    multistep_col_names_x.extend(col_names_x)
 
-    testloader = prep_dataloaders(args, test_files, input_indices, 
-                                  prev_input_indices, output_indices)
-
-    ae_input_size = len(prev_input_indices)*int(args.multistep)+len(input_indices)
-    resmlp_input_size = len(input_indices)
-    model = prep_models(args, resmlp_input_size, ae_input_size, 
-                        len(output_indices), region_mask)
-
-    region_mask = np.load(args.region_mask)
+    region_mask = None
+    if args.region_mask is not None and args.region_mask != "all":
+        region_mask = np.load(args.region_mask)
+    else:
+        region_mask = np.ones((96,144))
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 3)
     lon = np.linspace(0,357.5,144)
     lat = np.linspace(-90,90,96)
     print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
+    sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
+
+    transform = Compose([
+        StandardizeTransform(
+            data_means,
+            data_stds,
+            multistep_col_names_x,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True
+            )])
+
+    testloader = prep_dataloaders(args, test_files, input_indices, 
+                                  prev_input_indices, output_indices,
+                                  transform, region_mask)
+
+    ae_input_size = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    #resmlp_input_size = len(input_indices)
+    # use all the inputs for better offline performance now
+    resmlp_input_size = ae_input_size
+
+
+    model, variational_flag = prep_models(args, resmlp_input_size, ae_input_size, 
+                        len(output_indices), sub_region_mask)
+
     criterion = nn.MSELoss()
     avg_mse = 0
-    avg_mse_by_variable = np.zeros(309)
+    avg_pred_mse = 0
+    avg_mse_by_variable = np.zeros(ae_input_size)
+    avg_mse_by_level = np.zeros(30)
     for iter, batch in enumerate(testloader):
-            if batch[0].size() == 1 and batch[0] == 0:
-                continue
-            batch[0] = batch[0][:, :, min_x: max_x, min_y: max_y]
+        if batch is None:
+            continue
+        model.eval()
+        points_x, points_y = batch[:2]
 
-            model.eval()
-            points_x = batch[0]
-            points_x = (points_x.float()).cuda()
-            x_rec = model(points_x)
-            loss_rec = criterion(x_rec, points_x).item()
-            avg_mse += loss_rec
-            avg_mse_by_variable += np.mean((x_rec - points_x).cpu().detach().numpy()**2, axis=(0,2,3))
-            if iter < 10:
-                np.save(f"{args.save_path}/offline_test_ae_{iter}_x.npy", points_x.cpu().detach().numpy())
-                np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec.cpu().detach().numpy())
+        # reshape output prediction to shape of resmlp 1D output
+        points_y = points_y[:, :, sub_region_mask]
+        points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
 
-            current_iters += 1
-            print('testing: iters:{}/{}| mse:{:.6f}|'.format(iter+1, len(testloader), loss_rec))
+        points_x = (points_x.float()).cuda()
+        points_y = (points_y.float()).cuda()
+
+        if variational_flag:
+            outputs_y, x_rec, mu, log_var = model(points_x)
+        else:
+            outputs_y, x_rec = model(points_x)
+        loss_rec = criterion(x_rec, points_x).item()
+        loss_pred = criterion(outputs_y, points_y).item()
+        avg_mse += loss_rec
+        avg_pred_mse += loss_pred
+        avg_mse_by_variable += np.mean((x_rec - points_x).cpu().detach().numpy()**2, axis=(0,2,3))
+        avg_mse_by_level += np.mean((points_y - outputs_y).cpu().detach().numpy()**2, axis=0)
+        if iter < 10:
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_x.npy", points_x.cpu().detach().numpy())
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec.cpu().detach().numpy())
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y.cpu().detach().numpy())
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y.cpu().detach().numpy())
+
+        current_iters += 1
+        print('testing: iters:{}/{}| pred mse:{:.2e} | rec mse:{:.2e} |'\
+              .format(iter+1, len(testloader), loss_pred, loss_rec))
     avg_mse /= current_iters
     avg_mse_by_variable /= current_iters
-    np.save(f"{args.save_path}/offline_test_ae_avg_mse.npy", avg_mse)
-    print(f"Average MSE: {avg_mse}")
+    avg_mse_by_level /= current_iters
+    np.save(f"{args.save_path}/offline_test_ae_avg_recmse_by_var.npy", avg_mse_by_variable)
+    np.save(f"{args.save_path}/offline_test_ae_avg_predmse_by_level.npy", avg_mse_by_level)
+    print("Average pred MSE by level:")
+    for i in range(30):
+        print(f"Level {i}: {avg_mse_by_level[i]}")
+    print(f"Average rec MSE: {avg_mse}")
+    print(f"Average pred MSE: {avg_pred_mse}")
 
 if __name__ == "__main__":
     args = argsparser.argsparser()
