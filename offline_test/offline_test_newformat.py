@@ -199,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--start_ts", type=int, default=0)
     parser.add_argument("--multistep", type=int, default=1)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     args = parser.parse_args()
     print(args.config)
     with open(args.config, "r") as f:
