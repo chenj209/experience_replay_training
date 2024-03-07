@@ -29,6 +29,11 @@ from preprocess import StandardizeTransform, get_min_max_coords
 from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
 
+from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
+    report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
+    report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
+    get_thickness_from_ps_1d
+
 def prep_dataloaders(
     args,
     test_files,
@@ -130,6 +135,14 @@ def main(args):
     print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
+    if args.thick:
+        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
+        hyai = pconsts["hyai"]
+        hybi = pconsts["hybi"]
+        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
+    else:
+        get_thickness = None
+
     transform = Compose([
         StandardizeTransform(
             data_means,
@@ -138,7 +151,8 @@ def main(args):
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True
             )])
 
     testloader = prep_dataloaders(args, test_files, input_indices,
@@ -160,15 +174,21 @@ def main(args):
     avg_mse_by_variable = np.zeros(ae_input_size)
     avg_mse_by_level = np.zeros(30)
     current_iters = 0
+    y_gt = []
+    y_pred = []
     for iter, batch in enumerate(testloader):
         if batch is None:
             continue
         model.eval()
-        points_x, points_y = batch[:2]
+        points_x, points_y, x_raw, _ = batch[:2]
 
         # reshape output prediction to shape of resmlp 1D output
         points_y = points_y[:, :, model.module.sub_region_mask]
         points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
+        if get_thickness is not None:
+            x_raw = x_raw[:, :, model.module.sub_region_mask]
+            x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
+            thickness = get_thickness(x_raw[:,-1].numpy())
 
         points_x = (points_x.float()).cuda()
         points_y = (points_y.float()).cuda()
@@ -177,6 +197,7 @@ def main(args):
             outputs_y, x_rec, mu, log_var = model(points_x)
         else:
             outputs_y, x_rec = model(points_x)
+        
         loss_rec = criterion(x_rec, points_x).item()
         loss_pred = criterion(outputs_y, points_y).item()
         avg_mse += loss_rec
@@ -188,6 +209,11 @@ def main(args):
             np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec.cpu().detach().numpy())
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y.cpu().detach().numpy())
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y.cpu().detach().numpy())
+        if get_thickness is not None:
+            outputs_y = outputs_y * thickness
+            points_y = points_y * thickness
+        y_gt.append(points_y.cpu().detach().numpy())
+        y_pred.append(outputs_y.cpu().detach().numpy())
 
         current_iters += 1
         print('testing: iters:{}/{}| pred mse:{:.2e} | rec mse:{:.2e} |'\
@@ -203,6 +229,10 @@ def main(args):
         print(f"Level {i}: {avg_mse_by_level[i]}")
     print(f"Average rec MSE: {avg_mse}")
     print(f"Average pred MSE: {avg_pred_mse}")
+    y_gt = np.concatenate(y_gt, axis=0)
+    y_pred = np.concatenate(y_pred, axis=0)
+    qtend_log = report_qtend(y_gt, y_pred)
+    qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
 
 if __name__ == "__main__":
     import argparse
@@ -217,5 +247,7 @@ if __name__ == "__main__":
     #parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     #parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    parser.add_argument("--thick", action="store_true", help="use thick mask")
     args = parser.parse_args()
+
     main(args)
