@@ -36,7 +36,8 @@ sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 
 
-def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
+#def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
+def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
     problem_files = []
     test_time_begin = time.time()
     epoch = 1
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     args = parser.parse_args()
-    print(args.config)
+    #print(args.config)
     # with open(args.config, "r") as f:
         # config = json.load(f)
     # model_ckpt_path = config["0-29"]["ckpt_path"]
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     testloader = prep_dataloaders(args, test_files, input_indices,
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
-   
+
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
@@ -294,11 +295,11 @@ if __name__ == "__main__":
         get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
     else:
         get_thickness = None
-    input_size = len(input_indices)
+    input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
     all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
 
 
-    logs, problem_files = offline_test(args, all_models, testloader, get_thickness, testing_set.inverse_y())
+    logs, problem_files = offline_test(args, all_models, testloader, get_thickness)
     if len(problem_files) > 0:
         with open(f"{args.out_json.rstrip('.json')}_problem_files.txt", "w") as f:
             f.write(str(problem_files))
