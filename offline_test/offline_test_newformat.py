@@ -69,9 +69,10 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         file_names = batch[3]
         #model.eval()
         with torch.no_grad():
-            points_x, points_y, x_raw, _ = batch
+            points_x, points_y, x_raw, y_raw = batch
             #print("x_raw:", x_raw.shape)
             if get_thickness is not None:
+                x_raw, y_raw = FlattenSpatialTransform()((x_raw, y_raw))
                 thickness = get_thickness(x_raw[0,:,-1].numpy())
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
@@ -270,7 +271,6 @@ if __name__ == "__main__":
         get_thickness = None
 
     transform = Compose([
-        FlattenSpatialTransform(),
         StandardizeTransform(
             data_means,
             data_stds,
@@ -281,6 +281,7 @@ if __name__ == "__main__":
             normalize_output=True,
             include_raw=True
             ),
+        FlattenSpatialTransform(),
         ])
 
     testloader = prep_dataloaders(args, test_files, input_indices,
