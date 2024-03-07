@@ -115,7 +115,8 @@ class StandardizeTransform:
             multistep=0,
             normalize_input=True,
             normalize_output=True,
-            include_raw=False
+            include_raw=False,
+            flattened=False
             ):
         """
         Takes a set of input and output from SPCAM data and standardizes it.
@@ -162,6 +163,7 @@ class StandardizeTransform:
 
         data_x, data_y = sample[:2]
         x = data_x.copy()
+        y = data_y.copy()
         # check multistep shape here
         target_shape = 0
         for col in self.data_cols_x:
@@ -175,7 +177,6 @@ class StandardizeTransform:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
                                  self.data_mean, self.data_std, err_header=err_header)
 
-        y = data_y.copy()
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
                                     self.data_mean, self.data_std, err_header=err_header)
