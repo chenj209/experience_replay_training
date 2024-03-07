@@ -21,7 +21,7 @@ import variational_autoencoder
 sys.path.append(os.path.join(sys.path[0], ".."))
 from utils import Logger, AverageMeter, mkdir_p
 sys.path.append(os.path.join(sys.path[0], "..", "utils"))
-import argsparser
+# import argsparser
 import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
@@ -203,14 +203,15 @@ def main(args):
     print(f"Average pred MSE: {avg_pred_mse}")
 
 if __name__ == "__main__":
-    parser = argsparser.get_argparser()
+    import argparse
+    parser = argparse.ArgumentParser(description="offline test for autoencoder")
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
-    # parser.add_argument("--resume", type=str, help="path to ae model file")
+    parser.add_argument("--resume", type=str, help="path to ae model file")
     parser.add_argument("--save_path", type=str, help="path to save results", default="offline_test")
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
-    # parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
+    parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
     #parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     #parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
