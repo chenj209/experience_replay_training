@@ -190,7 +190,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     #parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
     #parser.add_argument("--resume", "-re", help="path to selected model")
-    parser.add_argument("config", help="path to configuration file")
+    parser.add_argument("resume", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
     parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
@@ -202,9 +202,10 @@ if __name__ == "__main__":
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     args = parser.parse_args()
     print(args.config)
-    with open(args.config, "r") as f:
-        config = json.load(f)
-    model_ckpt_path = config["0-29"]["ckpt_path"]
+    # with open(args.config, "r") as f:
+        # config = json.load(f)
+    # model_ckpt_path = config["0-29"]["ckpt_path"]
+    model_ckpt_path = args.resume
     # all_models = load_models(
     #     config["0-29"]["ckpt_path"],
     #     # config["30-59"]["ckpt_path"],
