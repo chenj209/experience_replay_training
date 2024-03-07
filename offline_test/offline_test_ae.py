@@ -233,6 +233,7 @@ def main(args):
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
     qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
+    print(qtend_log_lvl)
 
 if __name__ == "__main__":
     import argparse

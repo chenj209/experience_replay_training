@@ -261,7 +261,8 @@ def test_image_multistep1():
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            include_raw=True
             ),
         # FlattenSpatialTransform()
         ])
@@ -284,9 +285,9 @@ def test_image_multistep1():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y = batch[:2]
+        x, y, x_raw, y_raw = batch[:4]
         filenames = batch[-1]
-        print(idx, x.size(), y.size(), filenames)
+        print(idx, x.size(), y.size(), x_raw.size(), y_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
