@@ -30,10 +30,10 @@ from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
 
 def prep_dataloaders(
-    args, 
+    args,
     test_files,
-    input_indices, 
-    prev_input_indices, 
+    input_indices,
+    prev_input_indices,
     output_indices,
     transform,
     region_mask):
@@ -50,8 +50,8 @@ def prep_dataloaders(
         include_filename=True,
         region_mask2d=(region_mask,2)
         )
-    testloader = data.DataLoader(testing_set, shuffle=False, 
-                                 batch_size=1, 
+    testloader = data.DataLoader(testing_set, shuffle=False,
+                                 batch_size=1,
                                  num_workers=4,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
@@ -124,7 +124,7 @@ def main(args):
         region_mask = np.load(args.region_mask)
     else:
         region_mask = np.ones((96,144))
-    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask.squeeze(), 3)
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
     lon = np.linspace(0,357.5,144)
     lat = np.linspace(-90,90,96)
     print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
@@ -141,7 +141,7 @@ def main(args):
             normalize_output=True
             )])
 
-    testloader = prep_dataloaders(args, test_files, input_indices, 
+    testloader = prep_dataloaders(args, test_files, input_indices,
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
 
@@ -151,7 +151,7 @@ def main(args):
     resmlp_input_size = ae_input_size
 
 
-    model, variational_flag = prep_models(args, resmlp_input_size, ae_input_size, 
+    model, variational_flag = prep_models(args, resmlp_input_size, ae_input_size,
                         len(output_indices), sub_region_mask)
 
     criterion = nn.MSELoss()
@@ -159,6 +159,7 @@ def main(args):
     avg_pred_mse = 0
     avg_mse_by_variable = np.zeros(ae_input_size)
     avg_mse_by_level = np.zeros(30)
+    current_iters = 0
     for iter, batch in enumerate(testloader):
         if batch is None:
             continue
@@ -166,7 +167,7 @@ def main(args):
         points_x, points_y = batch[:2]
 
         # reshape output prediction to shape of resmlp 1D output
-        points_y = points_y[:, :, sub_region_mask]
+        points_y = points_y[:, :, model.module.sub_region_mask]
         points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
 
         points_x = (points_x.float()).cuda()
@@ -194,6 +195,7 @@ def main(args):
     avg_mse /= current_iters
     avg_mse_by_variable /= current_iters
     avg_mse_by_level /= current_iters
+    avg_pred_mse /= current_iters
     np.save(f"{args.save_path}/offline_test_ae_avg_recmse_by_var.npy", avg_mse_by_variable)
     np.save(f"{args.save_path}/offline_test_ae_avg_predmse_by_level.npy", avg_mse_by_level)
     print("Average pred MSE by level:")
