@@ -320,7 +320,7 @@ def test_single_column_multistep1_pacific_region():
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
-        x, y = batch
+        x, y = batch[:2]
         x_raw = batch[2]
         x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
         filenames = batch[-1]
@@ -400,8 +400,8 @@ def test_image_multistep1_pacific_region():
 
 if __name__ == "__main__":
     # test_single_column_multistep0_pacific_region()
+    test_single_column_multistep1_pacific_region()
     test_single_column_multistep0_pacific_region_rect()
-    # test_single_column_multistep1_pacific_region()
     # test_image_multistep0_pacific_region()
     test_image_multistep1_pacific_region()
 

@@ -213,6 +213,9 @@ def main(args):
             np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y)
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y)
+            if variational_autoencoder:
+                np.save(f"{args.save_path}/offline_test_ae_{iter}_mu.npy", mu.cpu().detach().numpy())
+                np.save(f"{args.save_path}/offline_test_ae_{iter}_log_var.npy", log_var.cpu().detach().numpy())
         if get_thickness is not None:
             outputs_y = outputs_y * thickness
             points_y = points_y * thickness
