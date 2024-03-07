@@ -86,7 +86,7 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
 
 
     model = torch.nn.DataParallel(model).cuda()
-    model.load_state_dict(torch.load(args.resume))
+    model.load_state_dict(torch.load(args.resume)["state_dict"])
     cudnn.benchmark = True
 
     return model, variational_flag
