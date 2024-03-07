@@ -64,11 +64,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         # file_names = batch[-1]
         #model.eval()
         with torch.no_grad():
-            points_x, points_y, x_raw, y_raw = batch[:4]
-            points_x, points_y, x_raw, y_raw = points_x.reshape(-1, points_x.shape[-1]), \
-                points_y.reshape(-1, points_y.shape[-1]), x_raw.reshape(-1, x_raw.shape[-1]), \
-                    y_raw.reshape(-1, y_raw.shape[-1])
-            #print("x_raw:", x_raw.shape)
+            points_x, points_y, x_raw = batch[:3]
+            points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
+                points_y.reshape(-1, points_y.shape[-1])
+            x_raw = x_raw.permute((0,2,1))
+            x_raw = x_raw.reshape(-1, x_raw.shape[-1])
             if get_thickness is not None:
                 thickness = get_thickness(x_raw[:,-1].numpy())
                 #print("thickness:", thickness.shape)
@@ -77,8 +77,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
             y1 = all_models['0_29'](points_x).detach().cpu().numpy()
-            points_y = points_y[0]
-            y1 = y1[0]
+            #points_y = points_y[0]
+            #y1 = y1[0]
             #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
             #print("y1:", y1.shape, y1.mean(), y1.std())
             if get_thickness is not None:
