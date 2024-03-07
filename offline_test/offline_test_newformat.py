@@ -13,6 +13,7 @@ import json
 import time
 import glob
 from torch.utils import data
+from torchvision.transforms import Compose
 from sklearn.metrics import r2_score
 
 sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
@@ -21,7 +22,9 @@ sys.path.append(os.path.join(sys.path[0], '..', 'models'))
 import phys_consts
 from load_models import load_resmlp_newformat
 #from dataloader_refactor import DatasetDisk
-from dataloader_newformat import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
+from dataloader_utils import gen_multistep_col_indices
+from preprocess import StandardizeTransform, FlattenSpatialTransform, get_min_max_coords
 from normalization import get_inverse_newformat
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
@@ -147,6 +150,35 @@ def offline_test(args, all_models, testloader, get_thickness, inverse_output, si
         res["qtend_log_spatial"] = qtend_log_spatial
     return res, problem_files
 
+def prep_dataloaders(
+    args,
+    test_files,
+    input_indices,
+    prev_input_indices,
+    output_indices,
+    transform,
+    region_mask):
+
+    testing_set = DatasetDisk(
+        test_files,
+        input_indices,
+        prev_input_indices,
+        output_indices,
+        is_train=False,
+        transform=transform,
+        multistep=int(args.multistep),
+        sample_rate=int(args.sample_rate),
+        include_filename=True,
+        region_mask2d=(region_mask,2)
+        )
+    testloader = data.DataLoader(testing_set, shuffle=False,
+                                 batch_size=1,
+                                 num_workers=4,
+                                 collate_fn=filter_collate,
+                                 pin_memory=True)
+
+    return testloader
+
 if __name__ == "__main__":
     import argparse
     import random
@@ -191,63 +223,42 @@ if __name__ == "__main__":
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
-
-    all_files = glob.glob(data_dir+'/*.npy')
-    for fn in all_files:
-        if "08691" in fn or "00002" in fn:
-            all_files.remove(fn)
-    all_files.sort()
-    if args.start_ts > 0:
-        start_idx = -1
-        for i,fn in enumerate(all_files):
-            m = re.search("(\d{5})\.np", fn)
-            if m is not None:
-                if int(m.group(1)) >= args.start_ts:
-                    start_idx = i
-                    break
-            else:
-                print(f"{fn} not matching")
-        if start_idx == -1:
-            raise Exception(f"start ts {args.start_ts} not found")
-        all_files = all_files[start_idx:]
-        print(f"Starting from {start_idx}, first files {all_files[:5]}")
-
-    #all_files = all_files
-    #print("all_files len ", len(all_files))
-    #test_idx = np.random.choice(len(all_files), len(all_files), replace=False)
-    #print(test_idx[:10])
-    #test_files = [all_files[i] for i in test_idx]
-    test_files = all_files
-    print("Test file size: " ,len(test_files))
-    print(test_files[:3])
-    print(test_files[-3:])
-
-    # col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    # col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     col_names_y = ["qtend_check"]
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    testing_set = DatasetDisk(
-        test_files,
-        col_names,
-        col_names_x,
-        col_names_y,
-        data_stds,
-        data_means,
-        is_train=False,
-        noise_std=0,
-        filename=True,
-        output_normalized=True,
-        multistep=args.multistep,
-        sample_rate=args.sample,
-        prev_ex_vars=prev_ex_vars+args.ex_input
-        )
-    # testing_set = DatasetDisk(test_files, col_names, col_names_x, col_names_y, is_train=False, noise_std=0, output_normalized=False, silent=True, filename=True, sample_rate=args.sample)
-    testloader = data.DataLoader(testing_set, shuffle=False, batch_size=1, num_workers=1)
+
+    all_files = glob.glob(data_dir+'/*.npy')
+    all_files.sort()
+    # testing data starts from 35040
+    test_files = all_files[35040:]
+
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
+    )
+    print("Input indices: ", col_names[input_indices])
+    print("Prev input indices: ", col_names[prev_input_indices])
+    print("Output indices: ", col_names[output_indices])
+
+    multistep_col_names_x = []
+    for i in range(int(args.multistep)):
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(prev_ex_vars)
+    multistep_col_names_x.extend(col_names_x)
+
+    region_mask = None
+    if args.region_mask is not None and args.region_mask != "all":
+        region_mask = np.load(args.region_mask)
+    else:
+        region_mask = np.ones((96,144))
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
+    lon = np.linspace(0,357.5,144)
+    lat = np.linspace(-90,90,96)
+    print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
+    sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
+
     if args.thick:
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
@@ -255,8 +266,33 @@ if __name__ == "__main__":
         get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
     else:
         get_thickness = None
-    input_size = len(testing_set.input_indices)\
-                    +int(args.multistep)*(len(testing_set.prev_input_indices))
+
+    transform = Compose([
+        FlattenSpatialTransform(),
+        StandardizeTransform(
+            data_means,
+            data_stds,
+            multistep_col_names_x,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True,
+            include_raw=True
+            ),
+        ])
+
+    testloader = prep_dataloaders(args, test_files, input_indices,
+                                  prev_input_indices, output_indices,
+                                  transform, region_mask)
+   
+    if args.thick:
+        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
+        hyai = pconsts["hyai"]
+        hybi = pconsts["hybi"]
+        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
+    else:
+        get_thickness = None
+    input_size = len(input_indices)
     all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
 
 
