@@ -64,13 +64,13 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         # file_names = batch[-1]
         #model.eval()
         with torch.no_grad():
-            points_x, points_y, x_raw, y_raw = batch
-            points_x, points_y, x_raw, y_raw = points_x.reshape(-1, points_x.shape[1]), \
-                points_y.reshape(-1, points_y.shape[1]), x_raw.reshape(-1, x_raw.shape[1]), \
-                    y_raw.reshape(-1, y_raw.shape[1])
+            points_x, points_y, x_raw, y_raw = batch[:4]
+            points_x, points_y, x_raw, y_raw = points_x.reshape(-1, points_x.shape[-1]), \
+                points_y.reshape(-1, points_y.shape[-1]), x_raw.reshape(-1, x_raw.shape[-1]), \
+                    y_raw.reshape(-1, y_raw.shape[-1])
             #print("x_raw:", x_raw.shape)
             if get_thickness is not None:
-                thickness = get_thickness(x_raw[0,:,-1].numpy())
+                thickness = get_thickness(x_raw[:,-1].numpy())
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
@@ -82,8 +82,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
             #print("y1:", y1.shape, y1.mean(), y1.std())
             if get_thickness is not None:
-                y1 *= thickness * phys_consts.LATVAP
-                points_y *= thickness*phys_consts.LATVAP
+                y1 = y1* thickness * phys_consts.LATVAP
+                points_y = points_y*thickness*phys_consts.LATVAP
             y_1.append(y1)
             y_gt.append(points_y)
             # r2 = r2_score(y1, points_y, multioutput="variance_weighted")
