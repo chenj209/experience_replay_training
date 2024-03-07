@@ -180,7 +180,7 @@ def main(args):
         if batch is None:
             continue
         model.eval()
-        points_x, points_y, x_raw, _ = batch[:2]
+        points_x, points_y, x_raw, _ = batch[:4]
 
         # reshape output prediction to shape of resmlp 1D output
         points_y = points_y[:, :, model.module.sub_region_mask]
