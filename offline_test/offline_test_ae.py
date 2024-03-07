@@ -203,8 +203,7 @@ def main(args):
     print(f"Average pred MSE: {avg_pred_mse}")
 
 if __name__ == "__main__":
-    args = argsparser.argsparser()
-    parser = argsparser.prepare_parser()
+    parser = argsparser.get_argparser()
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--resume", type=str, help="path to ae model file")
@@ -215,4 +214,5 @@ if __name__ == "__main__":
     #parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     #parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    args = parser.parse_args()
     main(args)
