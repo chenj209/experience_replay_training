@@ -204,16 +204,20 @@ def main(args):
         avg_pred_mse += loss_pred
         avg_mse_by_variable += np.mean((x_rec - points_x).cpu().detach().numpy()**2, axis=(0,2,3))
         avg_mse_by_level += np.mean((points_y - outputs_y).cpu().detach().numpy()**2, axis=0)
+        points_x = points_x.cpu().detach().numpy()
+        points_y = points_y.cpu().detach().numpy()
+        x_rec = x_rec.cpu().detach().numpy()
+        outputs_y = outputs_y.cpu().detach().numpy()
         if iter < 10:
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_x.npy", points_x.cpu().detach().numpy())
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec.cpu().detach().numpy())
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y.cpu().detach().numpy())
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y.cpu().detach().numpy())
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_x.npy", points_x)
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec)
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y)
+            np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y)
         if get_thickness is not None:
             outputs_y = outputs_y * thickness
             points_y = points_y * thickness
-        y_gt.append(points_y.cpu().detach().numpy())
-        y_pred.append(outputs_y.cpu().detach().numpy())
+        y_gt.append(points_y)
+        y_pred.append(outputs_y)
 
         current_iters += 1
         print('testing: iters:{}/{}| pred mse:{:.2e} | rec mse:{:.2e} |'\
