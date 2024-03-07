@@ -61,7 +61,7 @@ def prep_dataloaders(
 def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_mask):
     with open(args.ae_config, 'r') as f:
         ae_config = json.load(f)
-    ae_config['input_size'] = ae_input_size
+    ae_config['input_size'][0] = ae_input_size
     print(f"Model input size: {ae_config['input_size']}")
     #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
