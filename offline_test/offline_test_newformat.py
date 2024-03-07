@@ -61,19 +61,15 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         if batch[0].shape[0] == 0:
             continue
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-        # batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-        # batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
-        # batch[2] = batch[2].reshape(-1, batch[2].shape[-1])
-        batch[0] = batch[0][:, region_mask, :]
-        batch[1] = batch[1][:, region_mask, :]
-        batch[2] = batch[2][:, region_mask, :]
-        file_names = batch[3]
+        # file_names = batch[-1]
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch
+            points_x, points_y, x_raw, y_raw = points_x.reshape(-1, points_x.shape[1]), \
+                points_y.reshape(-1, points_y.shape[1]), x_raw.reshape(-1, x_raw.shape[1]), \
+                    y_raw.reshape(-1, y_raw.shape[1])
             #print("x_raw:", x_raw.shape)
             if get_thickness is not None:
-                x_raw, y_raw = FlattenSpatialTransform()((x_raw, y_raw))
                 thickness = get_thickness(x_raw[0,:,-1].numpy())
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
@@ -171,7 +167,7 @@ def prep_dataloaders(
         multistep=int(args.multistep),
         sample_rate=int(args.sample_rate),
         include_filename=True,
-        region_mask2d=(region_mask,2)
+        region_mask1d=region_mask
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=1,
