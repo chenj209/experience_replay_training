@@ -192,7 +192,7 @@ if __name__ == "__main__":
     #parser.add_argument("--resume", "-re", help="path to selected model")
     parser.add_argument("config", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
-    parser.add_argument("--sample", type=int, help="sample frequency to use", default=12)
+    parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
     parser.add_argument("--save_path", type=str)
     parser.add_argument("--region_mask", type=str)
