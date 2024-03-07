@@ -206,7 +206,7 @@ if __name__ == "__main__":
     parser = argsparser.get_argparser()
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
-    parser.add_argument("--resume", type=str, help="path to ae model file")
+    # parser.add_argument("--resume", type=str, help="path to ae model file")
     parser.add_argument("--save_path", type=str, help="path to save results", default="offline_test")
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
