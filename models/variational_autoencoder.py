@@ -58,21 +58,31 @@ class Encoder(nn.Module):
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
         self.flattened_size = int(channel_sizes[-1] * h * w)
 
-        em_layers = []
+        em_layers1 = []
         for i in range(self.num_em_layers):
-            em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            em_layers.append(nn.ReLU(True))
+            em_layers1.append(ElementWiseMultiplyAddBias(self.flattened_size))
+            em_layers1.append(nn.ReLU(True))
         # not applying activation to latent space
-        self.em1 = nn.Sequential(*em_layers[:-1])
-        self.em2 = nn.Sequential(*em_layers[:-1])
+        self.em1 = nn.Sequential(*em_layers1[:-1])
+        em_layers2 = []
+        for i in range(self.num_em_layers):
+            em_layers2.append(ElementWiseMultiplyAddBias(self.flattened_size))
+            em_layers2.append(nn.ReLU(True))
+        # not applying activation to latent space
+        self.em2 = nn.Sequential(*em_layers2[:-1])
 
-        fc_layers = []
+        fc_layers1 = []
         self.fc_sizes.insert(0, self.flattened_size)
         for i in range(len(self.fc_sizes)-1):
-            fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            fc_layers.append(nn.ReLU(True))
-        self.fc1 = nn.Sequential(*fc_layers[:-1])
-        self.fc2 = nn.Sequential(*fc_layers[:-1])
+            fc_layers1.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
+            fc_layers1.append(nn.ReLU(True))
+        self.fc1 = nn.Sequential(*fc_layers1[:-1])
+        fc_layers2 = []
+        self.fc_sizes.insert(0, self.flattened_size)
+        for i in range(len(self.fc_sizes)-1):
+            fc_layers2.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
+            fc_layers2.append(nn.ReLU(True))
+        self.fc2 = nn.Sequential(*fc_layers2[:-1])
 
     def forward(self, x):
         x = self.conv(x)
@@ -84,7 +94,7 @@ class Encoder(nn.Module):
             std = self.em2(std)
         if self.num_fc_layers > 0:
             mu = self.fc1(mu)
-            std = self.fc1(std)
+            std = self.fc2(std)
         return mu, std
 
 # write a correspoinding decoder
