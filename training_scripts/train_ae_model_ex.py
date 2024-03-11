@@ -225,7 +225,7 @@ def main(args):
 
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
     warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
-    reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True, min_lr=1e-6)
+    reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True, min_lr=1e-6)
 
 
     # Resume
@@ -391,8 +391,8 @@ def main(args):
         if epoch < warmup_epochs:
             warmup_scheduler.step()
         else:
-            pass
-            #reduce_on_plateau_scheduler.step(train_losses.avg)
+            #pass
+            reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
             #if args.pred_weight > args.rec_weight:
             #    reduce_on_plateau_scheduler.step(loss_pred)

@@ -101,8 +101,9 @@ def main(args):
     # region_mask = to_inference_shape(region_mask).squeeze()
     data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    col_names_x = []+args.ex_input
+    prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
@@ -111,7 +112,7 @@ def main(args):
     all_files.sort()
     # testing data starts from 35040
     #test_files = all_files[35040:]
-    test_files = all_files[:50]
+    test_files = all_files[:15]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
@@ -185,10 +186,12 @@ def main(args):
         points_x, points_y, x_raw, _ = batch[:4]
 
         # reshape output prediction to shape of resmlp 1D output
-        points_y = points_y[:, :, model.module.sub_region_mask]
+        #points_y = points_y[:, :, model.module.sub_region_mask]
+        points_y = points_y[:, :, model.sub_region_mask]
         points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
         if get_thickness is not None:
-            x_raw = x_raw[:, :, model.module.sub_region_mask]
+            #x_raw = x_raw[:, :, model.module.sub_region_mask]
+            x_raw = x_raw[:, :, model.sub_region_mask]
             x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
             thickness = get_thickness(x_raw[:,-1].numpy())
 
