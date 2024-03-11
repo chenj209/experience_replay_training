@@ -58,31 +58,32 @@ class Encoder(nn.Module):
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
         self.flattened_size = int(channel_sizes[-1] * h * w)
 
-        em_layers1 = []
-        for i in range(self.num_em_layers):
-            em_layers1.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            em_layers1.append(nn.ReLU(True))
-        # not applying activation to latent space
-        self.em1 = nn.Sequential(*em_layers1[:-1])
-        em_layers2 = []
-        for i in range(self.num_em_layers):
-            em_layers2.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            em_layers2.append(nn.ReLU(True))
-        # not applying activation to latent space
-        self.em2 = nn.Sequential(*em_layers2[:-1])
+        if self.num_em_layers > 0:
+            em_layers1 = []
+            for i in range(self.num_em_layers):
+                em_layers1.append(ElementWiseMultiplyAddBias(self.flattened_size))
+                em_layers1.append(nn.ReLU(True))
+            # not applying activation to latent space
+            self.em1 = nn.Sequential(*em_layers1[:-1])
+            em_layers2 = []
+            for i in range(self.num_em_layers):
+                em_layers2.append(ElementWiseMultiplyAddBias(self.flattened_size))
+                em_layers2.append(nn.ReLU(True))
+            # not applying activation to latent space
+            self.em2 = nn.Sequential(*em_layers2[:-1])
 
-        fc_layers1 = []
-        self.fc_sizes.insert(0, self.flattened_size)
-        for i in range(len(self.fc_sizes)-1):
-            fc_layers1.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            fc_layers1.append(nn.ReLU(True))
-        self.fc1 = nn.Sequential(*fc_layers1[:-1])
-        fc_layers2 = []
-        self.fc_sizes.insert(0, self.flattened_size)
-        for i in range(len(self.fc_sizes)-1):
-            fc_layers2.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            fc_layers2.append(nn.ReLU(True))
-        self.fc2 = nn.Sequential(*fc_layers2[:-1])
+        if len(self.fc_sizes) > 0:
+            fc_layers1 = []
+            self.fc_sizes.insert(0, self.flattened_size)
+            for i in range(len(self.fc_sizes)-1):
+                fc_layers1.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
+                fc_layers1.append(nn.ReLU(True))
+            self.fc1 = nn.Sequential(*fc_layers1[:-1])
+            fc_layers2 = []
+            for i in range(len(self.fc_sizes)-1):
+                fc_layers2.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
+                fc_layers2.append(nn.ReLU(True))
+            self.fc2 = nn.Sequential(*fc_layers2[:-1])
 
     def forward(self, x):
         x = self.conv(x)
@@ -118,18 +119,20 @@ class Decoder(nn.Module):
             w = np.floor((w - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
         self.flattened_size = int(channel_sizes[0] * h * w)
 
-        fc_layers = []
-        self.fc_sizes.append(self.flattened_size)
-        for i in range(len(self.fc_sizes)-1):
-            fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
-            fc_layers.append(nn.ReLU(True))
-        self.fc = nn.Sequential(*fc_layers[:-1])
+        if len(self.fc_sizes) > 0:
+            fc_layers = []
+            self.fc_sizes.append(self.flattened_size)
+            for i in range(len(self.fc_sizes)-1):
+                fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
+                fc_layers.append(nn.ReLU(True))
+            self.fc = nn.Sequential(*fc_layers[:-1])
 
-        em_layers = []
-        for i in range(self.num_em_layers):
-            em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
-            em_layers.append(nn.ReLU(True))
-        self.em = nn.Sequential(*em_layers[:-1])
+        if self.num_em_layers > 0:
+            em_layers = []
+            for i in range(self.num_em_layers):
+                em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
+                em_layers.append(nn.ReLU(True))
+            self.em = nn.Sequential(*em_layers[:-1])
 
         self.unflatten = nn.Unflatten(
             dim=1,

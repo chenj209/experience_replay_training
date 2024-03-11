@@ -79,7 +79,8 @@ def main(args):
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
     all_files = glob.glob(args.data_dir+'/*.npy')
     all_files.sort()
-    all_files = all_files[:35040]
+    #all_files = all_files[:35040]
+    all_files = all_files[:40]
 
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
@@ -194,6 +195,12 @@ def main(args):
     )
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
+    print(model)
+    for name, module in model.named_modules():
+        num_params = sum(p.numel() for p in module.parameters(recurse=False))
+        if num_params > 0:
+            layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
+            print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
@@ -378,11 +385,12 @@ def main(args):
         if epoch < warmup_epochs:
             warmup_scheduler.step()
         else:
+            pass
             # reduce lr for validating
-            if args.pred_weight > args.rec_weight:
-                reduce_on_plateau_scheduler.step(loss_pred)
-            else:
-                reduce_on_plateau_scheduler.step(loss_rec)
+            #if args.pred_weight > args.rec_weight:
+            #    reduce_on_plateau_scheduler.step(loss_pred)
+            #else:
+            #    reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -408,7 +416,7 @@ def main(args):
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
 
-        #tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
 
 
     logger.close()
