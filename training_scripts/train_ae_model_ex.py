@@ -378,7 +378,11 @@ def main(args):
         if epoch < warmup_epochs:
             warmup_scheduler.step()
         else:
-            reduce_on_plateau_scheduler.step(loss_pred)
+            # reduce lr for validating
+            if args.pred_weight > args.rec_weight:
+                reduce_on_plateau_scheduler.step(loss_pred)
+            else:
+                reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -397,7 +401,7 @@ def main(args):
 
         if (epoch)%5 == 0:
             tools.save_checkpoint({
-                'state_dict': model.state_dict(), 
+                'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 # 'scheduler': reduce_on_plateau_scheduler.state_dict(),
                 # 'epoch': epoch

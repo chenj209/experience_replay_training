@@ -197,7 +197,7 @@ def main(args):
             outputs_y, x_rec, mu, log_var = model(points_x)
         else:
             outputs_y, x_rec = model(points_x)
-        
+
         loss_rec = criterion(x_rec, points_x).item()
         loss_pred = criterion(outputs_y, points_y).item()
         avg_mse += loss_rec
@@ -213,7 +213,7 @@ def main(args):
             np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y)
             np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y)
-            if variational_autoencoder:
+            if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{iter}_mu.npy", mu.cpu().detach().numpy())
                 np.save(f"{args.save_path}/offline_test_ae_{iter}_log_var.npy", log_var.cpu().detach().numpy())
         if get_thickness is not None:
@@ -236,6 +236,7 @@ def main(args):
         print(f"Level {i}: {avg_mse_by_level[i]}")
     print(f"Average rec MSE: {avg_mse}")
     print(f"Average pred MSE: {avg_pred_mse}")
+    np.save(f"{args.save_path}/offline_test_ae_subregion_mask.npy", sub_region_mask)
     y_gt = np.concatenate(y_gt, axis=0)
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
