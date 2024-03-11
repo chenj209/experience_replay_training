@@ -35,16 +35,17 @@ class Encoder(nn.Module):
         self.fc_sizes = config["fc_sizes"][:]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
+        batch_norm = config["batch_norm"]
 
         conv_layers = [
             nn.Conv2d(input_size[0], channel_sizes[0], kernel_size=kernel_size, stride=strides[0], padding=paddings[0]),
-            nn.BatchNorm2d(channel_sizes[0]),
+            nn.BatchNorm2d(channel_sizes[0]) if batch_norm else nn.Identity(),
             nn.ReLU(True)
         ]
         for i in range(len(channel_sizes)-1):
             conv_layers.extend([
                 nn.Conv2d(channel_sizes[i], channel_sizes[i+1], kernel_size=kernel_size, stride=strides[i+1], padding=paddings[i+1]),
-                nn.BatchNorm2d(channel_sizes[i+1]),
+                nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
                 nn.ReLU(True),
             ])
         self.conv = nn.Sequential(*conv_layers)
@@ -111,6 +112,7 @@ class Decoder(nn.Module):
         self.fc_sizes = config["fc_sizes"][::-1]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
+        batch_norm = config["batch_norm"]
 
         h = input_size[1]
         w = input_size[2]
@@ -141,14 +143,15 @@ class Decoder(nn.Module):
 
         deconv_layers = []
         for i in range(len(channel_sizes)-1):
-            deconv_layers.extend([
-                nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-                nn.BatchNorm2d(channel_sizes[i+1]),
-                nn.ReLU(True),
-            ])
+            if batch_norm:
+                deconv_layers.extend([
+                    nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
+                    nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
+                    nn.ReLU(True),
+                ])
         deconv_layers.extend([
             nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-            nn.BatchNorm2d(input_size[0]),
+            nn.BatchNorm2d(input_size[0]) if batch_norm else nn.Identity(),
         ])
         self.deconv = nn.Sequential(*deconv_layers)
 
