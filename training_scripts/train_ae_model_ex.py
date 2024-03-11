@@ -301,6 +301,9 @@ def main(args):
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
+                if (epoch+1)%50 == 0:
+                    np.savez(f"epoch{epoch}_x_rec", x=points_x.detach().cpu().numpy(), x_rec=x_rec.detach().cpu().numpy())
+
             else:
                 outputs_y, x_rec = model(points_x)
                 loss_pred = criterion(outputs_y, points_y)
