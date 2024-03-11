@@ -143,12 +143,11 @@ class Decoder(nn.Module):
 
         deconv_layers = []
         for i in range(len(channel_sizes)-1):
-            if batch_norm:
-                deconv_layers.extend([
-                    nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-                    nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
-                    nn.ReLU(True),
-                ])
+            deconv_layers.extend([
+                nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
+                nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
+                nn.ReLU(True),
+            ])
         deconv_layers.extend([
             nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
             nn.BatchNorm2d(input_size[0]) if batch_norm else nn.Identity(),
