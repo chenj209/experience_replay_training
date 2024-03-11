@@ -80,7 +80,7 @@ def main(args):
     all_files = glob.glob(args.data_dir+'/*.npy')
     all_files.sort()
     #all_files = all_files[:35040]
-    all_files = all_files[:40]
+    all_files = all_files[:15]
 
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
@@ -90,8 +90,10 @@ def main(args):
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    col_names_x = []+args.ex_input
+    #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
@@ -202,7 +204,8 @@ def main(args):
             layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
             print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
-    model = torch.nn.DataParallel(model).cuda()
+    #model = torch.nn.DataParallel(model).cuda()
+    model = model.cuda()
     cudnn.benchmark = True
 
 
@@ -249,6 +252,7 @@ def main(args):
 
     # Train and test
     current_iters = 0
+    best_valid_loss = 9999
     for epoch in range(args.epoch):
         """
         training
@@ -278,7 +282,8 @@ def main(args):
 
             points_x, points_y = batch[:2]
             # points_y: shape (batch, features, lat, lon)
-            points_y = points_y[:, :, model.module.sub_region_mask]
+            #points_y = points_y[:, :, model.module.sub_region_mask]
+            points_y = points_y[:, :, model.sub_region_mask]
             # points_y: shape (batch, features, n_samples)
             points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             # points_y: shape (batch*n_sample, features)
@@ -356,7 +361,8 @@ def main(args):
             model.eval()
 
             points_x, points_y = batch[:2]
-            points_y = points_y[:, :, model.module.sub_region_mask]
+            #points_y = points_y[:, :, model.module.sub_region_mask]
+            points_y = points_y[:, :, model.sub_region_mask]
             points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
@@ -386,6 +392,7 @@ def main(args):
             warmup_scheduler.step()
         else:
             pass
+            #reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
             #if args.pred_weight > args.rec_weight:
             #    reduce_on_plateau_scheduler.step(loss_pred)
@@ -407,7 +414,7 @@ def main(args):
         #     tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
         #     break
 
-        if (epoch)%5 == 0:
+        if (epoch+1)%50 == 0:
             tools.save_checkpoint({
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
@@ -415,8 +422,7 @@ def main(args):
                 # 'epoch': epoch
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
-
-        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        #tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
 
 
     logger.close()

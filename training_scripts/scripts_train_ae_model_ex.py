@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     name = f"ae_model029_sampled1_0306_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
-    for epoch in ['100']:
+    for epoch in ['500']:
         for num_blocks in ['7']:
             for node_size in ['512']:
                 for noise_std in [0.0]:
@@ -54,7 +54,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 1 --workers 48 --region_mask {} ' \
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 1 --workers 8 --region_mask {} ' \
                                 '--rec_weight {} --pred_weight {} --ae_config {} ' \
                                 '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
