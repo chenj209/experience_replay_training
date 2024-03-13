@@ -89,10 +89,10 @@ def main(args):
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = []+args.ex_input
-    #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    prev_ex_vars = []+args.ex_input_prev
+    #col_names_x = []+args.ex_input
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
