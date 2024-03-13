@@ -204,8 +204,8 @@ def main(args):
             layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
             print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
-    #model = torch.nn.DataParallel(model).cuda()
-    model = model.cuda()
+    model = torch.nn.DataParallel(model).cuda()
+    #model = model.cuda()
     cudnn.benchmark = True
 
 
@@ -282,8 +282,8 @@ def main(args):
 
             points_x, points_y = batch[:2]
             # points_y: shape (batch, features, lat, lon)
-            #points_y = points_y[:, :, model.module.sub_region_mask]
-            points_y = points_y[:, :, model.sub_region_mask]
+            points_y = points_y[:, :, model.module.sub_region_mask]
+            #points_y = points_y[:, :, model.sub_region_mask]
             # points_y: shape (batch, features, n_samples)
             points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             # points_y: shape (batch*n_sample, features)
@@ -373,8 +373,8 @@ def main(args):
             model.eval()
 
             points_x, points_y = batch[:2]
-            #points_y = points_y[:, :, model.module.sub_region_mask]
-            points_y = points_y[:, :, model.sub_region_mask]
+            points_y = points_y[:, :, model.module.sub_region_mask]
+            #points_y = points_y[:, :, model.sub_region_mask]
             points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
