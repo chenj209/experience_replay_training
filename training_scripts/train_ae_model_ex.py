@@ -79,8 +79,8 @@ def main(args):
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
     all_files = glob.glob(args.data_dir+'/*.npy')
     all_files.sort()
-    #all_files = all_files[:35040]
-    all_files = all_files[:200]
+    all_files = all_files[:35040]
+    # all_files = all_files[:200]
 
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
@@ -403,12 +403,12 @@ def main(args):
             warmup_scheduler.step()
         else:
             #pass
-            reduce_on_plateau_scheduler.step(train_losses.avg)
+            # reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
-            #if args.pred_weight > args.rec_weight:
-            #    reduce_on_plateau_scheduler.step(loss_pred)
-            #else:
-            #    reduce_on_plateau_scheduler.step(loss_rec)
+            if args.pred_weight > args.rec_weight:
+               reduce_on_plateau_scheduler.step(loss_pred)
+            else:
+               reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -425,7 +425,7 @@ def main(args):
         #     tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
         #     break
 
-        if (epoch+1)%50 == 0:
+        if (epoch+1)%10 == 0:
             tools.save_checkpoint({
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
@@ -433,7 +433,16 @@ def main(args):
                 # 'epoch': epoch
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
-        #tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        valid_loss = test_losses[0].avg
+        if args.pred_weight > args.rec_weight:
+            valid_loss = test_losses[1].avg
+        if valid_loss < best_valid_loss:
+            best_valid_loss = valid_loss
+            print("Saving best model: epoch ", epoch)
+            tools.save_checkpoint({
+                'state_dict': model.state_dict(), 
+                'optimizer': optimizer.state_dict()
+                }, checkpoint=args.checkpoint)
 
 
     logger.close()
