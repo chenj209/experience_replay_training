@@ -303,9 +303,6 @@ def main(args):
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
-                if (epoch+1)%50 == 0:
-                    np.savez(f"epoch{epoch}_x_rec", x=points_x.detach().cpu().numpy(), x_rec=x_rec.detach().cpu().numpy())
-
             else:
                 outputs_y, x_rec = model(points_x)
                 loss_pred = 0
@@ -314,6 +311,12 @@ def main(args):
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
+            # saving big checkpoints to see the reconstruction effect
+            if (epoch+1)%50 == 0 and iter < 3:
+                np.savez(
+                    f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
+                    x=points_x.detach().cpu().numpy(),
+                    x_rec=x_rec.detach().cpu().numpy())
 
             # print(points_y)
             # print(torch.min(points_y))
@@ -434,13 +437,13 @@ def main(args):
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
         valid_loss = test_losses[0].avg
-        if args.pred_weight > args.rec_weight:
+        if args.pred_weight < args.rec_weight:
             valid_loss = test_losses[1].avg
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             print("Saving best model: epoch ", epoch)
             tools.save_checkpoint({
-                'state_dict': model.state_dict(), 
+                'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict()
                 }, checkpoint=args.checkpoint)
 
