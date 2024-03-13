@@ -80,7 +80,7 @@ def main(args):
     all_files = glob.glob(args.data_dir+'/*.npy')
     all_files.sort()
     #all_files = all_files[:35040]
-    all_files = all_files[:15]
+    all_files = all_files[:200]
 
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
@@ -297,7 +297,9 @@ def main(args):
             if variational_flag:
                 outputs_y, x_rec, mu, log_var = model(points_x)
                 kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-                loss_pred = criterion(outputs_y, points_y)
+                loss_pred = 0
+                if outputs_y is not None:
+                    loss_pred = criterion(outputs_y, points_y)
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
@@ -306,7 +308,9 @@ def main(args):
 
             else:
                 outputs_y, x_rec = model(points_x)
-                loss_pred = criterion(outputs_y, points_y)
+                loss_pred = 0
+                if outputs_y is not None:
+                    loss_pred = criterion(outputs_y, points_y)
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
@@ -321,16 +325,18 @@ def main(args):
             train_mse = loss.item()
             train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
+            if outputs_y is not None:
+                loss_pred = loss_pred.item()
             if variational_flag:
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
                     train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} | l1: {:.2e}'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred.item(), loss_rec.item(), kl_divergence.item(), l1_penalty.item()))
+                        lr, loss_pred, loss_rec.item(), kl_divergence.item(), l1_penalty.item()))
             else:
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
                     train pred mse:{:.2e}| train rec mse: {:.2e} | l1: {:.2e}'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred.item(), loss_rec.item(), l1_penalty.item()))
+                        lr, loss_pred, loss_rec.item(), l1_penalty.item()))
         train_time = time.time() - train_time_begin
 
         """
@@ -379,9 +385,11 @@ def main(args):
             else:
                 outputs_y, x_rec = model(points_x)
             #print("eval: ", outputs_y.size(), points_y.size())
-            loss_pred = criterion(outputs_y, points_y)
+            loss_pred = 0
+            if outputs_y is not None:
+                loss_pred = criterion(outputs_y, points_y).item()
             loss_rec = criterion(x_rec, points_x).item()
-            test_losses[0].update(loss_pred.item(), batch[0].size(0))
+            test_losses[0].update(loss_pred, batch[0].size(0))
             test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])

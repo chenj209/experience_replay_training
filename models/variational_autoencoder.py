@@ -243,7 +243,7 @@ class AutoencoderResMLP(nn.Module):
         self.latent_size = config["latent_size"]
         self.latent_window = config["input_size"][1:]
         self.input_size = input_size
-        if self.resmlp_flag:
+        if self.resmlp_flag and self.latent_size > 0:
             self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
                                   m, activation, num_blocks)
         if sub_region_mask is not None:
@@ -271,7 +271,7 @@ class AutoencoderResMLP(nn.Module):
         latent = self.reparameterize(mu, logvar)
         x_rec = self.decoder(latent) # reconstruct all inputs
         #print("x shape:", x.shape)
-        if self.resmlp_flag:
+        if self.resmlp_flag and self.latent_size > 0:
             #x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
             x_resmlp = x # Q, T, ps, dqls, dtls of current step
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
