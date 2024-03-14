@@ -89,7 +89,7 @@ def load_locresmlp(ckpt_path, input_size, latent_size, sub_region_mask, gpu_inde
     node_size  = 512
     activation = 'relu'
     dropout    = 0
-    model = models.ResMLP(input_size, 30, node_size, activation, num_blocks)
+    #model = models.ResMLP(input_size, 30, node_size, activation, num_blocks)
     model = learnable_vector.LearnableLocationResMLP(
         config={
            "input_size": input_size,
