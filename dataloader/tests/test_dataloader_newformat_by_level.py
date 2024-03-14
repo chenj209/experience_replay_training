@@ -17,13 +17,13 @@ from debug_utils import print_mean_std_by_var
 
 data_dir = "/home/users/data/nncam_data/image_set/"
 if not os.path.isdir(data_dir):
+    # data_dir = "./data/"
+    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+if not os.path.isdir(data_dir):
     data_dir = "/data/nncam_data/image_set/"
 if not os.path.isdir(data_dir):
     # data_dir = "./data/"
     data_dir = "../analysis/test_data/"
-if not os.path.isdir(data_dir):
-    # data_dir = "./data/"
-    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 col_names_x = ["QL_lev4", "QL_lev18", "QL_lev29"]
 col_names_y = ["qtend_check_lev4", "qtend_check_lev18", "qtend_check_lev29"]
 # varaibles that are used as input in the previous time step
@@ -100,7 +100,7 @@ def test_single_column_multistep0():
     #     cur_idx += data_range
     print_mean_std_by_var(norm_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
-    
+
 
 def test_image_multistep0():
     file_names = glob.glob(data_dir + "*.npy")
@@ -194,7 +194,7 @@ def test_single_column_multistep1():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=1,
+        sample_rate=12,
         is_train=True,
         transform=transform,
         include_filename=True,
