@@ -24,10 +24,12 @@ if not os.path.isdir(data_dir):
 if not os.path.isdir(data_dir):
     # data_dir = "./data/"
     data_dir = "../analysis/test_data/"
-col_names_x = ["QL_lev4", "QL_lev18", "QL_lev29"]
+# col_names_x = ["QL_lev4", "QL_lev18", "QL_lev29"]
+col_names_x = []
 col_names_y = ["qtend_check_lev4", "qtend_check_lev18", "qtend_check_lev29"]
 # varaibles that are used as input in the previous time step
-prev_ex_vars = ["SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+#prev_ex_vars = ["SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+prev_ex_vars = ["qtend_check_lev29"]
 data_means = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
 data_stds = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
 col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
