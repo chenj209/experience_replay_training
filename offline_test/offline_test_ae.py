@@ -55,7 +55,7 @@ def prep_dataloaders(
         include_filename=True,
         region_mask2d=(region_mask,2)
         )
-    testloader = data.DataLoader(testing_set, shuffle=False,
+    testloader = data.DataLoader(testing_set, shuffle=True,
                                  batch_size=1,
                                  num_workers=4,
                                  collate_fn=filter_collate,
@@ -90,8 +90,8 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
 
-    #model = torch.nn.DataParallel(model).cuda()
-    model = model.cuda()
+    model = torch.nn.DataParallel(model).cuda()
+    #model = model.cuda()
     model.load_state_dict(torch.load(args.resume)["state_dict"])
     cudnn.benchmark = True
 
@@ -110,8 +110,8 @@ def main(args):
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
     # testing data starts from 35040
-    #test_files = all_files[35040:]
-    test_files = all_files[:50]
+    test_files = all_files[35040:]
+    #test_files = all_files[:50]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)

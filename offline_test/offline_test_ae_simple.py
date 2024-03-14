@@ -55,7 +55,7 @@ def prep_dataloaders(
         include_filename=True,
         region_mask2d=(region_mask,2)
         )
-    testloader = data.DataLoader(testing_set, shuffle=False,
+    testloader = data.DataLoader(testing_set, shuffle=True,
                                  batch_size=1,
                                  num_workers=4,
                                  collate_fn=filter_collate,
@@ -90,8 +90,8 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
 
-    #model = torch.nn.DataParallel(model).cuda()
-    model = model.cuda()
+    model = torch.nn.DataParallel(model).cuda()
+    #model = model.cuda()
     model.load_state_dict(torch.load(args.resume)["state_dict"])
     cudnn.benchmark = True
 
@@ -103,10 +103,19 @@ def main(args):
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     col_names_x = []+args.ex_input
-    prev_ex_vars = []+args.ex_input_prev
+    prev_ex_vars = []
+    for var_name in args.ex_input_prev:
+        if var_name.endswith("_lev"):
+            prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
+        else:
+            prev_ex_vars.append(var_name)
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
+    lvl_mean = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    data_means.update(lvl_mean)
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    lvl_std = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    data_stds.update(lvl_std)
 
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
@@ -186,12 +195,12 @@ def main(args):
         points_x, points_y, x_raw, _ = batch[:4]
 
         # reshape output prediction to shape of resmlp 1D output
-        #points_y = points_y[:, :, model.module.sub_region_mask]
-        points_y = points_y[:, :, model.sub_region_mask]
+        points_y = points_y[:, :, model.module.sub_region_mask]
+        #points_y = points_y[:, :, model.sub_region_mask]
         points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
         if get_thickness is not None:
-            #x_raw = x_raw[:, :, model.module.sub_region_mask]
-            x_raw = x_raw[:, :, model.sub_region_mask]
+            x_raw = x_raw[:, :, model.module.sub_region_mask]
+            #x_raw = x_raw[:, :, model.sub_region_mask]
             x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
             thickness = get_thickness(x_raw[:,-1].numpy())
 
