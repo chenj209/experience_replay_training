@@ -370,7 +370,7 @@ def main(args):
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
         save_log = [epoch, lr, train_losses.avg]
-        for i in range(2):
+        for i in range(1):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
             save_log.append(test_losses[i].avg)
 
@@ -390,8 +390,6 @@ def main(args):
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
         valid_loss = test_losses[0].avg
-        if args.pred_weight < args.rec_weight:
-            valid_loss = test_losses[1].avg
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             print("Saving best model: epoch ", epoch)

@@ -32,10 +32,10 @@ class LearnableLocationResMLP(nn.Module):
 
     def forward(self, x): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
-        print("x shape:", x.shape)
-        print("learnable_location shape:", self.learnable_location.shape)
+        #print("x shape:", x.shape)
+        #print("learnable_location shape:", self.learnable_location.shape)
         latent = self.learnable_location.repeat_interleave(x.shape[0],dim=0) # 256
-        print("latent shape:", latent.shape)
+        #print("latent shape:", latent.shape)
         x_resmlp = x # Q, T, ps, dqls, dtls of current step
         x_resmlp = torch.cat((x_resmlp, latent), dim=1) # concat 4 extra variable
         if self.sub_region_mask is not None:
