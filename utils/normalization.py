@@ -5,7 +5,7 @@ import sys
 norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
-NORM_THRES = 2
+NORM_THRES = 3
 def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
     x = data.copy()
     cur_idx = 0
@@ -16,7 +16,7 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, e
         cur_data = x[cur_idx:cur_idx+data_range]
         debug_print(f"Normalizing {var_name}, idx ({cur_idx}:{cur_idx+data_range})", DEBUG)
         debug_print(f"Current data mean {cur_data.mean()}", DEBUG)
-        cur_data = (cur_data - data_mean[var_name]) / data_std[var_name]
+        cur_data = (cur_data - data_mean[var_name]) / (data_std[var_name]+1e-16)
         debug_print(f"Stored data mean/std {data_mean[var_name]}/{data_std[var_name]}", DEBUG)
         debug_print(f"Normalized data mean {cur_data.mean()}", DEBUG)
         if cur_data.mean() > NORM_THRES or cur_data.mean() < -NORM_THRES:

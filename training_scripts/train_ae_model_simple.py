@@ -93,7 +93,13 @@ def main(args):
     col_names_x = []+args.ex_input
     # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    prev_ex_vars = []+args.ex_input_prev
+    #prev_ex_vars = [f"qtend_check_lev{i}" for i in range(30)]+args.ex_input_prev
+    prev_ex_vars = []
+    for var_name in args.ex_input_prev:
+        if var_name.endswith("_lev"):
+            prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
+        else:
+            prev_ex_vars.append(var_name)
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
