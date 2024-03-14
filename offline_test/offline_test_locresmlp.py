@@ -75,6 +75,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
+            points_y = points_y[:, :, all_models['0_29'].sub_region_mask]
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
             y1 = all_models['0_29'](points_x).detach().cpu().numpy()

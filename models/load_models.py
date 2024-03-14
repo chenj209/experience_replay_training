@@ -100,7 +100,7 @@ def load_locresmlp(ckpt_path, input_size, latent_size, sub_region_mask, gpu_inde
         m=512,
         activation='relu',
         num_blocks=7,
-        sub_region_mask=None
+        sub_region_mask=sub_region_mask
     )
     resume = ckpt_path
     real_gpu_id = gpu_index
