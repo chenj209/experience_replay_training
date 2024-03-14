@@ -68,8 +68,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             print("points_x sahpe:", points_x.shape)
             #points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
             #    points_y.reshape(-1, points_y.shape[-1])
-            #x_raw = x_raw.permute((0,2,1))
-            #x_raw = x_raw.reshape(-1, x_raw.shape[-1])
+            x_raw = x_raw[:, :, all_models['0_29'].sub_region_mask]
+            x_raw = x_raw.permute((0,2,1))
+            x_raw = x_raw.reshape(-1, x_raw.shape[-1])
             if get_thickness is not None:
                 thickness = get_thickness(x_raw[:,-1].numpy())
                 #print("thickness:", thickness.shape)
