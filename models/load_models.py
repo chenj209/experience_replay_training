@@ -19,6 +19,7 @@ import torch.backends.cudnn as cudnn
 import models
 #import models_ex
 import models_v2
+import learnable_vector
 
 network = 'resnet'    # 'resnet' / 'fcn'
 train62 = False       #  True - 62  or  False - 122
@@ -74,6 +75,40 @@ def load_resmlp_newformat(ckpt_path, input_size, gpu_index=0):
     real_gpu_id = gpu_index
     print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
     model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
+
+    #print('------------------------output type: {}-----------------------'.format(output_type))
+    print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
+
+    checkpoint = torch.load(resume)['state_dict']
+    model.load_state_dict(checkpoint)
+
+    return model
+
+def load_locresmlp(ckpt_path, input_size, latent_size, sub_region_mask, gpu_index=0, parallel=False):
+    num_blocks = 7
+    node_size  = 512
+    activation = 'relu'
+    dropout    = 0
+    model = models.ResMLP(input_size, 30, node_size, activation, num_blocks)
+    model = learnable_vector.LearnableLocationResMLP(
+        config={
+           "input_size": input_size,
+           "latent_size": latent_size,
+        },
+        input_size=input_size[0],
+        output_size=30,
+        m=512,
+        activation='relu',
+        num_blocks=7,
+        sub_region_mask=None
+    )
+    resume = ckpt_path
+    real_gpu_id = gpu_index
+    print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
+    if parallel:
+        model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
+    else:
+        model = model.cuda(real_gpu_id)
 
     #print('------------------------output type: {}-----------------------'.format(output_type))
     print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
