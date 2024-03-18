@@ -120,8 +120,8 @@ def main(args):
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
     # testing data starts from 35040
-    #test_files = all_files[35040:]
-    test_files = all_files[:15]
+    test_files = all_files[35040:]
+    #test_files = all_files[:15]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
@@ -193,6 +193,7 @@ def main(args):
             continue
         model.eval()
         points_x, points_y, x_raw, _ = batch[:4]
+        filenames = [fname[0].split("/")[-1].rstrip(".npy") for fname in batch[-1]]
 
         # reshape output prediction to shape of resmlp 1D output
         points_y = points_y[:, :, model.module.sub_region_mask]
@@ -223,13 +224,14 @@ def main(args):
         x_rec = x_rec.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
         if iter < 10:
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_x.npy", points_x)
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_x_rec.npy", x_rec)
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_y.npy", points_y)
-            np.save(f"{args.save_path}/offline_test_ae_{iter}_y_pred.npy", outputs_y)
+            print(filenames)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", points_x)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", points_y)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y_pred.npy", outputs_y)
             if variational_flag:
-                np.save(f"{args.save_path}/offline_test_ae_{iter}_mu.npy", mu.cpu().detach().numpy())
-                np.save(f"{args.save_path}/offline_test_ae_{iter}_log_var.npy", log_var.cpu().detach().numpy())
+                np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
+                np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
         if get_thickness is not None:
             outputs_y = outputs_y * thickness
             points_y = points_y * thickness
@@ -259,6 +261,8 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
+    import numpy as np
+    import torch
     parser = argparse.ArgumentParser(description="offline test for autoencoder")
     parser.add_argument("--ae_config", type=str, help="path to ae config file")
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
@@ -272,5 +276,9 @@ if __name__ == "__main__":
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
     parser.add_argument("--thick", action="store_true", help="use thick mask")
     args = parser.parse_args()
+    torch.multiprocessing.set_sharing_strategy('file_system')
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     main(args)

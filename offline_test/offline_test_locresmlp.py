@@ -31,7 +31,7 @@ from load_models import load_models
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_2d
+    get_thickness_from_ps_1d
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 
@@ -65,18 +65,18 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #model.eval()
         with torch.no_grad():
             points_x, points_y, x_raw = batch[:3]
-            print("points_x sahpe:", points_x.shape)
             #points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
             #    points_y.reshape(-1, points_y.shape[-1])
             x_raw = x_raw[:, :, all_models['0_29'].sub_region_mask]
             x_raw = x_raw.permute((0,2,1))
             x_raw = x_raw.reshape(-1, x_raw.shape[-1])
             if get_thickness is not None:
-                thickness = get_thickness(x_raw[:,-1].numpy())
+                thickness = get_thickness(x_raw[:,-1].numpy()).squeeze()
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
             points_x = (points_x.float()).cuda()
             points_y = points_y[:, :, all_models['0_29'].sub_region_mask]
+            points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
             y1 = all_models['0_29'](points_x).detach().cpu().numpy()
@@ -236,7 +236,8 @@ if __name__ == "__main__":
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
     # testing data starts from 35040
-    test_files = all_files[35040:]
+    #test_files = all_files[35040:]
+    test_files = all_files[:17520]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
@@ -266,7 +267,7 @@ if __name__ == "__main__":
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
         hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_2d(x,hyai, hybi)
+        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
     else:
         get_thickness = None
 
@@ -292,7 +293,7 @@ if __name__ == "__main__":
         pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
         hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_2d(x,hyai, hybi)
+        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
     else:
         get_thickness = None
     input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
