@@ -296,7 +296,8 @@ def main(args):
             l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
                 outputs_y, x_rec, mu, log_var = model(points_x)
-                kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+                # double check this
+                kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
                 loss_pred = 0
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, points_y)
