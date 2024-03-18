@@ -121,7 +121,6 @@ def main(args):
     all_files.sort()
     # testing data starts from 35040
     test_files = all_files[35040:]
-    #test_files = all_files[:15]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
