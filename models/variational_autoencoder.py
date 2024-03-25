@@ -248,11 +248,11 @@ class Decoder3D(nn.Module):
 #         return x
 
 class AutoencoderResMLP(nn.Module):
-    def __init__(self, config, input_size, output_size, m, activation, \
+    def __init__(self, encoder_config, decoder_config, input_size, output_size, m, activation, \
                  num_blocks, sub_region_mask=None, resmlp=True):
         super(AutoencoderResMLP, self).__init__()
-        self.encoder = Encoder(config)
-        self.decoder = Decoder(config)
+        self.encoder = Encoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
         self.resmlp_flag = resmlp
         self.latent_size = config["latent_size"]
         self.latent_window = config["input_size"][1:]
