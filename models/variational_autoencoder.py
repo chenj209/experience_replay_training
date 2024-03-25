@@ -254,8 +254,8 @@ class AutoencoderResMLP(nn.Module):
         self.encoder = Encoder(encoder_config)
         self.decoder = Decoder(decoder_config)
         self.resmlp_flag = resmlp
-        self.latent_size = config["latent_size"]
-        self.latent_window = config["input_size"][1:]
+        self.latent_size = encoder_config["latent_size"]
+        self.latent_window = encoder_config["input_size"][1:]
         self.input_size = input_size
         if self.resmlp_flag and self.latent_size > 0:
             self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
