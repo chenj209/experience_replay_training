@@ -30,23 +30,22 @@ class Encoder(nn.Module):
         channel_sizes = config["channel_sizes"]
         kernel_size = config["kernel_size"]
         strides = config["stride"]
-        paddings = config["padding"]
-        output_paddings = config["output_padding"]
+        paddings = config["conv_padding"]
+        # output_paddings = config["output_padding"]
         self.fc_sizes = config["fc_sizes"][:]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
-        batch_norm = config["batch_norm"]
 
         conv_layers = [
             nn.Conv2d(input_size[0], channel_sizes[0], kernel_size=kernel_size, stride=strides[0], padding=paddings[0]),
-            nn.BatchNorm2d(channel_sizes[0]) if batch_norm else nn.Identity(),
             nn.ReLU(True)
+            # GDN(channel_sizes[0])
         ]
         for i in range(len(channel_sizes)-1):
             conv_layers.extend([
                 nn.Conv2d(channel_sizes[i], channel_sizes[i+1], kernel_size=kernel_size, stride=strides[i+1], padding=paddings[i+1]),
-                nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
                 nn.ReLU(True),
+                # GDN(channel_sizes[i+1])
             ])
         self.conv = nn.Sequential(*conv_layers)
 
@@ -57,6 +56,7 @@ class Encoder(nn.Module):
         for i in range(len(channel_sizes)):
             h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
+        # print("h:", h, ",w:", w)
         self.flattened_size = int(channel_sizes[-1] * h * w)
 
         if self.num_em_layers > 0:
@@ -64,12 +64,14 @@ class Encoder(nn.Module):
             for i in range(self.num_em_layers):
                 em_layers1.append(ElementWiseMultiplyAddBias(self.flattened_size))
                 em_layers1.append(nn.ReLU(True))
+                # em_layers1.append(GDN(self.flatten_size))
             # not applying activation to latent space
             self.em1 = nn.Sequential(*em_layers1[:-1])
             em_layers2 = []
             for i in range(self.num_em_layers):
                 em_layers2.append(ElementWiseMultiplyAddBias(self.flattened_size))
                 em_layers2.append(nn.ReLU(True))
+                # em_layers2.append(GDN(self.flattened_size))
             # not applying activation to latent space
             self.em2 = nn.Sequential(*em_layers2[:-1])
 
@@ -79,16 +81,23 @@ class Encoder(nn.Module):
             for i in range(len(self.fc_sizes)-1):
                 fc_layers1.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
                 fc_layers1.append(nn.ReLU(True))
+                # fc_layers1.append(GDN(self.fc_sizes[i+1]))
+            # not applying activation to latent space
             self.fc1 = nn.Sequential(*fc_layers1[:-1])
             fc_layers2 = []
             for i in range(len(self.fc_sizes)-1):
                 fc_layers2.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
                 fc_layers2.append(nn.ReLU(True))
+                # fc_layers2.append(GDN(self.fc_sizes[i+1]))
+            # not applying activation to latent space
             self.fc2 = nn.Sequential(*fc_layers2[:-1])
 
     def forward(self, x):
+        # print("x shape:", x.shape)
         x = self.conv(x)
+        # print("after conv: ", x.shape)
         x = self.flatten(x)
+        # print("flatten: ", x.shape)
         mu = x
         std = x
         if self.num_em_layers > 0:
@@ -104,21 +113,21 @@ class Decoder(nn.Module):
     def __init__(self, config):
         super(Decoder, self).__init__()
         input_size = config["input_size"]
-        channel_sizes = config["channel_sizes"][::-1]
+        channel_sizes = config["channel_sizes"]
         kernel_size = config["kernel_size"]
-        strides = config["stride"][::-1]
-        paddings = config["padding"][::-1]
-        output_paddings = config["output_padding"][::-1]
+        strides = config["stride"]
+        paddings = config["deconv_padding"]
+        output_paddings = config["output_padding"]
+        # print("output padding:", output_paddings)
         self.fc_sizes = config["fc_sizes"][::-1]
         self.num_em_layers = config["num_em_layers"]
         self.num_fc_layers = len(config["fc_sizes"])
-        batch_norm = config["batch_norm"]
 
         h = input_size[1]
         w = input_size[2]
-        for i in range(len(channel_sizes)):
-            h = np.floor((h - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
-            w = np.floor((w - kernel_size + 2 * config["padding"][i]) / config["stride"][i]) + 1
+        for i in range(len(config["conv_padding"])):
+            h = np.floor((h - kernel_size + 2 * config["conv_padding"][i]) / config["stride"][i]) + 1
+            w = np.floor((w - kernel_size + 2 * config["conv_padding"][i]) / config["stride"][i]) + 1
         self.flattened_size = int(channel_sizes[0] * h * w)
 
         if len(self.fc_sizes) > 0:
@@ -127,14 +136,18 @@ class Decoder(nn.Module):
             for i in range(len(self.fc_sizes)-1):
                 fc_layers.append(nn.Linear(self.fc_sizes[i], self.fc_sizes[i+1]))
                 fc_layers.append(nn.ReLU(True))
-            self.fc = nn.Sequential(*fc_layers[:-1])
+                # fc_layers.append(GDN(self.fc_sizes[i+1], inverse=True))
+            # self.fc = nn.Sequential(*fc_layers[:-1])
+            self.fc = nn.Sequential(*fc_layers)
 
         if self.num_em_layers > 0:
             em_layers = []
             for i in range(self.num_em_layers):
                 em_layers.append(ElementWiseMultiplyAddBias(self.flattened_size))
                 em_layers.append(nn.ReLU(True))
-            self.em = nn.Sequential(*em_layers[:-1])
+                # em_layers.append(GDN(self.flattened_size, inverse=True))
+            # self.em = nn.Sequential(*em_layers[:-1])
+            self.em = nn.Sequential(*em_layers)
 
         self.unflatten = nn.Unflatten(
             dim=1,
@@ -145,12 +158,11 @@ class Decoder(nn.Module):
         for i in range(len(channel_sizes)-1):
             deconv_layers.extend([
                 nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-                nn.BatchNorm2d(channel_sizes[i+1]) if batch_norm else nn.Identity(),
                 nn.ReLU(True),
+                # GDN(channel_sizes[i+1], inverse=True),
             ])
         deconv_layers.extend([
-            nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-            nn.BatchNorm2d(input_size[0]) if batch_norm else nn.Identity(),
+            nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[-1], padding=paddings[-1], output_padding=output_paddings[-1]),
         ])
         self.deconv = nn.Sequential(*deconv_layers)
 
@@ -161,25 +173,27 @@ class Decoder(nn.Module):
             x = self.em(x)
         x = self.unflatten(x)
         x = self.deconv(x)
-        x = torch.sigmoid(x)  # Using sigmoid for the final layer
+        # x = torch.sigmoid(x)  # Using sigmoid for the final layer
         return x
 
 class VAE(nn.Module):
-    def __init__(self, config):
+    def __init__(self, encoder_config, decoder_config):
         super(VAE, self).__init__()
-        self.encoder = Encoder(config)
-        self.decoder = Decoder(config)
+        self.encoder = Encoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
 
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + eps * std
-
+        if self.training:
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return mu + eps * std
+        else:
+            return mu
     def forward(self, x):
         mu, logvar = self.encoder(x)
         z = self.reparameterize(mu, logvar)
         x = self.decoder(z)
-        return x
+        return mu, logvar, x
 
 class Encoder3D(nn.Module):
     def __init__(self):
