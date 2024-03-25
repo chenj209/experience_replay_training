@@ -224,7 +224,8 @@ def main(args):
         model_struc = autoencoder.AutoencoderResMLP
         variational_flag = False
     model = model_struc(
-        config=ae_config,
+        encoder_config=ae_config["encoder"],
+        decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
         input_size=ae_config["input_size"][0],
         output_size=len(training_set.output_indices),
