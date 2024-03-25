@@ -14,6 +14,7 @@ from torch.utils import data
 from torch.optim.lr_scheduler import _LRScheduler, ReduceLROnPlateau
 from datetime import datetime
 import torchvision.transforms as transforms
+from pytorch_msssim import ssim, ms_ssim
 # from torch.utils.data.dataloader import default_collate
 
 sys.path.append(os.path.join(sys.path[0], "..", "models"))
@@ -30,6 +31,43 @@ from dataloader_newformat import DatasetDisk, filter_collate
 from preprocess import StandardizeTransform, \
     RectRegionMaskTransform, get_min_max_coords
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
+def vae_gaussian_kl_loss(mu, logvar):
+    # see Appendix B from VAE paper:
+    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+    # https://arxiv.org/abs/1312.6114
+    # from blog
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
+    return KLD.mean()
+    # ours
+    # kl_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    # return kl_divergence
+
+def reconstruction_loss(x_reconstructed, x, ltype="mse"):
+    if ltype == "mse":
+        mse_loss = nn.MSELoss(reduction='none')
+        loss = mse_loss(x_reconstructed, x)
+        return torch.sum(loss, dim=[1,2,3]).mean()
+    elif ltype == "bce":
+        bce_loss = nn.BCEWithLogitsLoss(reduction='none')
+        loss = bce_loss(x_reconstructed, x)
+        return torch.sum(loss, dim=[1,2,3]).mean()
+    elif ltype == "msssim":
+        msssim_loss = ms_ssim(x_reconstructed, x, data_range=1)
+        return 1-msssim_loss
+    elif ltype == "ssim":
+        ssim_loss = ssim(x_reconstructed, x, data_range=1)
+        return 1-ssim_loss
+
+def compute_vae_loss_fn(beta=1, ltype="mse"):
+    def _vae_loss(mu, logvar, recon_x, x_gt):
+        # mu, logvar, recon_x = model(x_gt)
+        recon_loss = reconstruction_loss(recon_x, x_gt, ltype=ltype)
+        kld_loss = vae_gaussian_kl_loss(mu, logvar)
+        # from blog
+        # return 500 * recon_loss + kld_loss
+        # ours
+        return recon_loss + beta*kld_loss
+    return _vae_loss
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -253,6 +291,7 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
+    vae_loss_fn = compute_vae_loss_fn(beta=1/500, ltype="ssim")
     for epoch in range(args.epoch):
         """
         training
@@ -297,13 +336,15 @@ def main(args):
             if variational_flag:
                 outputs_y, x_rec, mu, log_var = model(points_x)
                 # double check this
-                kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
+                # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
+                vae_loss = vae_loss_fn(mu, log_var, x_rec, points_x)
+                kld = vae_gaussian_kl_loss(mu, log_var)
                 loss_pred = 0
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, points_y)
                 loss_rec = criterion(x_rec, points_x)
                 loss = args.pred_weight*loss_pred + \
-                    args.rec_weight*(loss_rec+kl_divergence) + ae_config["l1"]*l1_penalty
+                    args.rec_weight*(vae_loss) + ae_config["l1"]*l1_penalty
             else:
                 outputs_y, x_rec = model(points_x)
                 loss_pred = 0
@@ -335,7 +376,7 @@ def main(args):
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
                     train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} | l1: {:.2e}'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred, loss_rec.item(), kl_divergence.item(), l1_penalty.item()))
+                        lr, loss_pred, loss_rec.item(), kld.item(), l1_penalty.item()))
             else:
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
                     train pred mse:{:.2e}| train rec mse: {:.2e} | l1: {:.2e}'.format(
@@ -385,6 +426,7 @@ def main(args):
             # compute output
             if variational_flag:
                 outputs_y, x_rec, mu, log_var = model(points_x)
+                # kld = vae_gaussian_kl_loss(mu, log_var)
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
                 outputs_y, x_rec = model(points_x)
@@ -392,7 +434,7 @@ def main(args):
             loss_pred = 0
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, points_y).item()
-            loss_rec = criterion(x_rec, points_x).item()
+            loss_rec = reconstruction_loss(x_rec, points_x, ltype="ssim").item()
             test_losses[0].update(loss_pred, batch[0].size(0))
             test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
