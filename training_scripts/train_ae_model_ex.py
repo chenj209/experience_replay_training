@@ -292,7 +292,7 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
-    vae_loss_fn = compute_vae_loss_fn(beta=1/500, ltype="ssim")
+    vae_loss_fn = compute_vae_loss_fn(beta=1/1000, ltype="ssim")
     for epoch in range(args.epoch):
         """
         training
