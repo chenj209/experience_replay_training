@@ -137,8 +137,14 @@ def main(args):
     prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
     #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
+    # data_means = dict(np.load(data_dir + "/data_means.npz"))
+    # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    data_means.update(data_means_by_lvl)
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    data_stds.update(data_stds_by_lvl)
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
