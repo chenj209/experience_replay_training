@@ -29,7 +29,8 @@ sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk, filter_collate
 from preprocess import StandardizeTransform, \
     RectRegionMaskTransform, get_min_max_coords
-from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
+from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
+    levelwise_variable
 from train_ae_model_ex import vae_gaussian_kl_loss, reconstruction_loss, compute_vae_loss_fn
 
 class EarlyStopper:
@@ -91,16 +92,18 @@ def main(args):
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = []+args.ex_input
+    col_names_x = levelwise_variable([]+args.ex_input, start_lev=0, end_lev=29)
+    
     # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     #prev_ex_vars = [f"qtend_check_lev{i}" for i in range(30)]+args.ex_input_prev
-    prev_ex_vars = []
-    for var_name in args.ex_input_prev:
-        if var_name.endswith("_lev"):
-            prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
-        else:
-            prev_ex_vars.append(var_name)
+    prev_ex_vars = []+args.ex_input_prev
+    prev_ex_vars = levelwise_variable(prev_ex_vars, start_lev=0, end_lev=29)
+    # for var_name in args.ex_input_prev:
+    #     if var_name.endswith("_lev"):
+    #         prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
+    #     else:
+    #         prev_ex_vars.append(var_name)
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))

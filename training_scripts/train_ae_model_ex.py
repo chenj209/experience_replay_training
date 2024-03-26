@@ -30,7 +30,9 @@ sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from dataloader_newformat import DatasetDisk, filter_collate
 from preprocess import StandardizeTransform, \
     RectRegionMaskTransform, get_min_max_coords
-from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
+from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
+    levelwise_variable
+from ae_consts import *
 def vae_gaussian_kl_loss(mu, logvar):
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -129,8 +131,10 @@ def main(args):
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = []+args.ex_input
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    col_names_x = ["QL_lev", "T_nn_in", "dqvls_nn_in_lev", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    col_names_x = levelwise_variable(col_names_x, START_LEV, END_LEV)
+    prev_ex_vars = ["qtend_check_lev", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
     #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))

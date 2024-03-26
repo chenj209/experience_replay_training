@@ -45,3 +45,12 @@ def gen_multistep_col_indices(col_names, prev_ex_vars, col_names_x, col_names_y,
         output_indices.extend(list(range(start_idx, end_idx)))
     input_indices = curr_input_indices
     return input_indices, prev_input_indices, output_indices
+
+def levelwise_variable(col_names, start_lev, end_lev):
+    levelwise_vars = []
+    for col_name in col_names:
+        if col_name.endswith("_lev"):
+            levelwise_vars.extend([f"{col_name}{i}" for i in range(start_lev, end_lev+1)])
+        else:
+            levelwise_vars.append(col_name)
+    return levelwise_vars
