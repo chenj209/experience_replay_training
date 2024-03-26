@@ -319,9 +319,10 @@ def main(args):
                 loss_pred = 0
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, points_y)
-                loss_rec = criterion(x_rec, points_x)
+                # loss_rec = criterion(x_rec, points_x)
+                loss_rec = vae_loss
                 loss = args.pred_weight*loss_pred + \
-                    args.rec_weight*(vae_loss) + ae_config["l1"]*l1_penalty
+                    args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
             else:
                 outputs_y, x_rec = model(points_x)
                 loss_pred = 0
