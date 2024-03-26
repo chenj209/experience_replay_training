@@ -92,13 +92,13 @@ def main(args):
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = levelwise_variable([]+args.ex_input, start_lev=0, end_lev=29)
-    
+    col_names_x = levelwise_variable([]+args.ex_input, start_lev=6, end_lev=29)
+
     # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     #prev_ex_vars = [f"qtend_check_lev{i}" for i in range(30)]+args.ex_input_prev
     prev_ex_vars = []+args.ex_input_prev
-    prev_ex_vars = levelwise_variable(prev_ex_vars, start_lev=0, end_lev=29)
+    prev_ex_vars = levelwise_variable(prev_ex_vars, start_lev=6, end_lev=29)
     # for var_name in args.ex_input_prev:
     #     if var_name.endswith("_lev"):
     #         prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
@@ -120,6 +120,8 @@ def main(args):
     with open(args.ae_config, "r") as f:
         ae_config = json.load(f)
     ae_config["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    ae_config["encoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    ae_config["decoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
 
     region_mask = None
     if args.region_mask is not None and args.region_mask != "all":
@@ -268,7 +270,7 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
-    vae_loss_fn = compute_vae_loss_fn(beta=1/500, ltype="ssim")
+    vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype="ssim")
     for epoch in range(args.epoch):
         """
         training
