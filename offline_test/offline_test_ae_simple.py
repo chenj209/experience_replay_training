@@ -79,8 +79,8 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
         model_struc = autoencoder.AutoencoderResMLP
         variational_flag = False
     model = model_struc(
-        encoder_config=ae_config,
-        decoder_config=ae_config,
+        encoder_config=ae_config["encoder"],
+        decoder_config=ae_config["decoder"],
         input_size=resmlp_input_size,
         output_size=output_size,
         m=512,
@@ -222,7 +222,8 @@ def main(args):
         points_y = points_y.cpu().detach().numpy()
         x_rec = x_rec.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
-        if iter < 10:
+        #if iter < 10:
+        if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
             print(filenames)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", points_x)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)

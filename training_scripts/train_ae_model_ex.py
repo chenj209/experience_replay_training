@@ -57,7 +57,7 @@ def reconstruction_loss(x_reconstructed, x, ltype="mse"):
         msssim_loss = ms_ssim(x_reconstructed, x, data_range=1)
         return 1-msssim_loss
     elif ltype == "ssim":
-        ssim_loss = ssim(x_reconstructed, x, data_range=1)
+        ssim_loss = ssim(x_reconstructed, x, data_range=1, win_size=7)
         return 1-ssim_loss
 
 def compute_vae_loss_fn(beta=1, ltype="mse"):
