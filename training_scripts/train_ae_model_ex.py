@@ -148,6 +148,8 @@ def main(args):
     with open(args.ae_config, "r") as f:
         ae_config = json.load(f)
     ae_config["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    ae_config["encoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    ae_config["decoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
 
     region_mask = None
     if args.region_mask is not None and args.region_mask != "all":
