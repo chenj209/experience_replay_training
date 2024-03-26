@@ -27,7 +27,7 @@ from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 from preprocess import StandardizeTransform, get_min_max_coords
 from dataloader_newformat import DatasetDisk, filter_collate
-from dataloader_utils import gen_multistep_col_indices
+from dataloader_utils import gen_multistep_col_indices, levelwise_variable
 
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
@@ -106,12 +106,9 @@ def main(args):
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     col_names_x = []+args.ex_input
-    prev_ex_vars = []
-    for var_name in args.ex_input_prev:
-        if var_name.endswith("_lev"):
-            prev_ex_vars.extend([f"{var_name}{i}" for i in range(30)])
-        else:
-            prev_ex_vars.append(var_name)
+    col_names_x = levelwise_variable(col_names_x, 6, 29)
+    prev_ex_vars = []+args.ex_input_prev
+    prev_ex_vars = levelwise_variable(prev_ex_vars, 6, 29)
     col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     lvl_mean = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
