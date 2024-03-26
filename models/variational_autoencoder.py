@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import sys
 import numpy as np
+from compressai.layers import GDN
 
 sys.path.append('../utils')
 from data_shape import to_inference_shape_torch, to_inference_shape
@@ -38,14 +39,14 @@ class Encoder(nn.Module):
 
         conv_layers = [
             nn.Conv2d(input_size[0], channel_sizes[0], kernel_size=kernel_size, stride=strides[0], padding=paddings[0]),
-            nn.ReLU(True)
-            # GDN(channel_sizes[0])
+            # nn.ReLU(True)
+            GDN(channel_sizes[0])
         ]
         for i in range(len(channel_sizes)-1):
             conv_layers.extend([
                 nn.Conv2d(channel_sizes[i], channel_sizes[i+1], kernel_size=kernel_size, stride=strides[i+1], padding=paddings[i+1]),
-                nn.ReLU(True),
-                # GDN(channel_sizes[i+1])
+                # nn.ReLU(True),
+                GDN(channel_sizes[i+1])
             ])
         self.conv = nn.Sequential(*conv_layers)
 
@@ -158,8 +159,8 @@ class Decoder(nn.Module):
         for i in range(len(channel_sizes)-1):
             deconv_layers.extend([
                 nn.ConvTranspose2d(channel_sizes[i], channel_sizes[i+1], kernel_size, stride=strides[i], padding=paddings[i], output_padding=output_paddings[i]),
-                nn.ReLU(True),
-                # GDN(channel_sizes[i+1], inverse=True),
+                # nn.ReLU(True),
+                GDN(channel_sizes[i+1], inverse=True),
             ])
         deconv_layers.extend([
             nn.ConvTranspose2d(channel_sizes[-1], input_size[0], kernel_size, stride=strides[-1], padding=paddings[-1], output_padding=output_paddings[-1]),
