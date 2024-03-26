@@ -32,7 +32,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-    name = f"ae_model029_sampled1_0306_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"ae_model029_sampled1_0325_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['500']:
         for num_blocks in ['7']:
