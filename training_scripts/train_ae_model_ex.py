@@ -171,6 +171,12 @@ def main(args):
     data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
     data_stds.update(data_stds_by_lvl)
 
+    # use the same mean and std for variables except for q related
+    for k in data_means:
+        if k.endswith("_lev") and \
+            (k not in ["QL_lev", "qtend_check_lev", "dqvls_nn_in_lev"]):
+            data_means[k] = data_means[k.rstrip("_lev")]
+
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
     print("input_indices:", col_names[input_indices])
