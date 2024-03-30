@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from dataloader_utils import get_index_from_colnames
 
-def print_mean_std_by_var(data, target_vars, col_names):
+def print_mean_std_by_var(data, target_vars, col_names, delevelwise=False):
     """
     Print the mean and standard deviation of the data for each variable in target_vars.
 
@@ -12,6 +12,13 @@ def print_mean_std_by_var(data, target_vars, col_names):
     target_vars: list of variable names
     col_names: list of column names in order of appearance in the raw data
     """
+    if delevelwise:
+        _target_vars = []
+        for col in target_vars:
+            delevelwise_var = col.split("_lev")[0]
+            if delevelwise_var not in _target_vars:
+                _target_vars.append(delevelwise_var)
+        target_vars = _target_vars
     cur_idx = 0
     for col in target_vars:
         start_idx, end_idx = get_index_from_colnames(col_names, col)
