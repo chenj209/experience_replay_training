@@ -131,9 +131,34 @@ def main(args):
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = []+args.ex_input
-    col_names_x = ["QL_lev", "T_nn_in", "dqvls_nn_in_lev", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    col_names_x = [
+        "QL_lev", 
+        "T_nn_in_lev", 
+        "dqvls_nn_in_lev", 
+        "dTls_nn_in_lev", 
+        "SOLIN", 
+        "SPPS",
+        "LWUP",
+        "CAPE",
+        "UL_lev",
+        "VL_lev"
+        ]+args.ex_input
     col_names_x = levelwise_variable(col_names_x, START_LEV, END_LEV)
-    prev_ex_vars = ["qtend_check_lev", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    prev_ex_vars = [
+        "qtend_check_lev", 
+        "stend_check_lev", 
+        "SOLL", 
+        "SOLLD", 
+        "SOLS", 
+        "SOLSD", 
+        "FSDS",
+        "CLOUD_lev",
+        "SPPRECC",
+        "FLNS",
+        "FLNT",
+        "SPQRL_lev",
+        "SPQRS_lev"
+        ]+args.ex_input_prev
     prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
     #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
