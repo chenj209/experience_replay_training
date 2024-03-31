@@ -47,6 +47,7 @@ prev_ex_vars = [
     "SPQRL_lev",
     "SPQRS_lev"
     ]
+prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
 region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "..", \
                                 "consts", "pacific_region_mask.npy"))
 assert region_mask.shape == (96,144)
@@ -72,11 +73,11 @@ data_stds.update(data_stds_by_lvl)
 for k in data_means:
     if "_lev" in k and \
         ("QL" not in k and "qtend" not in k and "dqvls" not in k):
-        debug_print(f"Replacing means {k}({data_means[k]}) with\
-                     {k.rstrip('_lev')}({data_means[k.split('_lev')[0]]})", DEBUG)
+        # debug_print(f"Replacing means {k}({data_means[k]}) with\
+                    #  {k.rstrip('_lev')}({data_means[k.split('_lev')[0]]})", DEBUG)
         data_means[k] = data_means[k.split("_lev")[0]]
-        debug_print(f"Replacing stds {k}({data_stds[k]}) with\
-                     {k.rstrip('_lev')}({data_stds[k.split('_lev')[0]]})", DEBUG)
+        # debug_print(f"Replacing stds {k}({data_stds[k]}) with\
+                    #  {k.rstrip('_lev')}({data_stds[k.split('_lev')[0]]})", DEBUG)
         data_stds[k] = data_stds[k.split("_lev")[0]]
 
 def test_single_column_multistep0():
@@ -138,7 +139,7 @@ def test_single_column_multistep0():
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     print("norm_data_x shape: ", norm_data_x.shape)
     print_mean_std_by_var(norm_data_x, col_names_x, col_names)
-    print_mean_std_by_var(norm_data_x, col_names_x, col_names, delevelwise=True)
+    print_mean_std_by_var(norm_data_x, col_names_x, col_names, delevelwise=True, reduce_lvl=6)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
     
 def test_single_column_multistep1():
@@ -148,15 +149,9 @@ def test_single_column_multistep1():
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS", \
-                   "CLOUD", "CAPE", "LWUP", "SPPRECC", "FLNS", "FLNT", "SPQRL", "SPQRS"]
-    col_names_y = ["qtend_check"]
     col_names_y = ["qtend_check"]
     # varaibles that are used as input in the previous time step
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     # col_names_x = col_names_x + prev_ex_vars + col_names_x
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
@@ -187,7 +182,8 @@ def test_single_column_multistep1():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
                                   num_workers=1, collate_fn=filter_collate)
@@ -206,6 +202,7 @@ def test_single_column_multistep1():
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, 
                           col_names)
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, col_names, delevelwise=True, reduce_lvl=6)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_image_multistep1():
@@ -215,13 +212,13 @@ def test_image_multistep1():
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_y = ["qtend_check"]
     # varaibles that are used as input in the previous time step
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    # data_means = dict(np.load(data_dir + "/data_means.npz"))
+    # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     # col_names_x = col_names_x + prev_ex_vars + col_names_x
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
@@ -252,7 +249,8 @@ def test_image_multistep1():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask2d=(region_mask,2)
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
                                   num_workers=1, collate_fn=filter_collate)
@@ -270,11 +268,12 @@ def test_image_multistep1():
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, 
                           col_names)
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, col_names, delevelwise=True, reduce_lvl=6)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
     test_single_column_multistep0()
     # test_image_multistep0()
-    # test_single_column_multistep1()
-    # test_image_multistep1()
+    test_single_column_multistep1()
+    test_image_multistep1()
 

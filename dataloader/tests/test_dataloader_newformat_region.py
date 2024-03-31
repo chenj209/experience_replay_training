@@ -45,8 +45,26 @@ def test_single_column_multistep0_pacific_region():
     # varaibles that are used as input in the previous time step
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
+    # data_means = dict(np.load(data_dir + "/data_means.npz"))
+    # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+
     data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    data_means.update(data_means_by_lvl)
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    data_stds.update(data_stds_by_lvl)
+
+    # use the same mean and std for variables except for q related
+    for k in data_means:
+        if "_lev" in k and \
+            ("QL" not in k and "qtend" not in k and "dqvls" not in k):
+            debug_print(f"Replacing means {k}({data_means[k]}) with\
+                        {k.rstrip('_lev')}({data_means[k.split('_lev')[0]]})", DEBUG)
+            data_means[k] = data_means[k.split("_lev")[0]]
+            debug_print(f"Replacing stds {k}({data_stds[k]}) with\
+                        {k.rstrip('_lev')}({data_stds[k.split('_lev')[0]]})", DEBUG)
+            data_stds[k] = data_stds[k.split("_lev")[0]]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, 1)
@@ -65,7 +83,6 @@ def test_single_column_multistep0_pacific_region():
             normalize_input=True,
             normalize_output=True,
             include_raw=True,
-            region_mask1d=region_mask
             ),
         FlattenSpatialTransform()
         ])
@@ -79,7 +96,8 @@ def test_single_column_multistep0_pacific_region():
         sample_rate=12,
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        region_mask1d=region_mask
         )
     trainloader = data.DataLoader(
         training_set, shuffle=False, batch_size=1, 
@@ -95,9 +113,10 @@ def test_single_column_multistep0_pacific_region():
             continue
         x, y = batch[:2]
         x, y = x.reshape(-1, x.shape[-1]), y.reshape(-1, y.shape[-1])
-        filenames = batch[1]
+        filenames = batch[-1]
         x_raw, y_raw = batch[2:4]
         print(idx, x.size(), y.size(), x_raw.size(), filenames)
+        # print(idx, x.size(), y.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(x.numpy())
         raw_data_x.append(x_raw.numpy())
@@ -399,9 +418,9 @@ def test_image_multistep1_pacific_region():
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
-    # test_single_column_multistep0_pacific_region()
-    test_single_column_multistep1_pacific_region()
-    test_single_column_multistep0_pacific_region_rect()
+    test_single_column_multistep0_pacific_region()
+    # test_single_column_multistep1_pacific_region()
+    # test_single_column_multistep0_pacific_region_rect()
     # test_image_multistep0_pacific_region()
-    test_image_multistep1_pacific_region()
+    # test_image_multistep1_pacific_region()
 
