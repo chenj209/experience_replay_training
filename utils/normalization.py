@@ -5,7 +5,7 @@ import sys
 norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
-NORM_THRES = 3
+NORM_THRES = 4
 def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
     x = data.copy()
     cur_idx = 0

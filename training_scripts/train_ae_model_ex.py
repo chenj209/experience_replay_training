@@ -31,7 +31,7 @@ from dataloader_newformat import DatasetDisk, filter_collate
 from preprocess import StandardizeTransform, \
     RectRegionMaskTransform, get_min_max_coords
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
-    levelwise_variable
+    levelwise_variable, levelwise_variable2
 from ae_consts import *
 def vae_gaussian_kl_loss(mu, logvar):
     # see Appendix B from VAE paper:
@@ -57,7 +57,8 @@ def reconstruction_loss(x_reconstructed, x, ltype="mse"):
         msssim_loss = ms_ssim(x_reconstructed, x, data_range=1)
         return 1-msssim_loss
     elif ltype == "ssim":
-        ssim_loss = ssim(x_reconstructed, x, data_range=1, win_size=7, win_sigma=1)
+        #ssim_loss = ssim(x_reconstructed, x, data_range=1, win_size=7, win_sigma=1)
+        ssim_loss = ssim(x_reconstructed, x, data_range=1)
         return 1-ssim_loss
 
 def compute_vae_loss_fn(beta=1, ltype="mse"):
@@ -106,6 +107,8 @@ class LinearWarmupScheduler(_LRScheduler):
             return [self.base_lr for _ in self.base_lrs]
 
 def main(args):
+    with open(args.ae_config, "r") as f:
+        ae_config = json.load(f)
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
@@ -132,25 +135,24 @@ def main(args):
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = []+args.ex_input
     col_names_x = [
-        "QL_lev", 
-        "T_nn_in_lev", 
-        "dqvls_nn_in_lev", 
-        "dTls_nn_in_lev", 
-        "SOLIN", 
+        "QL_lev",
+        "T_nn_in_lev",
+        "dqvls_nn_in_lev",
+        "dTls_nn_in_lev",
+        "SOLIN",
         "SPPS",
         "LWUP",
         "CAPE",
         "UL_lev",
         "VL_lev"
         ]+args.ex_input
-    col_names_x = levelwise_variable(col_names_x, START_LEV, END_LEV)
     prev_ex_vars = [
-        "qtend_check_lev", 
-        "stend_check_lev", 
-        "SOLL", 
-        "SOLLD", 
-        "SOLS", 
-        "SOLSD", 
+        "qtend_check_lev",
+        "stend_check_lev",
+        "SOLL",
+        "SOLLD",
+        "SOLS",
+        "SOLSD",
         "FSDS",
         "CLOUD_lev",
         "SPPRECC",
@@ -159,7 +161,12 @@ def main(args):
         "SPQRL_lev",
         "SPQRS_lev"
         ]+args.ex_input_prev
-    prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
+    if ae_config["reduce_lvl"]:
+        col_names_x = levelwise_variable2(col_names_x, [12,18,23,28,29])
+        prev_ex_vars = levelwise_variable2(prev_ex_vars, [12,18,23,28,29])
+    else:
+        col_names_x = levelwise_variable(col_names_x, START_LEV, END_LEV)
+        prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
     #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
@@ -188,8 +195,6 @@ def main(args):
     print("input_indices:", col_names[input_indices])
     print("prev_input_indices:", col_names[prev_input_indices])
     print("output_indices:", col_names[output_indices])
-    with open(args.ae_config, "r") as f:
-        ae_config = json.load(f)
     ae_config["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
     ae_config["encoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
     ae_config["decoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
@@ -341,7 +346,7 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
-    vae_loss_fn = compute_vae_loss_fn(beta=1/1000, ltype="ssim")
+    vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
     for epoch in range(args.epoch):
         """
         training

@@ -1,8 +1,8 @@
 #!/bin/bash
 ##SBATCH -A m4402
-#SBATCH -A m4359
-##SBATCH -C gpu
-#SBATCH -C gpu&hbm80g
+#SBATCH -A m2136
+#SBATCH -C gpu
+##SBATCH -C gpu&hbm80g
 #SBATCH --qos=regular
 ##SBATCH --qos=shared
 #SBATCH -t 10:00:00
