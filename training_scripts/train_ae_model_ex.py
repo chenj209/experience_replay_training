@@ -172,10 +172,16 @@ def main(args):
     data_stds.update(data_stds_by_lvl)
 
     # use the same mean and std for variables except for q related
+    # use the same mean and std for variables except for q related
     for k in data_means:
-        if k.endswith("_lev") and \
-            (k not in ["QL_lev", "qtend_check_lev", "dqvls_nn_in_lev"]):
-            data_means[k] = data_means[k.rstrip("_lev")]
+        if "_lev" in k and \
+            ("QL" not in k and "qtend" not in k and "dqvls" not in k):
+            # debug_print(f"Replacing means {k}({data_means[k]}) with\
+                        #  {k.rstrip('_lev')}({data_means[k.split('_lev')[0]]})", DEBUG)
+            data_means[k] = data_means[k.split("_lev")[0]]
+            # debug_print(f"Replacing stds {k}({data_stds[k]}) with\
+                        #  {k.rstrip('_lev')}({data_stds[k.split('_lev')[0]]})", DEBUG)
+            data_stds[k] = data_stds[k.split("_lev")[0]]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
