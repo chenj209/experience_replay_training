@@ -55,6 +55,15 @@ def levelwise_variable(col_names, start_lev, end_lev):
             levelwise_vars.append(col_name)
     return levelwise_vars
 
+def delevelwise_variable(col_names):
+    levelwise_vars = []
+    for col_name in col_names:
+        if col_name.endswith("_lev"):
+            levelwise_vars.append(col_name.split("_lev")[0])
+        else:
+            levelwise_vars.append(col_name)
+    return levelwise_vars
+
 def levelwise_variable2(col_names, levs):
     levelwise_vars = []
     for col_name in col_names:
