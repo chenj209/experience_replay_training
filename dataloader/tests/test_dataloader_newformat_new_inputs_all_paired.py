@@ -300,7 +300,7 @@ def test_image_multistep1():
     # col_names_x = col_names_x + prev_ex_vars + col_names_x
 
     input_indices_ae, prev_input_indices_ae, output_indices_ae = gen_multistep_col_indices(
-        col_names, prev_ex_vars_ae, col_names_x_ae, col_names_y, 1)
+        col_names, prev_ex_vars_ae, col_names_x_ae, [], 1)
     print("input_indices_ae:", col_names[input_indices_ae])
     print("prev_input_indices_ae:", col_names[prev_input_indices_ae])
     print("output_indices_ae:", col_names[output_indices_ae])
@@ -316,7 +316,7 @@ def test_image_multistep1():
             data_means,
             data_stds,
             col_names_x_ae+prev_ex_vars_ae+col_names_x_ae,
-            col_names_y,
+            [],
             col_names,
             normalize_input=True,
             normalize_output=True

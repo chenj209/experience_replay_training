@@ -106,6 +106,34 @@ class LinearWarmupScheduler(_LRScheduler):
             # Post-warmup: keep lr constant
             return [self.base_lr for _ in self.base_lrs]
 
+def prep_batchdata(args, batch, sub_region_mask):
+    x_ae, _, x_resmlp, y_resmlp, filenames = batch
+    #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
+    # lr = scheduler.get_lr()[-1]
+    if args.output_type == '0-29':
+        y_resmlp = y_resmlp[:, :, :30]
+    if args.output_type == '30-59':
+        y_resmlp = y_resmlp[:, :, 30:60]
+    if args.output_type == '60':
+        y_resmlp = y_resmlp[:, :, 60:61]
+    if args.output_type == '61-65':
+        y_resmlp = y_resmlp[:, :, 61:66]
+#             if args.output_type == '61-65':
+#                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
+#             else:
+    # train_mse = tools.train(batch, model, criterion, optimizer)
+
+    # points_x, points_y = batch[:2]
+    # points_y: shape (batch, features, lat, lon)
+    y_resmlp = y_resmlp[:, :, sub_region_mask]
+    #points_y = points_y[:, :, model.sub_region_mask]
+    # points_y: shape (batch, features, n_samples)
+    y_resmlp = y_resmlp.permute(0, 2, 1).reshape(-1, y_resmlp.shape[1])
+    # points_y: shape (batch*n_sample, features)
+    x_ae, y_resmlp = (x_ae.float()).cuda(), (y_resmlp.float()).cuda()
+    x_resmlp = x_resmlp.float().cuda()
+    return x_ae, x_resmlp, y_resmlp, filenames
+
 def main(args):
     with open(args.ae_config, "r") as f:
         ae_config = json.load(f)
@@ -193,7 +221,7 @@ def main(args):
             data_stds[k] = data_stds[k.split("_lev")[0]]
 
     input_indices_ae, prev_input_indices_ae, output_indices_ae = gen_multistep_col_indices(
-        col_names, prev_ex_vars_ae, col_names_x_ae, col_names_y, 1)
+        col_names, prev_ex_vars_ae, col_names_x_ae, [], 1)
     print("input_indices_ae:", col_names[input_indices_ae])
     print("prev_input_indices_ae:", col_names[prev_input_indices_ae])
     print("output_indices_ae:", col_names[output_indices_ae])
@@ -234,7 +262,7 @@ def main(args):
             data_means,
             data_stds,
             multistep_col_names_x_ae,
-            col_names_y,
+            [],
             col_names,
             normalize_input=True,
             normalize_output=True
@@ -267,7 +295,7 @@ def main(args):
         transform1=transform_ae,
         transform2=transform_resmlp,
         include_filename=True,
-        region_mask1d=region_mask
+        region_mask2d=(region_mask,2)
         )
 
     trainloader = data.DataLoader(
@@ -292,7 +320,7 @@ def main(args):
         transform1=transform_ae,
         transform2=transform_resmlp,
         include_filename=True,
-        region_mask1d=region_mask
+        region_mask2d=(region_mask,2)
         )
 
     testloader = data.DataLoader(
@@ -392,62 +420,38 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
-            #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
-            # lr = scheduler.get_lr()[-1]
-            lr = optimizer.param_groups[0]['lr']
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:, :, :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, :, 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:, :, 60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:, :, 61:66]
-#             if args.output_type == '61-65':
-#                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
-#             else:
-            # train_mse = tools.train(batch, model, criterion, optimizer)
             model.train()
-
-            points_x, points_y = batch[:2]
-            # points_y: shape (batch, features, lat, lon)
-            points_y = points_y[:, :, model.module.sub_region_mask]
-            #points_y = points_y[:, :, model.sub_region_mask]
-            # points_y: shape (batch, features, n_samples)
-            points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
-            # points_y: shape (batch*n_sample, features)
-            points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
-
-
-        #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+            x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
+                args, batch, model.module.sub_region_mask)
 
             # compute output
             l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(points_x)
+                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
                 # double check this
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
                 vae_loss = vae_loss_fn(mu, log_var, x_rec, points_x)
                 kld = vae_gaussian_kl_loss(mu, log_var)
                 loss_pred = 0
                 if outputs_y is not None:
-                    loss_pred = criterion(outputs_y, points_y)
-                loss_rec = criterion(x_rec, points_x)
+                    loss_pred = criterion(outputs_y, y_resmlp)
+                loss_rec = criterion(x_rec, x_ae)
                 loss = args.pred_weight*loss_pred + \
                     args.rec_weight*(vae_loss) + ae_config["l1"]*l1_penalty
             else:
-                outputs_y, x_rec = model(points_x)
-                loss_pred = 0
-                if outputs_y is not None:
-                    loss_pred = criterion(outputs_y, points_y)
-                loss_rec = criterion(x_rec, points_x)
-                loss = args.pred_weight*loss_pred + \
-                    args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
+                raise NotImplementedError
+            #     outputs_y, x_rec = model(points_x)
+            #     loss_pred = 0
+            #     if outputs_y is not None:
+            #         loss_pred = criterion(outputs_y, points_y)
+            #     loss_rec = criterion(x_rec, points_x)
+            #     loss = args.pred_weight*loss_pred + \
+            #         args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
             # saving big checkpoints to see the reconstruction effect
-            if (epoch+1)%50 == 0 and iter < 3:
+            if (epoch+1)%20 == 0 and iter < 3:
                 np.savez(
                     f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
-                    x=points_x.detach().cpu().numpy(),
+                    x=x_ae.detach().cpu().numpy(),
                     x_rec=x_rec.detach().cpu().numpy())
 
             # print(points_y)
@@ -490,41 +494,29 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
-            #batch[0] = batch[0].reshape(-1, batch[0].shape[-1])
-            #batch[1] = batch[1].reshape(-1, batch[1].shape[-1])
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:,:,  :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, :, 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:,:,  60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:,:,  61:66]
             # test_mses = tools.test_de(batch, model, criterion)
             model.eval()
 
-            points_x, points_y = batch[:2]
-            points_y = points_y[:, :, model.module.sub_region_mask]
-            #points_y = points_y[:, :, model.sub_region_mask]
-            points_y = points_y.permute(0, 2, 1).reshape(-1, points_y.shape[1])
-            points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+            x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
+                args, batch, model.module.sub_region_mask)
 
 
         #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
 
             # compute output
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(points_x)
+                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
                 # kld = vae_gaussian_kl_loss(mu, log_var)
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
-                outputs_y, x_rec = model(points_x)
+                raise NotImplementedError
+                # outputs_y, x_rec = model(x_ae)
             #print("eval: ", outputs_y.size(), points_y.size())
             loss_pred = 0
             if outputs_y is not None:
-                loss_pred = criterion(outputs_y, points_y).item()
-            loss_rec = reconstruction_loss(x_rec, points_x, ltype="ssim").item()
+                loss_pred = criterion(outputs_y, y_resmlp).item()
+            loss_rec = reconstruction_loss(x_rec, x_ae, ltype="ssim").item()
             test_losses[0].update(loss_pred, batch[0].size(0))
             test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
@@ -541,7 +533,7 @@ def main(args):
             #pass
             # reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
-            if args.pred_weight > args.rec_weight:
+            if args.pred_weight >= args.rec_weight:
                reduce_on_plateau_scheduler.step(loss_pred)
             else:
                reduce_on_plateau_scheduler.step(loss_rec)
