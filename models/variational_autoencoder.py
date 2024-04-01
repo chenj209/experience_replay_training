@@ -247,6 +247,63 @@ class Decoder3D(nn.Module):
 #         x = self.encoder(x)
 #         x = self.decoder(x)
 #         return x
+class SepInputAutoencoderResMLP(nn.Module):
+    def __init__(self, encoder_config, decoder_config, input_size, output_size, m, activation, \
+                 num_blocks, sub_region_mask=None, resmlp=True):
+        super(AutoencoderResMLP, self).__init__()
+        self.encoder = Encoder(encoder_config)
+        self.decoder = Decoder(decoder_config)
+        self.resmlp_flag = resmlp
+        self.latent_size = encoder_config["latent_size"]
+        self.latent_window = encoder_config["input_size"][1:]
+        self.input_size = input_size
+        if self.resmlp_flag and self.latent_size > 0:
+            self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
+                                  m, activation, num_blocks)
+        if sub_region_mask is not None:
+            # check if cuda is available
+            self.sub_region_mask = torch.tensor(sub_region_mask,
+                                                dtype=torch.bool).squeeze()
+            #if torch.cuda.is_available():
+            #    self.region_mask = self.region_mask.cuda()
+        else:
+            self.sub_region_mask = None
+        print(f"Autoencoder, resmlp: {resmlp}, latent_dim {self.latent_size}")
+
+    def reparameterize(self, mu, logvar):
+        if self.training:
+            std = torch.exp(0.5 * logvar)
+            eps = torch.randn_like(std)
+            return mu + eps * std
+        else:
+            return mu
+
+    def forward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
+        # 3D conv 30 perssure
+        # latent = self.encoder(x) # 256
+        mu, logvar = self.encoder(x_ae)
+        latent = self.reparameterize(mu, logvar)
+        x_rec = self.decoder(latent) # reconstruct all inputs
+        #print("x shape:", x.shape)
+        if self.resmlp_flag and self.latent_size > 0:
+            #x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
+            # x_resmlp = x # Q, T, ps, dqls, dtls of current step
+            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+            x_resmlp_ex = latent
+            #print(x_resmlp_ex.shape)
+            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+            x_resmlp_ex = x_resmlp_ex.view(
+                x_resmlp_ex.shape[0],
+                self.latent_size, self.latent_window[0], self.latent_window[1])
+            x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
+            if self.sub_region_mask is not None:
+                x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
+            # print("x_resmlp shape:", x_resmlp.shape)
+            x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
+            x_resmlp = self.resmlp(x_resmlp) # predict qtend
+            return x_resmlp, x_rec, mu, logvar
+        return None, x_rec, mu, logvar
+
 
 class AutoencoderResMLP(nn.Module):
     def __init__(self, encoder_config, decoder_config, input_size, output_size, m, activation, \
