@@ -204,7 +204,7 @@ class PairDatasetDisk(data.Dataset):
         sample2 = [x2, y2]
         if self.transform1 and self.transform2:
             sample1 = self.transform1(sample1)
-            sample2 = self.transform1(sample2)
+            sample2 = self.transform2(sample2)
         sample = [*sample1, *sample2]
         if self.include_filename:
             sample.append(file_names)
