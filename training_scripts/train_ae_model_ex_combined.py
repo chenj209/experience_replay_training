@@ -27,11 +27,11 @@ import argsparser
 import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
-from dataloader_newformat import DatasetDisk, filter_collate
+from dataloader_newformat import PairDatasetDisk, filter_collate
 from preprocess import StandardizeTransform, \
     RectRegionMaskTransform, get_min_max_coords
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
-    levelwise_variable, levelwise_variable2
+    levelwise_variable, levelwise_variable2, delevelwise_variable
 from ae_consts import *
 def vae_gaussian_kl_loss(mu, logvar):
     # see Appendix B from VAE paper:
@@ -162,11 +162,13 @@ def main(args):
         "SPQRS_lev"
         ]+args.ex_input_prev
     if ae_config["reduce_lvl"]:
-        col_names_x = levelwise_variable2(col_names_x, [12,18,23,28,29])
-        prev_ex_vars = levelwise_variable2(prev_ex_vars, [12,18,23,28,29])
+        col_names_x_ae = levelwise_variable2(col_names_x, [12,18,23,28,29])
+        prev_ex_vars_ae = levelwise_variable2(prev_ex_vars, [12,18,23,28,29])
     else:
-        col_names_x = levelwise_variable(col_names_x, START_LEV, END_LEV)
-        prev_ex_vars = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
+        col_names_x_ae = levelwise_variable(col_names_x, START_LEV, END_LEV)
+        prev_ex_vars_ae = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
+    col_names_x_resmlp = delevelwise_variable(col_names_x)
+    prev_ex_vars_resmlp = delevelwise_variable(prev_ex_vars)
     #prev_ex_vars = []+args.ex_input_prev
     col_names_y = ["qtend_check"]
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
@@ -190,14 +192,21 @@ def main(args):
                         #  {k.rstrip('_lev')}({data_stds[k.split('_lev')[0]]})", DEBUG)
             data_stds[k] = data_stds[k.split("_lev")[0]]
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
-    print("input_indices:", col_names[input_indices])
-    print("prev_input_indices:", col_names[prev_input_indices])
-    print("output_indices:", col_names[output_indices])
-    ae_config["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
-    ae_config["encoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
-    ae_config["decoder"]["input_size"][0] = len(prev_input_indices)*int(args.multistep)+len(input_indices)
+    input_indices_ae, prev_input_indices_ae, output_indices_ae = gen_multistep_col_indices(
+        col_names, prev_ex_vars_ae, col_names_x_ae, col_names_y, 1)
+    print("input_indices_ae:", col_names[input_indices_ae])
+    print("prev_input_indices_ae:", col_names[prev_input_indices_ae])
+    print("output_indices_ae:", col_names[output_indices_ae])
+
+    input_indices_resmlp, prev_input_indices_resmlp, output_indices_resmlp = gen_multistep_col_indices(
+        col_names, prev_ex_vars_resmlp, col_names_x_resmlp, col_names_y, 1)
+    print("input_indices_resmlp:", col_names[input_indices_resmlp])
+    print("prev_input_indices_resmlp:", col_names[prev_input_indices_resmlp])
+    print("output_indices_resmlp:", col_names[output_indices_resmlp])
+    # resmlp input size
+    ae_config["input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    ae_config["encoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
+    ae_config["decoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
 
     region_mask = None
     if args.region_mask is not None and args.region_mask != "all":
@@ -207,18 +216,36 @@ def main(args):
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
-    multistep_col_names_x = []
+    multistep_col_names_x_ae = []
     for i in range(int(args.multistep)):
-        multistep_col_names_x.extend(col_names_x)
-        multistep_col_names_x.extend(prev_ex_vars)
-    multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x_ae.extend(col_names_x_ae)
+        multistep_col_names_x_ae.extend(prev_ex_vars_ae)
+    multistep_col_names_x_ae.extend(col_names_x_ae)
 
-    transform = transforms.Compose([
+    multistep_col_names_x_resmlp = []
+    for i in range(int(args.multistep)):
+        multistep_col_names_x_resmlp.extend(col_names_x_resmlp)
+        multistep_col_names_x_resmlp.extend(prev_ex_vars_resmlp)
+    multistep_col_names_x_resmlp.extend(col_names_x_resmlp)
+
+    transform_ae = transforms.Compose([
         # RectRegionMaskTransform(region_mask),
         StandardizeTransform(
             data_means,
             data_stds,
-            multistep_col_names_x,
+            multistep_col_names_x_ae,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True
+            ),
+    ])
+    transform_resmlp = transforms.Compose([
+        # RectRegionMaskTransform(region_mask),
+        StandardizeTransform(
+            data_means,
+            data_stds,
+            multistep_col_names_x_resmlp,
             col_names_y,
             col_names,
             normalize_input=True,
@@ -226,17 +253,21 @@ def main(args):
             ),
     ])
 
-    training_set = DatasetDisk(
+    training_set = PairDatasetDisk(
         train_files,
-        input_indices,
-        prev_input_indices,
-        output_indices,
+        curr_input_indices1=input_indices_ae,
+        curr_input_indices2=input_indices_resmlp,
+        prev_input_indices1=prev_input_indices_ae,
+        prev_input_indices2=prev_input_indices_resmlp,
+        output_indices1=output_indices_ae,
+        output_indices2=output_indices_resmlp,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
+        sample_rate=12,
         is_train=True,
-        transform=transform,
+        transform1=transform_ae,
+        transform2=transform_resmlp,
         include_filename=True,
-        region_mask2d=(region_mask,2)
+        region_mask1d=region_mask
         )
 
     trainloader = data.DataLoader(
@@ -247,17 +278,21 @@ def main(args):
         collate_fn=filter_collate,
         pin_memory=True)
 
-    testing_set = DatasetDisk(
-        test_files,
-        input_indices,
-        prev_input_indices,
-        output_indices,
+    testing_set = PairDatasetDisk(
+        train_files,
+        curr_input_indices1=input_indices_ae,
+        curr_input_indices2=input_indices_resmlp,
+        prev_input_indices1=prev_input_indices_ae,
+        prev_input_indices2=prev_input_indices_resmlp,
+        output_indices1=output_indices_ae,
+        output_indices2=output_indices_resmlp,
         multistep=int(args.multistep),
-        sample_rate=args.sample_rate,
+        sample_rate=12,
         is_train=False,
-        transform=transform,
+        transform1=transform_ae,
+        transform2=transform_resmlp,
         include_filename=True,
-        region_mask2d=(region_mask,2)
+        region_mask1d=region_mask
         )
 
     testloader = data.DataLoader(
@@ -282,7 +317,7 @@ def main(args):
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
         input_size=ae_config["input_size"][0],
-        output_size=len(training_set.output_indices),
+        output_size=len(training_set.output_indices2),
         m=512,
         activation='relu',
         num_blocks=7,
