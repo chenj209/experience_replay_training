@@ -30,9 +30,9 @@ if __name__ == "__main__":
         DATA_DIR = "/data/nncam_data/image_set/"
     if not os.path.exists(DATA_DIR):
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
-        DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+        DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"ae_model029_sampled1_0330_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"test2ae_model029_sampled1_0330_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['500']:
         for num_blocks in ['7']:
@@ -46,7 +46,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '64'
+                        batch_size = '128'
                         lr_strategy = 'constant'
 
                         network = 'resnet_output30'
@@ -54,7 +54,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 1 --workers 112 --region_mask {} ' \
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 1 --workers 124 --region_mask {} ' \
                                 '--rec_weight {} --pred_weight {} --ae_config {} ' \
                                 '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,

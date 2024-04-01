@@ -335,7 +335,7 @@ def main(args):
     # define model
     print("Model config:", json.dumps(ae_config, indent=4))
     if "variational" in ae_config and ae_config["variational"]:
-        model_struc = variational_autoencoder.AutoencoderResMLP
+        model_struc = variational_autoencoder.SepInputAutoencoderResMLP
         variational_flag = True
     else:
         model_struc = autoencoder.AutoencoderResMLP
@@ -391,9 +391,13 @@ def main(args):
         print('==> Resuming from checkpoint..')
         assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        state_dict = checkpoint['state_dict']
+        filtered_state_dict = {k: v for k, v in checkpoint.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+        model.load_state_dict(filtered_state_dict, strict=False)
+        #optimizer.load_state_dict(checkpoint['optimizer'])
+        #logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
@@ -420,6 +424,7 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
+            lr = optimizer.param_groups[0]['lr']
             model.train()
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
                 args, batch, model.module.sub_region_mask)
@@ -430,7 +435,7 @@ def main(args):
                 outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
                 # double check this
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
-                vae_loss = vae_loss_fn(mu, log_var, x_rec, points_x)
+                vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
                 kld = vae_gaussian_kl_loss(mu, log_var)
                 loss_pred = 0
                 if outputs_y is not None:

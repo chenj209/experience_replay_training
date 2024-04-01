@@ -21,7 +21,7 @@ def region_slice2d(region_mask2d):
     max_x = np.max(np.where(mask)[0])
     min_y = np.min(np.where(mask)[1])
     max_y = np.max(np.where(mask)[1])
-    return min_x-pad, max_x+pad, min_y-pad, max_y+pad 
+    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
 
 class PairDatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
@@ -124,8 +124,8 @@ class PairDatasetDisk(data.Dataset):
             inverse[yname] = lambda y: inverse_data_var_names(y, [yname], \
                 self.col_names, self.data_mean, self.data_std)
         return inverse
-    
-    
+
+
     def load_slice(self, filename, slice):
         data = np.load(filename, mmap_mode="r")
         if self.region_mask1d is not None:
@@ -205,6 +205,8 @@ class PairDatasetDisk(data.Dataset):
         if self.transform1 and self.transform2:
             sample1 = self.transform1(sample1)
             sample2 = self.transform2(sample2)
+        if sample1 is None or sample2 is None:
+            return None
         sample = [*sample1, *sample2]
         if self.include_filename:
             sample.append(file_names)
@@ -305,8 +307,8 @@ class DatasetDisk(data.Dataset):
             inverse[yname] = lambda y: inverse_data_var_names(y, [yname], \
                 self.col_names, self.data_mean, self.data_std)
         return inverse
-    
-    
+
+
     def load_slice(self, filename, slice):
         data = np.load(filename, mmap_mode="r")
         if self.region_mask1d is not None:

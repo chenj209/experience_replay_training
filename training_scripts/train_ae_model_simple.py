@@ -221,6 +221,7 @@ def main(args):
             layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
             print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
 
+    model = model.float()
     model = torch.nn.DataParallel(model).cuda()
     #model = model.cuda()
     cudnn.benchmark = True
