@@ -135,7 +135,7 @@ def test_single_column_multistep0():
         curr_input_indices1=input_indices_ae,
         curr_input_indices2=input_indices_resmlp,
         prev_input_indices1=prev_input_indices_ae,
-        prev_input_indices2=prev_input_indices_ae,
+        prev_input_indices2=prev_input_indices_resmlp,
         output_indices1=output_indices_ae,
         output_indices2=output_indices_resmlp,
         multistep=0,
@@ -209,7 +209,7 @@ def test_single_column_multistep1():
         StandardizeTransform(
             data_means,
             data_stds,
-            col_names_x_ae,
+            col_names_x_ae+prev_ex_vars_ae+col_names_x_ae,
             col_names_y,
             col_names,
             normalize_input=True,
@@ -221,7 +221,7 @@ def test_single_column_multistep1():
         StandardizeTransform(
             data_means,
             data_stds,
-            col_names_x_resmlp,
+            col_names_x_resmlp+prev_ex_vars_resmlp+col_names_x_resmlp,
             col_names_y,
             col_names,
             normalize_input=True,
@@ -235,7 +235,7 @@ def test_single_column_multistep1():
         curr_input_indices1=input_indices_ae,
         curr_input_indices2=input_indices_resmlp,
         prev_input_indices1=prev_input_indices_ae,
-        prev_input_indices2=prev_input_indices_ae,
+        prev_input_indices2=prev_input_indices_resmlp,
         output_indices1=output_indices_ae,
         output_indices2=output_indices_resmlp,
         multistep=1,
@@ -276,10 +276,12 @@ def test_single_column_multistep1():
     print("norm_data_x_ae shape: ", norm_data_x_ae.shape)
     print("norm_data_x_resmlp shape: ", norm_data_x_resmlp.shape)
     print("norm ae:")
-    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae, col_names)
-    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae, col_names, delevelwise=True, reduce_lvl=6)
+    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae+prev_ex_vars_ae+col_names_x_ae, col_names)
+    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae+prev_ex_vars_ae+col_names_x_ae,\
+                           col_names, delevelwise=True, reduce_lvl=6)
     print("norm resmlp:")
-    print_mean_std_by_var(norm_data_x_resmlp, col_names_x_resmlp, col_names)
+    print_mean_std_by_var(norm_data_x_resmlp, 
+                          col_names_x_resmlp+prev_ex_vars_resmlp+col_names_x_resmlp, col_names)
     print("qtend_check ae: ", norm_data_y_ae.mean(), norm_data_y_ae.std())
     print("qtend_check resmlp: ", norm_data_y_resmlp.mean(), norm_data_y_resmlp.std())
 
