@@ -343,6 +343,7 @@ def main(args):
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y_pred.npy", outputs_y)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_thickness.npy", thickness)
             if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
