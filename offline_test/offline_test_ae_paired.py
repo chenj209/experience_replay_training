@@ -321,22 +321,23 @@ def main(args):
         if variational_flag:
             outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
         else:
+            raise NotImplementedError
             outputs_y, x_rec = model(points_x)
 
         loss_rec = criterion(x_rec, x_ae).item()
         loss_pred = criterion(outputs_y, y_resmlp).item()
         avg_mse += loss_rec
         avg_pred_mse += loss_pred
-        avg_mse_by_variable += np.mean((x_rec - points_x).cpu().detach().numpy()**2, axis=(0,2,3))
-        avg_mse_by_level += np.mean((points_y - outputs_y).cpu().detach().numpy()**2, axis=0)
-        points_x = points_x.cpu().detach().numpy()
-        points_y = points_y.cpu().detach().numpy()
+        avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
+        avg_mse_by_level += np.mean((points_y - y_resmlp).cpu().detach().numpy()**2, axis=0)
+        x_ae = x_ae.cpu().detach().numpy()
+        y_resmlp = y_resmlp.cpu().detach().numpy()
         x_rec = x_rec.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
         if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
-            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", points_x)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", x_ae)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
-            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", points_y)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y_pred.npy", outputs_y)
             if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
