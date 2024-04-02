@@ -285,7 +285,7 @@ def main(args):
     # testing data starts from 35040
     test_files = all_files[35040:]
     testloader = prep_dataloaders(args, test_files,input_indices_ae,input_indices_resmlp,\
-                                  prev_ex_vars_ae, prev_ex_vars_resmlp,\
+                                  prev_input_indices_ae, prev_input_indices_resmlp,\
                                   output_indices_ae,\
                                   output_indices_resmlp, transform_ae,\
                                   transform_resmlp, region_mask)
