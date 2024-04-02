@@ -144,7 +144,7 @@ def main(args):
     with open(args.ae_config, 'r') as f:
         ae_config = json.load(f)
     # region_mask = to_inference_shape(region_mask).squeeze()
-    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = [
         "QL_lev",
