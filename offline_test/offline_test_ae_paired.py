@@ -74,10 +74,7 @@ def prep_dataloaders(
 
     return testloader
 
-def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_mask):
-    with open(args.ae_config, 'r') as f:
-        ae_config = json.load(f)
-    ae_config['input_size'][0] = ae_input_size
+def prep_models(args, ae_config, output_size, sub_region_mask):
     print(f"Model input size: {ae_config['input_size']}")
     #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, \
     # args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
@@ -93,7 +90,7 @@ def prep_models(args, resmlp_input_size, ae_input_size, output_size, sub_region_
         encoder_config=ae_config["encoder"],
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
-        input_size=resmlp_input_size,
+        input_size=ae_config["input_size"],
         output_size=output_size,
         m=512,
         activation='relu',
@@ -270,14 +267,17 @@ def main(args):
             ),
     ])
 
-    ae_input_size = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
+    # ae_input_size = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
     #resmlp_input_size = len(input_indices)
     # use all the inputs for better offline performance now
     #resmlp_input_size = ae_input_size
-    resmlp_input_size = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    # resmlp_input_size = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    ae_config["input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    ae_config["encoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
+    ae_config["decoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
 
 
-    model, variational_flag = prep_models(args, resmlp_input_size, ae_input_size,
+    model, variational_flag = prep_models(args, ae_config,
                         len(output_indices_resmlp), sub_region_mask)
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
