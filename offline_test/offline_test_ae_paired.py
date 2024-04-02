@@ -130,9 +130,11 @@ def prep_batchdata(args, batch, sub_region_mask):
     # points_x, points_y = batch[:2]
     # points_y: shape (batch, features, lat, lon)
     y_resmlp = y_resmlp[:, :, sub_region_mask]
+    x_raw = x_raw[:, :, sub_region_mask]
     #points_y = points_y[:, :, model.sub_region_mask]
     # points_y: shape (batch, features, n_samples)
     y_resmlp = y_resmlp.permute(0, 2, 1).reshape(-1, y_resmlp.shape[1])
+    x_raw = x_raw.permute(0, 2, 1).reshape(-1, x_raw.shape[1])
     # points_y: shape (batch*n_sample, features)
     x_ae, y_resmlp = (x_ae.float()).cuda(), (y_resmlp.float()).cuda()
     x_resmlp = x_resmlp.float().cuda()
@@ -314,8 +316,8 @@ def main(args):
         x_ae, x_resmlp, y_resmlp, x_raw, y_raw, filenames = \
             prep_batchdata(args, batch, model.module.sub_region_mask)
         if get_thickness is not None:
-            x_raw = x_raw[:, :, model.module.sub_region_mask]
-            x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
+            # x_raw = x_raw[:, :, model.module.sub_region_mask]
+            # x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
             thickness = get_thickness(x_raw[:,-1].numpy())
 
         if variational_flag:
