@@ -334,7 +334,9 @@ def main(args):
         y_resmlp = y_resmlp.cpu().detach().numpy()
         x_rec = x_rec.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
-        if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
+        if iter < 10:
+        #if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
+            filenames = [fname[0].split("/")[-1].rstrip(".npy") for fname in batch[-1]]
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", x_ae)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
