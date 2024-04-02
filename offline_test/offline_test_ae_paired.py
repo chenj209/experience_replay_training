@@ -114,14 +114,14 @@ def prep_batchdata(args, batch, sub_region_mask):
     x_ae, _, x_resmlp, y_resmlp, x_raw, y_raw, filenames = batch
     #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
     # lr = scheduler.get_lr()[-1]
-    if args.output_type == '0-29':
-        y_resmlp = y_resmlp[:, :, :30]
-    if args.output_type == '30-59':
-        y_resmlp = y_resmlp[:, :, 30:60]
-    if args.output_type == '60':
-        y_resmlp = y_resmlp[:, :, 60:61]
-    if args.output_type == '61-65':
-        y_resmlp = y_resmlp[:, :, 61:66]
+    # if args.output_type == '0-29':
+    #     y_resmlp = y_resmlp[:, :, :30]
+    # if args.output_type == '30-59':
+    #     y_resmlp = y_resmlp[:, :, 30:60]
+    # if args.output_type == '60':
+    #     y_resmlp = y_resmlp[:, :, 60:61]
+    # if args.output_type == '61-65':
+    #     y_resmlp = y_resmlp[:, :, 61:66]
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
