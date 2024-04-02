@@ -484,7 +484,7 @@ def main(args):
                         epoch, args.epoch, iter+1, len(trainloader),
                         lr1, lr2, loss_pred, loss_rec.item(), kld.item()))
             else:
-                raise NotImplementError
+                raise NotImplementedError
         train_time = time.time() - train_time_begin
 
         """
