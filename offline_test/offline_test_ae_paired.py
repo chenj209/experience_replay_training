@@ -352,9 +352,9 @@ def main(args):
             if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
-        if get_thickness is not None:
-            outputs_y = outputs_y * thickness
-            y_resmlp = y_resmlp * thickness
+        # if get_thickness is not None:
+            # outputs_y = outputs_y * thickness
+            # y_resmlp = y_resmlp * thickness
         y_gt.append(y_resmlp)
         y_pred.append(outputs_y)
 
