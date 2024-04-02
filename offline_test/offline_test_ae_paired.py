@@ -339,6 +339,11 @@ def main(args):
         if iter < 10:
         #if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
             filenames = [fname[0].split("/")[-1].rstrip(".npy") for fname in batch[-1]]
+            print(filenames)
+            qtend_log_lvl = report_qtend_vert(y_resmlp, outputs_y)
+            print(qtend_log_lvl)
+            qtend_log_lvl = report_qtend_vert(y_resmlp*thickness, outputs_y*thickness)
+            print(qtend_log_lvl)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", x_ae)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
