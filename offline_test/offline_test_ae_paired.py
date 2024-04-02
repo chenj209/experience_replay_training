@@ -329,7 +329,7 @@ def main(args):
         avg_mse += loss_rec
         avg_pred_mse += loss_pred
         avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
-        avg_mse_by_level += np.mean((points_y - y_resmlp).cpu().detach().numpy()**2, axis=0)
+        avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
         x_ae = x_ae.cpu().detach().numpy()
         y_resmlp = y_resmlp.cpu().detach().numpy()
         x_rec = x_rec.cpu().detach().numpy()
@@ -344,8 +344,8 @@ def main(args):
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
         if get_thickness is not None:
             outputs_y = outputs_y * thickness
-            points_y = points_y * thickness
-        y_gt.append(points_y)
+            y_resmlp = y_resmlp * thickness
+        y_gt.append(y_resmlp)
         y_pred.append(outputs_y)
 
         current_iters += 1
