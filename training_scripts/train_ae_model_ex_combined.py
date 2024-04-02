@@ -290,7 +290,7 @@ def main(args):
         output_indices1=output_indices_ae,
         output_indices2=output_indices_resmlp,
         multistep=int(args.multistep),
-        sample_rate=12,
+        sample_rate=int(args.sample_rate),
         is_train=True,
         transform1=transform_ae,
         transform2=transform_resmlp,
@@ -307,7 +307,7 @@ def main(args):
         pin_memory=True)
 
     testing_set = PairDatasetDisk(
-        train_files,
+        test_files,
         curr_input_indices1=input_indices_ae,
         curr_input_indices2=input_indices_resmlp,
         prev_input_indices1=prev_input_indices_ae,
@@ -315,7 +315,7 @@ def main(args):
         output_indices1=output_indices_ae,
         output_indices2=output_indices_resmlp,
         multistep=int(args.multistep),
-        sample_rate=12,
+        sample_rate=int(args.sample_rate),
         is_train=False,
         transform1=transform_ae,
         transform2=transform_resmlp,
@@ -372,15 +372,20 @@ def main(args):
     warmup_epochs = 5
     warmup_start_lr = 1e-4
     criterion = nn.MSELoss()
+    param_groups = [
+        {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+        {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
+        {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
+    ]
     if args.optim == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr=warmup_start_lr, momentum=args.momentum, weight_decay=args.weight_decay)
     elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=warmup_start_lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+        optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     else:
         optimizer = None
 
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
-    warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
+    #warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
     reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True, min_lr=1e-6)
 
 
@@ -392,7 +397,8 @@ def main(args):
         assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
         state_dict = checkpoint['state_dict']
-        filtered_state_dict = {k: v for k, v in checkpoint.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+        filtered_state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+        print("Loading:", filtered_state_dict.keys())
         model.load_state_dict(filtered_state_dict, strict=False)
         #optimizer.load_state_dict(checkpoint['optimizer'])
         #logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
@@ -424,7 +430,8 @@ def main(args):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
-            lr = optimizer.param_groups[0]['lr']
+            lr1 = optimizer.param_groups[0]['lr']
+            lr2 = optimizer.param_groups[1]['lr']
             model.train()
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
                 args, batch, model.module.sub_region_mask)
@@ -472,15 +479,12 @@ def main(args):
             if outputs_y is not None:
                 loss_pred = loss_pred.item()
             if variational_flag:
-                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
-                    train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} | l1: {:.2e}'.format(
+                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e},{:.2e} | \
+                    train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} |'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred, loss_rec.item(), kld.item(), l1_penalty.item()))
+                        lr1, lr2, loss_pred, loss_rec.item(), kld.item()))
             else:
-                print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e} | \
-                    train pred mse:{:.2e}| train rec mse: {:.2e} | l1: {:.2e}'.format(
-                        epoch, args.epoch, iter+1, len(trainloader),
-                        lr, loss_pred, loss_rec.item(), l1_penalty.item()))
+                raise NotImplementError
         train_time = time.time() - train_time_begin
 
         """
@@ -532,21 +536,21 @@ def main(args):
 
 
         test_time = time.time() - test_time_begin
-        if epoch < warmup_epochs:
-            warmup_scheduler.step()
-        else:
+        #if epoch < warmup_epochs:
+            #warmup_scheduler.step()
+        #else:
             #pass
             # reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
-            if args.pred_weight >= args.rec_weight:
-               reduce_on_plateau_scheduler.step(loss_pred)
-            else:
-               reduce_on_plateau_scheduler.step(loss_rec)
+        if args.pred_weight >= args.rec_weight:
+           reduce_on_plateau_scheduler.step(loss_pred)
+        else:
+           reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
-        save_log = [epoch, lr, train_losses.avg]
+        save_log = [epoch, f"{lr1},{lr2}", train_losses.avg]
         for i in range(2):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
             save_log.append(test_losses[i].avg)
