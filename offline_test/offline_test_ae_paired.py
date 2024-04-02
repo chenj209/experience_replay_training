@@ -90,7 +90,7 @@ def prep_models(args, ae_config, output_size, sub_region_mask):
         encoder_config=ae_config["encoder"],
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
-        input_size=ae_config["input_size"],
+        input_size=ae_config["input_size"][0],
         output_size=output_size,
         m=512,
         activation='relu',
@@ -291,7 +291,7 @@ def main(args):
     criterion = nn.MSELoss()
     avg_mse = 0
     avg_pred_mse = 0
-    avg_mse_by_variable = np.zeros(ae_input_size)
+    avg_mse_by_variable = np.zeros(ae_config["encoder"]["input_size"][0])
     avg_mse_by_level = np.zeros(30)
     current_iters = 0
     y_gt = []
