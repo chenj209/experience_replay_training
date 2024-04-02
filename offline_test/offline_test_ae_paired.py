@@ -45,7 +45,8 @@ def prep_dataloaders(
     input_indices2,
     prev_input_indices1,
     prev_input_indices2,
-    output_indices,
+    output_indices1,
+    output_indices2,
     transform1,
     transform2,
     region_mask):
@@ -56,8 +57,8 @@ def prep_dataloaders(
         curr_input_indices2=input_indices2,
         prev_input_indices1=prev_input_indices1,
         prev_input_indices2=prev_input_indices2,
-        output_indices1=[],
-        output_indices2=output_indices,
+        output_indices1=output_indices1,
+        output_indices2=output_indices2,
         multistep=int(args.multistep),
         sample_rate=int(args.sample_rate),
         is_train=False,
@@ -285,6 +286,7 @@ def main(args):
     test_files = all_files[35040:]
     testloader = prep_dataloaders(args, test_files,input_indices_ae,input_indices_resmlp,\
                                   prev_ex_vars_ae, prev_ex_vars_resmlp,\
+                                  output_indices_ae,\
                                   output_indices_resmlp, transform_ae,\
                                   transform_resmlp, region_mask)
 
