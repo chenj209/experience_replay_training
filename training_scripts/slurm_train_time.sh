@@ -2,11 +2,11 @@
 ##SBATCH -A m4402
 #SBATCH -A m4359
 #SBATCH -C gpu
-#SBATCH --qos=shared
-#SBATCH -t 8:00:00
+#SBATCH --qos=regular
+#SBATCH -t 5:00:00
 #SBATCH -n 1
-#SBATCH -c 32
-#SBATCH --gpus-per-task=1
+#SBATCH -c 128
+#SBATCH --gpus-per-task=4
 #SBATCH --gpu-bind=none
 #SBATCH -J baseline_time
 #SBATCH -o %x_%j.out

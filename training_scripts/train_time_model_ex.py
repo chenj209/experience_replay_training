@@ -167,9 +167,9 @@ def main(args):
         model = None
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
-
-    #model = torch.nn.DataParallel(model).cuda()
-    model = model.cuda()
+    model = model.float()
+    model = torch.nn.DataParallel(model).cuda()
+    #model = model.cuda()
     cudnn.benchmark = True
 
 
@@ -196,11 +196,13 @@ def main(args):
             model.load_state_dict(checkpoint['state_dict'])
         except Exception as e:
             print("Model loading error:", e)
-            print("Retrying using by removing module prefix")
+            print("Retrying using by adding module prefix")
             new_state_dict = OrderedDict()
             for k, v in checkpoint['state_dict'].items():
-                name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
+                #name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
+                name = "module."+k  # adding `module.` prefix
                 new_state_dict[name] = v
+            model.load_state_dict(new_state_dict)
         optimizer.load_state_dict(checkpoint['optimizer'])
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
     else:
