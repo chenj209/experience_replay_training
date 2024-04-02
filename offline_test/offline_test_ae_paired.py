@@ -308,15 +308,15 @@ def main(args):
         # # reshape output prediction to shape of resmlp 1D output
         # points_y = points_y[:, :, model.module.sub_region_mask]
         # points_y = points_y.permute(0,2,1).reshape(-1, points_y.shape[1])
-        if get_thickness is not None:
-            x_raw = x_raw[:, :, model.module.sub_region_mask]
-            x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
-            thickness = get_thickness(x_raw[:,-1].numpy())
 
         # points_x = (points_x.float()).cuda()
         # points_y = (points_y.float()).cuda()
         x_ae, x_resmlp, y_resmlp, x_raw, y_raw, filenames = \
             prep_batchdata(args, batch, model.module.sub_region_mask)
+        if get_thickness is not None:
+            x_raw = x_raw[:, :, model.module.sub_region_mask]
+            x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
+            thickness = get_thickness(x_raw[:,-1].numpy())
 
         if variational_flag:
             outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
