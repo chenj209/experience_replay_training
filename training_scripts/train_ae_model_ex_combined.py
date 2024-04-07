@@ -373,20 +373,18 @@ def main(args):
     """
     Define Residual Methods and Optimizer
     """
-    warmup_epochs = 5
-    warmup_start_lr = 1e-4
+    ae_warmup_epochs = ae_config["ae_warmup_epochs"]
     criterion = nn.MSELoss()
+
+    # freeze resmlp during warmup epochs
+    for param in model.module.resmlp.parameters():
+        param.requires_grad = False
     param_groups = [
-        {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+        # {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
         {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
         {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
     ]
-    if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=warmup_start_lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    elif args.optim == 'adam':
-        optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
-    else:
-        optimizer = None
+    optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
 
     base_lr = ae_config["lr"]  # The lr Adam will use after warmup
     #warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
@@ -441,7 +439,7 @@ def main(args):
                 args, batch, model.module.sub_region_mask)
 
             # compute output
-            l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
+            # l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
                 outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
                 # double check this
@@ -453,7 +451,7 @@ def main(args):
                     loss_pred = criterion(outputs_y, y_resmlp)
                 loss_rec = criterion(x_rec, x_ae)
                 loss = args.pred_weight*loss_pred + \
-                    args.rec_weight*(vae_loss) + ae_config["l1"]*l1_penalty
+                    args.rec_weight*(vae_loss)
             else:
                 raise NotImplementedError
             #     outputs_y, x_rec = model(points_x)
@@ -584,6 +582,17 @@ def main(args):
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict()
                 }, checkpoint=args.checkpoint)
+        
+        if epoch > ae_warmup_epochs:
+            # freeze resmlp during warmup epochs
+            for param in model.module.resmlp.parameters():
+                param.requires_grad = True
+            param_groups = [
+                {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+                {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
+                {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
+            ]
+            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
 
 
     logger.close()
