@@ -236,7 +236,7 @@ def main(args):
     print("prev_input_indices_resmlp:", col_names[prev_input_indices_resmlp])
     print("output_indices_resmlp:", col_names[output_indices_resmlp])
     # resmlp input size
-    ae_config["input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    ae_config["resmlp_input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
     ae_config["encoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
     ae_config["decoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
 
@@ -348,7 +348,8 @@ def main(args):
         encoder_config=ae_config["encoder"],
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
-        input_size=ae_config["input_size"][0],
+        latent_size=ae_config["latent_size"],
+        input_size=ae_config["resmlp_input_size"][0],
         output_size=len(training_set.output_indices2),
         m=512,
         activation='relu',

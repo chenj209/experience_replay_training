@@ -1,9 +1,8 @@
 {
-"input_size": [30, 29, 55],
+"resmlp_input_size": [0, 29, 55],
 "variational": true,
 "latent_size": 8,
 "sample_rate": 12,
-"resmlp_lr": 0.001,
 "ae_lr": 0.0001,
 "resmlp_lr": 0.001,
 "ae_warmup_epoch": 5,
@@ -11,25 +10,25 @@
 "ltype": "mse",
 "reduce_lvl": true,
 "x_ae": [
-    "CAPE",
-    "QL",
-    "T_nn_in",
+    "UL_lev",
+    "VL_lev",
+    "QL_lev",
+    "T_nn_in_lev",
     "dqvls_nn_in_lev",
     "dTls_nn_in_lev",
     "SOLIN",
-    "SPPS"
+    "SPPS",
+    "LWUP"
 ],
-"x_resmlp_prev": [
-    "qtend_check",
-    "stend_check",
+"x_ae_prev": [
+    "qtend_check_lev",
+    "stend_check_lev",
     "SOLL",
     "SOLLD",
     "SOLS",
     "SOLSD",
     "FSDS",
-    "CLOUD"
-    "Qi",
-    "Qc"
+    "SPPRECC"
 ],
 "x_resmlp": [
     "CAPE",
@@ -48,14 +47,14 @@
     "SOLS",
     "SOLSD",
     "FSDS",
-    "CLOUD"
+    "CLOUD",
     "Qi",
     "Qc"
 ],
 "encoder": {
     "variational": true,
     "input_size": [
-        30,
+        0,
         29,
         55
     ],
@@ -67,7 +66,6 @@
         32,
         8
     ],
-    "latent_size": 8,
     "kernel_size": 3,
     "stride": [
         1,
@@ -93,12 +91,8 @@
         0,
         0
     ],
-    "sample_rate": 12,
-    "lr": 0.0001,
-    "l1": 0,
     "fc_sizes": [],
-    "num_em_layers": 1,
-    "batch_norm": false
+    "num_em_layers": 1
 }
 ,
 "decoder": {
@@ -116,7 +110,6 @@
         256,
         512
     ],
-    "latent_size": 4,
     "kernel_size": 3,
     "stride": [
         1,
@@ -150,11 +143,7 @@
         0,
         0
     ],
-    "sample_rate": 12,
-    "lr": 0.0001,
-    "l1": 0,
     "fc_sizes": [],
-    "num_em_layers": 1,
-    "batch_norm": false
+    "num_em_layers": 1
 }
 }

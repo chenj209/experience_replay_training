@@ -306,13 +306,14 @@ class SepInputAutoencoderResMLP(nn.Module):
 
 
 class AutoencoderResMLP(nn.Module):
-    def __init__(self, encoder_config, decoder_config, input_size, output_size, m, activation, \
+    def __init__(self, encoder_config, decoder_config, input_size, latent_size, 
+                 output_size, m, activation, \
                  num_blocks, sub_region_mask=None, resmlp=True):
         super(AutoencoderResMLP, self).__init__()
         self.encoder = Encoder(encoder_config)
         self.decoder = Decoder(decoder_config)
         self.resmlp_flag = resmlp
-        self.latent_size = encoder_config["latent_size"]
+        self.latent_size = latent_size
         self.latent_window = encoder_config["input_size"][1:]
         self.input_size = input_size
         if self.resmlp_flag and self.latent_size > 0:
