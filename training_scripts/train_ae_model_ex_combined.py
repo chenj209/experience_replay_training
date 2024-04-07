@@ -162,43 +162,47 @@ def main(args):
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = []+args.ex_input
-    col_names_x = [
-        "QL_lev",
-        "T_nn_in_lev",
-        "dqvls_nn_in_lev",
-        "dTls_nn_in_lev",
-        "SOLIN",
-        "SPPS",
-        "LWUP",
-        "CAPE",
-        "UL_lev",
-        "VL_lev"
-        ]+args.ex_input
-    prev_ex_vars = [
-        "qtend_check_lev",
-        "stend_check_lev",
-        "SOLL",
-        "SOLLD",
-        "SOLS",
-        "SOLSD",
-        "FSDS",
-        "CLOUD_lev",
-        "SPPRECC",
-        "FLNS",
-        "FLNT",
-        "SPQRL_lev",
-        "SPQRS_lev"
-        ]+args.ex_input_prev
+    # col_names_x = [
+    #     "QL_lev",
+    #     "T_nn_in_lev",
+    #     "dqvls_nn_in_lev",
+    #     "dTls_nn_in_lev",
+    #     "SOLIN",
+    #     "SPPS",
+    #     "LWUP",
+    #     "CAPE",
+    #     "UL_lev",
+    #     "VL_lev"
+    #     ]+args.ex_input
+    col_names_x_resmlp = ae_config["x_resmlp"]
+    prev_ex_vars_resmlp = ae_config["x_resmlp_prev"]
+    col_names_x_ae = ae_config["x_ae"]
+    prev_ex_vars_ae = ae_config["x_ae_prev"]
+    # prev_ex_vars = [
+    #     "qtend_check_lev",
+    #     "stend_check_lev",
+    #     "SOLL",
+    #     "SOLLD",
+    #     "SOLS",
+    #     "SOLSD",
+    #     "FSDS",
+    #     "CLOUD_lev",
+    #     "SPPRECC",
+    #     "FLNS",
+    #     "FLNT",
+    #     "SPQRL_lev",
+    #     "SPQRS_lev"
+    #     ]+args.ex_input_prev
     if ae_config["reduce_lvl"]:
-        col_names_x_ae = levelwise_variable2(col_names_x, [12,18,23,28,29])
-        prev_ex_vars_ae = levelwise_variable2(prev_ex_vars, [12,18,23,28,29])
+        col_names_x_ae = levelwise_variable2(col_names_x_ae, [12,18,23,28,29])
+        prev_ex_vars_ae = levelwise_variable2(prev_ex_vars_ae, [12,18,23,28,29])
     else:
-        col_names_x_ae = levelwise_variable(col_names_x, START_LEV, END_LEV)
-        prev_ex_vars_ae = levelwise_variable(prev_ex_vars, START_LEV, END_LEV)
-    col_names_x_resmlp = delevelwise_variable(col_names_x)
-    prev_ex_vars_resmlp = delevelwise_variable(prev_ex_vars)
+        col_names_x_ae = levelwise_variable(col_names_x_ae, START_LEV, END_LEV)
+        prev_ex_vars_ae = levelwise_variable(prev_ex_vars_ae, START_LEV, END_LEV)
+    col_names_x_resmlp = delevelwise_variable(col_names_x_resmlp)
+    prev_ex_vars_resmlp = delevelwise_variable(prev_ex_vars_resmlp)
     #prev_ex_vars = []+args.ex_input_prev
-    col_names_y = ["qtend_check"]
+    col_names_y = ae_config["resmlp_target"]
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
     # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     data_means = dict(np.load(data_dir + "/data_means.npz"))
