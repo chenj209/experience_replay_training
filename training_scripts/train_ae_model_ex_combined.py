@@ -585,9 +585,9 @@ def main(args):
             for param in model.module.resmlp.parameters():
                 param.requires_grad = True
             param_groups = [
-                {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
-                {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
-                {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
+                {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+                {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+                {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
             ]
             optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), 
                                    eps=1e-8, weight_decay=args.weight_decay)
