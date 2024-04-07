@@ -134,18 +134,19 @@ def main(args):
 
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     #col_names_x = []+args.ex_input
-    col_names_x = [
-        "QL_lev",
-        "T_nn_in_lev",
-        "dqvls_nn_in_lev",
-        "dTls_nn_in_lev",
-        "SOLIN",
-        "SPPS",
-        "LWUP",
-        "CAPE",
-        "UL_lev",
-        "VL_lev"
-        ]+args.ex_input
+    # col_names_x = [
+    #     "QL_lev",
+    #     "T_nn_in_lev",
+    #     "dqvls_nn_in_lev",
+    #     "dTls_nn_in_lev",
+    #     "SOLIN",
+    #     "SPPS",
+    #     "LWUP",
+    #     "CAPE",
+    #     "UL_lev",
+    #     "VL_lev"
+    #     ]+args.ex_input
+    col_names_x = ae_config["col_names_x"]
     prev_ex_vars = [
         "qtend_check_lev",
         "stend_check_lev",
