@@ -381,13 +381,10 @@ def main(args):
         param.requires_grad = False
     param_groups = [
         # {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
-        {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
-        {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
+        {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+        {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
     ]
     optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
-
-    base_lr = ae_config["lr"]  # The lr Adam will use after warmup
-    #warmup_scheduler = LinearWarmupScheduler(optimizer, warmup_epochs, warmup_start_lr, base_lr)
     reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True, min_lr=1e-6)
 
 
@@ -592,7 +589,11 @@ def main(args):
                 {'params': model.module.encoder.parameters(), 'lr': 1e-4},  # Learning rate for encoder
                 {'params': model.module.decoder.parameters(), 'lr': 1e-4},  # Learning rate for decoder
             ]
-            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
+            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), 
+                                   eps=1e-8, weight_decay=args.weight_decay)
+            reduce_on_plateau_scheduler = \
+                ReduceLROnPlateau(optimizer, mode='min', factor=0.5, 
+                                  patience=50, verbose=True, min_lr=1e-6)
 
 
     logger.close()
