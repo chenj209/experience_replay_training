@@ -111,13 +111,13 @@ def prep_batchdata(args, batch, sub_region_mask):
     #lr = lr_scheduler[args.lr_strategy](optimizer, args.lr, current_iters, len(trainloader) * args.epoch)
     # lr = scheduler.get_lr()[-1]
     if args.output_type == '0-29':
-        y_resmlp = y_resmlp[:, :, :30]
+        y_resmlp = y_resmlp[:,:30]
     if args.output_type == '30-59':
-        y_resmlp = y_resmlp[:, :, 30:60]
+        y_resmlp = y_resmlp[:,30:60]
     if args.output_type == '60':
-        y_resmlp = y_resmlp[:, :, 60:61]
+        y_resmlp = y_resmlp[:,60:61]
     if args.output_type == '61-65':
-        y_resmlp = y_resmlp[:, :, 61:66]
+        y_resmlp = y_resmlp[:,61:66]
 #             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
@@ -246,6 +246,7 @@ def main(args):
     else:
         region_mask = np.ones((96, 144))
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
+    print("sub_region:", get_min_max_coords(region_mask, 2))
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
     multistep_col_names_x_ae = []

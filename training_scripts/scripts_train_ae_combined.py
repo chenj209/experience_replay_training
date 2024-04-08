@@ -32,7 +32,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"combined_ae_model029_sampled1_0407_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"seacombined_ae_model029_sampled1_0407_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['100']:
         for num_blocks in ['7']:
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
                         network = 'resnet_output30'
                         print(name)
-                        commands = f"python train_ae_model_ex_combined_test.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
+                        commands = f"python train_ae_model_ex_combined.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
                                 '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 24 --region_mask {} ' \
