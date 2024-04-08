@@ -305,7 +305,7 @@ def main(args):
 
 
         tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
-        print("here")
+        print("here", epoch, args.epoch)
 
 
     logger.close()
