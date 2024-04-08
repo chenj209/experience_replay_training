@@ -91,6 +91,7 @@ def prep_models(args, ae_config, output_size, sub_region_mask):
         encoder_config=ae_config["encoder"],
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
+        latent_size=ae_config["latent_size"],
         input_size=ae_config["input_size"][0],
         output_size=output_size,
         m=512,
