@@ -2,11 +2,11 @@
 ##SBATCH -A m4402
 #SBATCH -A m4359
 #SBATCH -C gpu
-#SBATCH --qos=regular
+#SBATCH --qos=shared
 #SBATCH -t 5:00:00
 #SBATCH -n 1
-#SBATCH -c 128
-#SBATCH --gpus-per-task=4
+#SBATCH -c 32
+#SBATCH --gpus-per-task=1
 #SBATCH --gpu-bind=none
 #SBATCH -J baseline_time
 #SBATCH -o %x_%j.out
@@ -46,7 +46,7 @@ done &
 gpu_monitor_pid=$!
 
 
-srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask ../consts/pacific_region_mask.npy --resume True --ex_input $2 --ex_input_prev $1
+srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask ../consts/twp_region.npy --ex_input $2 --ex_input_prev $1
 
 kill $cpu_monitor_pid
 kill $gpu_monitor_pid

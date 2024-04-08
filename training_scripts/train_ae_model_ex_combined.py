@@ -448,8 +448,11 @@ def main(args):
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, y_resmlp)
                 loss_rec = criterion(x_rec, x_ae)
-                loss = args.pred_weight*loss_pred + \
-                    args.rec_weight*(vae_loss)
+                if epoch <= ae_warmup_epochs:
+                    loss = vae_loss
+                else:
+                    loss = args.pred_weight*loss_pred + \
+                        args.rec_weight*(vae_loss)
             else:
                 raise NotImplementedError
             #     outputs_y, x_rec = model(points_x)
@@ -580,7 +583,7 @@ def main(args):
                 'state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict()
                 }, checkpoint=args.checkpoint)
-        
+
         if epoch > ae_warmup_epochs:
             # freeze resmlp during warmup epochs
             for param in model.module.resmlp.parameters():
@@ -590,10 +593,10 @@ def main(args):
                 {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
                 {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
             ]
-            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), 
+            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999),
                                    eps=1e-8, weight_decay=args.weight_decay)
             reduce_on_plateau_scheduler = \
-                ReduceLROnPlateau(optimizer, mode='min', factor=0.5, 
+                ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
                                   patience=50, verbose=True, min_lr=1e-6)
 
 
