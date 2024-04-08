@@ -70,7 +70,7 @@ def main(args):
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    col_names_y = ["stend_check"]
+    col_names_y = ["qtend_check"]
     data_means = dict(np.load(data_dir + "/data_means.npz"))
     data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
@@ -79,8 +79,10 @@ def main(args):
     print("input_indices:", col_names[input_indices])
     print("prev_input_indices:", col_names[prev_input_indices])
     print("output_indices:", col_names[output_indices])
-
-    region_mask = np.load(args.region_mask)
+    if args.region_mask == "all":
+        region_mask = np.ones((96,144))
+    else:
+        region_mask = np.load(args.region_mask)
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -303,6 +305,7 @@ def main(args):
 
 
         tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+        print("here")
 
 
     logger.close()

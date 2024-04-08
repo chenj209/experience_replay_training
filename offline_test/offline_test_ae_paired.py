@@ -76,7 +76,7 @@ def prep_dataloaders(
     return testloader
 
 def prep_models(args, ae_config, output_size, sub_region_mask):
-    print(f"Model input size: {ae_config['input_size']}")
+    print(f"Model input size: {ae_config['resmlp_input_size']}")
     #model = autoencoder.AutoencoderResMLP(input_size, 30, args.node_size, \
     # args.activation, args.num_blocks, args.latent_dim, region_mask=region_mask, resmlp=(args.pred_weight!=0))
     print(f"Loading model config: {json.dumps(ae_config, indent=4)}")
@@ -92,7 +92,7 @@ def prep_models(args, ae_config, output_size, sub_region_mask):
         decoder_config=ae_config["decoder"],
         #input_size=len(training_set.input_indices),
         latent_size=ae_config["latent_size"],
-        input_size=ae_config["input_size"][0],
+        input_size=ae_config["resmlp_input_size"][0],
         output_size=output_size,
         m=512,
         activation='relu',
@@ -280,7 +280,7 @@ def main(args):
     # use all the inputs for better offline performance now
     #resmlp_input_size = ae_input_size
     # resmlp_input_size = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
-    ae_config["input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
+    ae_config["resmlp_input_size"][0] = len(prev_input_indices_resmlp)*int(args.multistep)+len(input_indices_resmlp)
     ae_config["encoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
     ae_config["decoder"]["input_size"][0] = len(prev_input_indices_ae)*int(args.multistep)+len(input_indices_ae)
 
@@ -353,7 +353,8 @@ def main(args):
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y_pred.npy", outputs_y)
-            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_thickness.npy", thickness)
+            if args.thick:
+                np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_thickness.npy", thickness)
             if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
