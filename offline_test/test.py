@@ -52,6 +52,15 @@ vae_loc_code_train = np.clip(np.array([
 ]), 0, None)
 
 vertical_levels = np.arange(1, 31)
+vertical_levels = np.arange(1, 31)
+vertical_levels_ticks = np.array([
+    3.64346569,   7.59481965,  14.35663225,  24.61222,     38.26829977,
+      54.59547974,  72.01245055,  87.82123029, 103.31712663, 121.54724076,
+       142.99403876, 168.22507977, 197.9080867,  232.82861896, 273.91081676,
+        322.24190235, 379.10090387, 445.9925741,  524.68717471, 609.77869481,
+         691.38943031, 763.40448111, 820.85836865, 859.53476653, 887.02024892,
+          912.64454694, 936.19839847, 957.48547954, 976.32540739, 992.55609512]).astype(int)
+vertical_levels_ticks = [str(v) for v in vertical_levels_ticks]
 
 plt.figure(figsize=(10, 8))
 
@@ -62,12 +71,13 @@ baseline_all[baseline_all<0]=0
 
 plt.plot(loc_code, vertical_levels, label="loc_code", marker='o', color='red')
 #plt.plot(loc_code_train, vertical_levels, label="loc_code_train", marker='x')
-plt.plot(AE_all_train, vertical_levels, label="AE_all_train", marker='^')
+#plt.plot(AE_all_train, vertical_levels, label="AE_all_train", marker='^')
 plt.plot(baseline_all, vertical_levels, label="baseline_all", marker='s', color='blue')  # Add VAE_train in blue
 plt.plot(vae_loc_code, vertical_levels, label="vae_loc_code", marker='o', color='purple')  # Add VAE_train in blue
-plt.plot(vae_loc_code_train, vertical_levels, label="vae_loc_code_train", marker='o', color='orange')  # Add VAE_train in blue
+#plt.plot(vae_loc_code_train, vertical_levels, label="vae_loc_code_train", marker='o', color='orange')  # Add VAE_train in blue
 
 plt.title("Model Performance Comparison in R2 for 30 Vertical Levels")
+plt.yticks(vertical_levels, vertical_levels_ticks)
 plt.ylabel("Vertical Levels")
 plt.xlabel("R2 Score")
 plt.gca().invert_yaxis()  # Invert y-axis to have level 1 at the top
