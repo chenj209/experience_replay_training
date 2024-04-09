@@ -300,11 +300,17 @@ def main(args):
     criterion = nn.MSELoss()
     avg_mse = 0
     avg_pred_mse = 0
+    avg_pred = np.zeros((model.module.sub_region_mask.sum(),30))
+    avg_gt = np.zeros((model.module.sub_region_mask.sum(),30))
     avg_mse_by_variable = np.zeros(ae_config["encoder"]["input_size"][0])
     avg_mse_by_level = np.zeros(30)
     current_iters = 0
     y_gt = []
     y_pred = []
+    best_loss = 1e10
+    worst_loss = 0
+    best_filenames = None
+    worst_filenames = None
     for iter, batch in enumerate(testloader):
         if batch is None:
             continue
@@ -333,9 +339,18 @@ def main(args):
 
         loss_rec = criterion(x_rec, x_ae).item()
         loss_pred = criterion(outputs_y, y_resmlp).item()
+        if loss_pred < best_loss:
+            best_loss = loss_pred
+            best_filenames = filenames
+        if loss_pred > worst_loss:
+            worst_loss = loss_pred
+            worst_filenames = filenames
+        avg_pred += outputs_y.cpu().detach().numpy()
+        avg_gt += y_resmlp.cpu().detach().numpy()
         avg_mse += loss_rec
         avg_pred_mse += loss_pred
         avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
+        avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
         avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
         x_ae = x_ae.cpu().detach().numpy()
         y_resmlp = y_resmlp.cpu().detach().numpy()
@@ -371,6 +386,10 @@ def main(args):
     avg_mse_by_variable /= current_iters
     avg_mse_by_level /= current_iters
     avg_pred_mse /= current_iters
+    avg_gt /= current_iters
+    avg_pred /= current_iters
+    np.save(f"{args.save_path}/offline_test_ae_avg_pred.npy", avg_pred)
+    np.save(f"{args.save_path}/offline_test_ae_avg_gt.npy", avg_gt)
     np.save(f"{args.save_path}/offline_test_ae_avg_recmse_by_var.npy", avg_mse_by_variable)
     np.save(f"{args.save_path}/offline_test_ae_avg_predmse_by_level.npy", avg_mse_by_level)
     print("Average pred MSE by level:")
@@ -379,6 +398,10 @@ def main(args):
     print(f"Average rec MSE: {avg_mse}")
     print(f"Average pred MSE: {avg_pred_mse}")
     np.save(f"{args.save_path}/offline_test_ae_subregion_mask.npy", sub_region_mask)
+    print(f"Best loss: {best_loss}")
+    print(f"Worst loss: {worst_loss}")
+    print(f"Best filenames: {best_filenames}")
+    print(f"Worst filenames: {worst_filenames}")
     y_gt = np.concatenate(y_gt, axis=0)
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
