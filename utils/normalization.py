@@ -6,7 +6,7 @@ norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
 NORM_THRES = 4
-def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header=""):
+def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header="", threshold=NORM_THRES):
     x = data.copy()
     cur_idx = 0
     err_flag = False
@@ -19,7 +19,7 @@ def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, e
         cur_data = (cur_data - data_mean[var_name]) / (data_std[var_name]+1e-16)
         debug_print(f"Stored data mean/std {data_mean[var_name]}/{data_std[var_name]}", DEBUG)
         debug_print(f"Normalized data mean {cur_data.mean()}", DEBUG)
-        if cur_data.mean() > NORM_THRES or cur_data.mean() < -NORM_THRES:
+        if cur_data.mean() > threshold or cur_data.mean() < -threshold:
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}", file=norm_err_file, flush=True)
             print(f"Warning: {err_header} {var_name} mean out of range {cur_data.mean()}")
             err_flag = True

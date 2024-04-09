@@ -116,7 +116,7 @@ class StandardizeTransform:
             normalize_input=True,
             normalize_output=True,
             include_raw=False,
-            flattened=False
+            threshold=4
             ):
         """
         Takes a set of input and output from SPCAM data and standardizes it.
@@ -142,6 +142,7 @@ class StandardizeTransform:
         self.normalize_input = normalize_input
         self.normalize_output = normalize_output
         self.include_raw = include_raw
+        self.threshold = threshold
 
     def __call__(self, sample):
         """
@@ -175,11 +176,11 @@ class StandardizeTransform:
 
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
-                                 self.data_mean, self.data_std, err_header=err_header)
+                                 self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
 
         if self.normalize_output:
             y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
-                                    self.data_mean, self.data_std, err_header=err_header)
+                                    self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
         if x is None or y is None:
             return None
 

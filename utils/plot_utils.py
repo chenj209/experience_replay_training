@@ -21,9 +21,10 @@ def get_spatial_config(config_path):
     return lon, lat, lev
 
 def plot_spatial(lon, lat, data, cbar_label=None, title=None, cmap="bwr",
-                  vmin=None, vmax=None, norm=None, extend="both"):
+                  vmin=None, vmax=None, norm=None, extend="both", ax=None):
     # Using PlateCarree projection which is commonly used for lat/lon data.
-    ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))  
+    if ax is None:
+        ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))  
     if vmin is not None:
         img = ax.contourf(lon, lat, data, np.linspace(vmin, vmax, 20), cmap=cmap, 
                       transform=ccrs.PlateCarree(), norm=norm, extend=extend)
