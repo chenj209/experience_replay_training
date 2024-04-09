@@ -258,7 +258,8 @@ def main(args):
             [],
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            threshold=1e10,
             ),
     ])
     transform_resmlp = Compose([
@@ -271,7 +272,8 @@ def main(args):
             col_names,
             normalize_input=True,
             normalize_output=True,
-            include_raw=True
+            include_raw=True,
+            threshold=1e10,
             ),
     ])
 
