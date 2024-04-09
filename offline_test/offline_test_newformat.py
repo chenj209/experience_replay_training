@@ -122,13 +122,13 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
+    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
+    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
 
     y_1 = np.concatenate(y_1, axis=0)
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
-    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(y_1, axis=0))
-    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(y_gt, axis=0))
 
     test_time = time.time() - test_time_begin
 
