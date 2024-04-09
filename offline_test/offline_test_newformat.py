@@ -127,8 +127,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
-    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(y_1, axis=0))
-    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(y_gt, axis=0))
+    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(y_1, axis=0))
+    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(y_gt, axis=0))
 
     test_time = time.time() - test_time_begin
 
