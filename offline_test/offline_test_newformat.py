@@ -81,6 +81,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
             y1 = all_models['0_29'](points_x).detach().cpu().numpy()
+            points_y = points_y.cpu().numpy()
             #points_y = points_y[0]
             #y1 = y1[0]
             #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
