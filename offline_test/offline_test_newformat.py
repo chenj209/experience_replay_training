@@ -55,6 +55,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     region_mask = to_inference_shape(region_mask)
     #print("region_mask shape: ", region_mask.shape)
     region_mask = region_mask.squeeze().astype(bool)
+    best_loss = 1e10
+    best_filenames = None
+    worst_loss = 0
+    worst_filenames = None
     for iter, batch in enumerate(testloader):
         # allow empty batch
         print(f"testing {iter}/{len(testloader)}", end='\r')
@@ -86,6 +90,13 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 points_y = points_y*thickness*phys_consts.LATVAP
             y_1.append(y1)
             y_gt.append(points_y)
+            loss = np.mean((y1 - points_y)**2)
+            if loss < best_loss:
+                best_loss = loss
+                best_filenames = batch[-1]
+            if loss > worst_loss:
+                worst_loss = loss
+                worst_filenames = batch[-1]
             # r2 = r2_score(y1, points_y, multioutput="variance_weighted")
             # if r2>=0:
             #     y_1.append(y1)
@@ -107,13 +118,16 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             # else:
             #     print(f"Skipping {file_names}, r2: {r2}")
             #     problem_files.append(file_names)
-
+    print(f"Best loss: {best_loss}, filenames: {best_filenames}")
+    print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
 
     y_1 = np.concatenate(y_1, axis=0)
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
+    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(y_1, axis=0))
+    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(y_gt, axis=0))
 
     test_time = time.time() - test_time_begin
 
@@ -276,7 +290,8 @@ if __name__ == "__main__":
             col_names,
             normalize_input=True,
             normalize_output=True,
-            include_raw=True
+            include_raw=True,
+            threshold=1e10
             ),
         FlattenSpatialTransform(),
         ])
