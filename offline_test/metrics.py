@@ -211,9 +211,9 @@ def report_qtend_vert_tail(y_gt, qtend, tail, top=True):
         # qtend_qt = np.quantile(qtend[:,i], [tail, 1-tail])
         y_gt_qt = np.quantile(y_gt[:,i], [tail, 1-tail])
         if top:
-            qt_mask = y_gt[:,i] >= y_gt_qt[1]
+            qt_mask = (y_gt[:,i] >= y_gt_qt[1]).astype(bool)
         else:
-            qt_mask = y_gt[:,i] <= y_gt_qt[0]
+            qt_mask = (y_gt[:,i] <= y_gt_qt[0]).astype(bool)
         qtend_qt_data = qtend[:,i][qt_mask]
         y_gt_qt_data = y_gt[:,i][qt_mask]
         results.append(Regression_Metrics(y_gt_qt_data, qtend_qt_data))
