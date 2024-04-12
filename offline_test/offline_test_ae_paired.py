@@ -413,7 +413,7 @@ def main(args):
     for quantile in [0.5,0.7,0.9,1]:
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
-        print(qtend_log_lvl)
+        print(qtend_log_lvl["r2"])
     print(qtend_log_lvl)
 
 if __name__ == "__main__":
