@@ -214,9 +214,6 @@ def report_qtend_vert_tail(y_gt, qtend, tail, top=True):
             qt_mask = (y_gt[:,i] >= y_gt_qt[1]).astype(bool)
         else:
             qt_mask = (y_gt[:,i] <= y_gt_qt[0]).astype(bool)
-        print(qt_mask)
-        print(qtend[:,i].shape)
-        print(qt_mask.shape)
         qtend_qt_data = qtend[:,i][qt_mask]
         y_gt_qt_data = y_gt[:,i][qt_mask]
         results.append(Regression_Metrics(y_gt_qt_data, qtend_qt_data))

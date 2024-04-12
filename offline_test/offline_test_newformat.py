@@ -140,9 +140,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         print(qtend_log_lvl["r2"])
     for tail in [0.1,0.2,0.3]:
         print(f"tail {tail} results:")
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=True)
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=True)
         print("Top:", qtend_log_lvl["r2"])
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=False)
         print("Bottom:", qtend_log_lvl["r2"])
     if args.region_mask == "all":
         qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
