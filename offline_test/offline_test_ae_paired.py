@@ -29,6 +29,7 @@ from preprocess import StandardizeTransform, get_min_max_coords
 from dataloader_newformat import PairDatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices, levelwise_variable2, \
     delevelwise_variable, levelwise_variable
+from skimage.metrics import structural_similarity as ssim
 
 START_LEV = 6
 END_LEV = 29
@@ -306,6 +307,7 @@ def main(args):
     avg_gt = np.zeros((model.module.sub_region_mask.sum(),30))
     avg_mse_by_variable = np.zeros(ae_config["encoder"]["input_size"][0])
     avg_mse_by_level = np.zeros(30)
+    avg_ssim_by_level = np.zeros(30)
     current_iters = 0
     y_gt = []
     y_pred = []

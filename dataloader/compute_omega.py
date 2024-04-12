@@ -13,23 +13,31 @@ def compute_omega(u, v, pressure_levels, longitude, latitude):
     print("cos(lat_rad):", np.cos(lat_rad).shape)
     dx = np.cos(lat_rad)[None, :, None] * earth_radius * np.gradient(lon_rad)[None, None, :]
     print("dx:", dx.shape)
+    # (1, 96, 144)
     dy = earth_radius * np.gradient(lat_rad)[:, None]
     print("dy:", dy.shape)
-    dp = np.gradient(pressure_levels, axis=0)
+    # (96, 1)
+    dp = np.gradient(pressure_levels, axis=0)*(-1)
     print("dp:", dp.shape)
+    # dp Pa (30, 96, 144)
     
     # Compute central differences for u and v
+    # u m/s
+    # v m/s
     du_dx = np.gradient(u, axis=2) / dx
+    # du_dx (30, 96, 144)
     dv_dy = np.gradient(v, axis=1) / dy
+    # dv_dy (30, 96, 144)
     print("du_dx:", du_dx.shape)
     print("dv_dy:", dv_dy.shape)
     
     # Initialize omega array with zeros
     omega = np.zeros((31,96,144))
     print("omega:", omega.shape)
+    # omega Pa/s
     
     # Loop over pressure levels (except the surface)
-    # surface being zero
+    # surface being zero level 30
     for k in range(len(pressure_levels)-1,0,-1):
         # Compute domega/dp using the continuity equation
         domega_dp = -(du_dx[k,:,:] + dv_dy[k,:,:])

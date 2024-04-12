@@ -21,7 +21,7 @@ def get_spatial_config(config_path):
     return lon, lat, lev
 
 def plot_spatial(lon, lat, data, cbar_label=None, title=None, cmap="bwr",
-                  vmin=None, vmax=None, norm=None, extend="both", ax=None):
+                  vmin=None, vmax=None, norm=None, extend="both", cbar_formatter=None, ax=None):
     # Using PlateCarree projection which is commonly used for lat/lon data.
     if ax is None:
         ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))  
@@ -42,5 +42,9 @@ def plot_spatial(lon, lat, data, cbar_label=None, title=None, cmap="bwr",
     cbar = plt.colorbar(img,shrink=0.7)
     if cbar_label is not None:
         cbar.set_label(cbar_label)
+    if cbar_formatter is not None:
+        # cbar.ax.yaxis.set_major_formatter(cbar_formatter)
+        #cbar.formatter.set_powerlimits((0, 0))
+        cbar.formatter.set_powerlimits((0, 0))
     if title is not None:
         plt.title(title)
