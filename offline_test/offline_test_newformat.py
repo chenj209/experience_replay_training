@@ -31,7 +31,7 @@ from load_models import load_models
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_1d, report_qtend_vert_quantile
+    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 
@@ -138,6 +138,12 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_1, quantile)
         print(qtend_log_lvl["r2"])
+    for tail in [0.1,0.2,0.3]:
+        print(f"tail {tail} results:")
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=True)
+        print("Top:", qtend_log_lvl["r2"])
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
+        print("Bottom:", qtend_log_lvl["r2"])
     if args.region_mask == "all":
         qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)

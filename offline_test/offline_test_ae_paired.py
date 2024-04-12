@@ -37,7 +37,7 @@ END_LEV = 29
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_1d, report_qtend_vert_quantile
+    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
 
 def prep_dataloaders(
     args,
@@ -414,6 +414,12 @@ def main(args):
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
         print(qtend_log_lvl["r2"])
+    for tail in [0.1,0.2,0.3]:
+        print(f"tail {tail} results:")
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=True)
+        print("Top:", qtend_log_lvl["r2"])
+        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
+        print("Bottom:", qtend_log_lvl["r2"])
     print(qtend_log_lvl)
 
 if __name__ == "__main__":
