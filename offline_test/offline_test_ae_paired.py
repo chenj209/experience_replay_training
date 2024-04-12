@@ -410,10 +410,9 @@ def main(args):
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
     qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
-    for quantile in [0.5,0.7,0.9]:
+    for quantile in [0.5,0.7,0.9,1]:
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
-        print(f"Quantile {quantile} results:")
         print(qtend_log_lvl)
     print(qtend_log_lvl)
 

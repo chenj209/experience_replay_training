@@ -134,10 +134,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     qtend_log = report_qtend(y_gt, y_1)
     qtend_log_lvl = report_qtend_vert(y_gt, y_1)
-    for quantile in [0.5,0.7,0.9]:
+    for quantile in [0.5,0.7,0.9,1]:
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_1, quantile)
-        print(f"Quantile {quantile} results:")
         print(qtend_log_lvl)
     if args.region_mask == "all":
         qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
