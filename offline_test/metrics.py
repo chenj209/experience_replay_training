@@ -205,6 +205,20 @@ def report_qtend_spatial(y_gt, qtend):
     qtend = reverse_operations(qtend, original_shape)
     return Regression_Metrics_axis(y_gt, qtend, axis=0)
 
+def report_qtend_vert_quantile(y_gt, qtend, quantile):
+    tail = (1-quantile)/2
+    results = []
+    for i in range(y_gt.shape[1]):
+        qtend_qt = np.quantile(qtend[:,i], [tail, 1-tail])
+        y_gt_qt = np.quantile(y_gt[:,i], [tail, 1-tail])
+        qtend_qt_data = qtend[(qtend[:,i] >= qtend_qt[0]) & (qtend[:,i] <= qtend_qt[1])]
+        y_gt_qt_data = y_gt[(y_gt[:,i] >= y_gt_qt[0]) & (y_gt[:,i] <= y_gt_qt[1])]
+        results.append(Regression_Metrics(y_gt_qt_data, qtend_qt_data))
+    merged_results = {}
+    for key in results[0].keys():
+        merged_results[key] = [result[key] for result in results]
+    return merged_results
+
 def report_qtend_vert(y_gt, qtend):
     y_gt = y_gt[:,0:30]
     #original_shape = (30, 96, 144)
