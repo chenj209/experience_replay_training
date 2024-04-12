@@ -209,9 +209,9 @@ def report_qtend_vert_quantile(y_gt, qtend, quantile):
     tail = (1-quantile)/2
     results = []
     for i in range(y_gt.shape[1]):
-        qtend_qt = np.quantile(qtend[:,i], [tail, 1-tail])
+        # qtend_qt = np.quantile(qtend[:,i], [tail, 1-tail])
         y_gt_qt = np.quantile(y_gt[:,i], [tail, 1-tail])
-        qtend_qt_data = qtend[(qtend[:,i] >= qtend_qt[0]) & (qtend[:,i] <= qtend_qt[1])]
+        qtend_qt_data = qtend[(qtend[:,i] >= y_gt_qt[0]) & (qtend[:,i] <= y_gt_qt[1])]
         y_gt_qt_data = y_gt[(y_gt[:,i] >= y_gt_qt[0]) & (y_gt[:,i] <= y_gt_qt[1])]
         results.append(Regression_Metrics(y_gt_qt_data, qtend_qt_data))
     merged_results = {}
