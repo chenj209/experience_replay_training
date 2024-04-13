@@ -7,6 +7,8 @@ if __name__ == "__main__":
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
     parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
     parser.add_argument("--region_mask", type=str, default="all")
+    parser.add_argument("--data_means", type=str, default="all")
+    parser.add_argument("--data_stds", type=str, default="all")
     parser.add_argument("--ex_input_prev", type=str, nargs="?")
     parser.add_argument("--ex_input", type=str, nargs="?")
     parser.add_argument("--resume", type=bool, default=False)
@@ -30,7 +32,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"time_model029_sampled12_0407_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}"
+    name = f"time_model029_sampled12_0413_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}"
 
     for epoch in ['50']:
         for num_blocks in ['7']:
@@ -52,12 +54,12 @@ if __name__ == "__main__":
                         commands = f"python train_time_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --worker 24 ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --ex_input {} --ex_input_prev {}'.format(str(noise_std),
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --region_mask {} --data_means {} --data_stds {} --ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
-                                                                name, args.multistep, args.region_mask, " ".join(ex_input)," ".join(ex_input_prev))
+                                                                name, args.multistep, args.region_mask, args.data_means, args.data_stds, " ".join(ex_input)," ".join(ex_input_prev))
 
                         if args.resume:
                             commands += f" --resume /pscratch/sd/c/chenjd21/ckpts_time/{name}/checkpoint.pth.tar"
