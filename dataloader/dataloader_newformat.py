@@ -21,7 +21,7 @@ def region_slice2d(region_mask2d):
     max_x = np.max(np.where(mask)[0])
     min_y = np.min(np.where(mask)[1])
     max_y = np.max(np.where(mask)[1])
-    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
+    return min_x-pad, max_x+1+pad, min_y-pad, max_y+1+pad
 
 class PairDatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
