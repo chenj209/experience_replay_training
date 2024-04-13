@@ -202,14 +202,16 @@ class PairDatasetDisk(data.Dataset):
         file_names = file_names1
         sample1 = [x1, y1]
         sample2 = [x2, y2]
+        if self.include_filename:
+            sample1.append(file_names)
+            sample2.append(file_names)
         if self.transform1 and self.transform2:
             sample1 = self.transform1(sample1)
             sample2 = self.transform2(sample2)
         if sample1 is None or sample2 is None:
             return None
-        sample = [*sample1, *sample2]
-        if self.include_filename:
-            sample.append(file_names)
+        # remove filenames from sample1
+        sample = [*sample1[:-1], *sample2]
         return sample
 
 

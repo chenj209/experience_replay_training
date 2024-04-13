@@ -244,7 +244,7 @@ if __name__ == "__main__":
         data_dir = "/data/nncam_data/image_testset/"
     if not os.path.isdir(data_dir):
         #data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
