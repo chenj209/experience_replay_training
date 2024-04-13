@@ -9,6 +9,8 @@ if __name__ == "__main__":
     parser.add_argument("--ex_input", type=str, nargs="?")
     parser.add_argument("--ex_input_prev", type=str, nargs="?")
     parser.add_argument("--region_mask", type=str, default="all")
+    parser.add_argument("--data_means", type=str)
+    parser.add_argument("--data_stds", type=str)
     parser.add_argument("--rec_weight", type=float, default=0.2)
     parser.add_argument("--pred_weight", type=float, default=0.8)
     parser.add_argument("--ae_config", type=str, default=str)
@@ -32,7 +34,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"seacombined_ae_model029_sampled1_0407_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"seacombined_ae_model029_sampled1_0413_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['100']:
         for num_blocks in ['7']:
@@ -54,7 +56,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex_combined.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 24 --region_mask {} ' \
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 24 --region_mask {} --data_means {} --data_stds {} ' \
                                 '--rec_weight {} --pred_weight {} --ae_config {} ' \
                                 '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
@@ -62,6 +64,7 @@ if __name__ == "__main__":
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
                                                                 name, args.multistep, args.region_mask,
+                                                                args.data_means, args.data_stds,
                                                                 args.rec_weight, args.pred_weight, args.ae_config,
                                                                 " ".join(ex_input), " ".join(ex_input_prev))
                         if args.resume:

@@ -57,8 +57,9 @@ class Encoder(nn.Module):
         for i in range(len(channel_sizes)):
             h = np.floor((h - kernel_size + 2 * paddings[i]) / strides[i]) + 1
             w = np.floor((w - kernel_size + 2 * paddings[i]) / strides[i]) + 1
-        # print("h:", h, ",w:", w)
+        print("h:", h, ",w:", w)
         self.flattened_size = int(channel_sizes[-1] * h * w)
+        print("flatten size:", self.flattened_size)
 
         if self.num_em_layers > 0:
             em_layers1 = []
@@ -94,11 +95,11 @@ class Encoder(nn.Module):
             self.fc2 = nn.Sequential(*fc_layers2[:-1])
 
     def forward(self, x):
-        # print("x shape:", x.shape)
+        #print("x shape:", x.shape)
         x = self.conv(x)
-        # print("after conv: ", x.shape)
+        #print("after conv: ", x.shape)
         x = self.flatten(x)
-        # print("flatten: ", x.shape)
+        #print("flatten: ", x.shape)
         mu = x
         std = x
         if self.num_em_layers > 0:

@@ -68,7 +68,7 @@ def get_min_max_coords(mask, pad):
     # wid_y = math.floor((max_y - min_y)/2)*2
     # return int(min_x-pad), int(min_x+wid_x+pad), \
     #     int(min_y-pad), int(min_y+wid_y+pad)
-    return min_x-pad, max_x+pad, min_y-pad, max_y+pad
+    return min_x-pad, max_x+pad+1, min_y-pad, max_y+pad+1
 
 class RectRegionMaskTransform:
     def __init__(self, mask, pad=2, include_raw=False):
@@ -106,9 +106,9 @@ class RectRegionMaskTransform:
 
 class StandardizeTransform:
     def __init__(
-            self, 
-            data_mean, 
-            data_std, 
+            self,
+            data_mean,
+            data_std,
             data_cols_x,
             data_cols_y,
             col_names,
@@ -123,9 +123,9 @@ class StandardizeTransform:
 
         data_mean: dictionary of mean values for each column
         data_std: dictionary of standard deviation values for each column
-        data_cols_x: list of columns to standardize in order of appearance in the 
+        data_cols_x: list of columns to standardize in order of appearance in the
         selected data x
-        data_cols_y: list of columns to standardize in order of appearance in the 
+        data_cols_y: list of columns to standardize in order of appearance in the
         selected data x
         col_names: raw column names of the data in order of appearance in the raw data
                     (loaded from col_names.txt)
@@ -156,8 +156,8 @@ class StandardizeTransform:
         # debug_print("StandardizeTransform: sample {}".format(len(sample)), DEBUG)
         err_header = "StandardizeTransform:"
         if len(sample) > 2:
-            # the last element is the filenames
             filenames = sample[-1]
+            # the last element is the filenames
             # check if the filenames are in the correct format
             if type(filenames[0]) == str:
                 err_header = f"{err_header} {filenames}: "
@@ -175,11 +175,11 @@ class StandardizeTransform:
             the expected shape {target_shape}"
 
         if self.normalize_input:
-            x = normalize_data_var_names2(x, self.data_cols_x, self.col_names, 
+            x = normalize_data_var_names2(x, self.data_cols_x, self.col_names,
                                  self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
 
         if self.normalize_output:
-            y = normalize_data_var_names2(y, self.data_cols_y, self.col_names, 
+            y = normalize_data_var_names2(y, self.data_cols_y, self.col_names,
                                     self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
         if x is None or y is None:
             return None
