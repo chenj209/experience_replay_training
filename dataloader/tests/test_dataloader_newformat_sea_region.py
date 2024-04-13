@@ -21,13 +21,14 @@ DEBUG = True
 
 data_dir = "/home/users/data/nncam_data/image_set/"
 if not os.path.isdir(data_dir):
+    # data_dir = "./data/"
+    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+if not os.path.isdir(data_dir):
     data_dir = "/data/nncam_data/image_set/"
 if not os.path.isdir(data_dir):
     # data_dir = "./data/"
     data_dir = "../analysis/test_data/"
-if not os.path.isdir(data_dir):
-    # data_dir = "./data/"
-    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+print("data_dir:", data_dir)
 
 #region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "..", \
 #                                    "consts", "pacific_region_mask.npy"))
@@ -38,6 +39,7 @@ assert region_mask.shape == (96,144)
 def test_single_column_multistep0_pacific_region():
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
+    file_names = file_names[:35040]
     # file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
@@ -50,10 +52,10 @@ def test_single_column_multistep0_pacific_region():
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
     # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
-    data_means = dict(np.load("sea_means.npz"))
+    data_means = dict(np.load("../consts/seamask_means.npz"))
     # data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
     # data_means.update(data_means_by_lvl)
-    data_stds = dict(np.load("sea_stds.npz"))
+    data_stds = dict(np.load("../consts/seamask_stds.npz"))
     # data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
     # data_stds.update(data_stds_by_lvl)
 
@@ -102,7 +104,7 @@ def test_single_column_multistep0_pacific_region():
         region_mask1d=region_mask
         )
     trainloader = data.DataLoader(
-        training_set, shuffle=False, batch_size=1, 
+        training_set, shuffle=False, batch_size=1,
         num_workers=1, collate_fn=filter_collate)
 
     norm_data_x = []
@@ -181,7 +183,7 @@ def test_single_column_multistep0_pacific_region_rect():
         include_filename=True,
         region_mask2d=(region_mask, 2)
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1,
                                   num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
@@ -211,7 +213,7 @@ def test_single_column_multistep0_pacific_region_rect():
     print_mean_std_by_var(raw_data_x, col_names_x, col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
     print_mean_std_by_var(raw_data_y, col_names_y, col_names)
-    
+
 
 def test_image_multistep0_pacific_region():
     file_names = glob.glob(data_dir + "*.npy")
@@ -260,7 +262,7 @@ def test_image_multistep0_pacific_region():
         transform=transform,
         include_filename=True
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1,
                                   num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
@@ -298,10 +300,10 @@ def test_single_column_multistep1_pacific_region():
 
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
     # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    
-    data_means = dict(np.load("sea_means.npz"))
-    data_stds = dict(np.load("sea_stds.npz"))
-    
+
+    data_means = dict(np.load("seamask_means.npz"))
+    data_stds = dict(np.load("seamask_stds.npz"))
+
     # for k in data_means:
     #     if "_lev" in k and \
     #         ("QL" not in k and "qtend" not in k and "dqvls" not in k):
@@ -345,7 +347,7 @@ def test_single_column_multistep1_pacific_region():
         include_filename=True,
         region_mask1d=region_mask
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1,
                                   num_workers=1, collate_fn=filter_collate)
     norm_data_x = []
     norm_data_y = []
@@ -362,13 +364,14 @@ def test_single_column_multistep1_pacific_region():
         norm_data_y.append(x.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
-    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x, 
+    print_mean_std_by_var(norm_data_x, col_names_x + prev_ex_vars + col_names_x,
                           col_names)
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 def test_image_multistep1_pacific_region():
     file_names = glob.glob(data_dir + "*.npy")
     file_names.sort()
+    file_names = file_names[:35040]
     # file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
@@ -405,12 +408,12 @@ def test_image_multistep1_pacific_region():
     # varaibles that are used as input in the previous time step
     # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     prev_ex_vars = x_ae_prev
-    
+
     col_names_x = levelwise_variable(col_names_x, 0, 29)
     prev_ex_vars = levelwise_variable(prev_ex_vars, 0, 29)
 
-    data_means = dict(np.load("sea_means.npz"))
-    data_stds = dict(np.load("sea_stds.npz"))
+    data_means = dict(np.load("../consts/seamask_means.npz"))
+    data_stds = dict(np.load("../consts/seamask_stds.npz"))
     # col_names_x = col_names_x + prev_ex_vars + col_names_x
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
@@ -439,7 +442,7 @@ def test_image_multistep1_pacific_region():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=12,
+        sample_rate=192,
         is_train=True,
         transform=transform,
         include_filename=True,

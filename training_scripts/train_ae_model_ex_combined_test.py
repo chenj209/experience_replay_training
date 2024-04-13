@@ -269,7 +269,8 @@ def main(args):
             [],
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            threshold=5
             ),
     ])
     transform_resmlp = transforms.Compose([
@@ -281,7 +282,8 @@ def main(args):
             col_names_y,
             col_names,
             normalize_input=True,
-            normalize_output=True
+            normalize_output=True,
+            threshold=5
             ),
     ])
 
