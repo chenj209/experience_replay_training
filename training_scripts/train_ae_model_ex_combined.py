@@ -205,12 +205,12 @@ def main(args):
     col_names_y = ae_config["resmlp_target"]
     # data_means = dict(np.load(data_dir + "/data_means.npz"))
     # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
-    data_means.update(data_means_by_lvl)
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
-    data_stds.update(data_stds_by_lvl)
+    data_means = dict(np.load(args.data_means))
+    # data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    # data_means.update(data_means_by_lvl)
+    data_stds = dict(np.load(args.data_stds))
+    # data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    # data_stds.update(data_stds_by_lvl)
 
     # use the same mean and std for variables except for q related
     # use the same mean and std for variables except for q related
@@ -613,6 +613,8 @@ if __name__ == '__main__':
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    parser.add_argument("--data_means", type=str)
+    parser.add_argument("--data_stds", type=str)
     parser.add_argument("--ae_config", type=str, help="path to ae config file", default=None)
     parser.add_argument('--rec_weight', type=float, default=0.1)
     parser.add_argument('--pred_weight', type=float, default=0.9)

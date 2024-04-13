@@ -71,8 +71,8 @@ def main(args):
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     col_names_y = ["qtend_check"]
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_means = dict(np.load(args.data_means))
+    data_stds = dict(np.load(args.data_stds))
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
@@ -317,6 +317,8 @@ if __name__ == '__main__':
     parser.add_argument("--ex_input", type=str, nargs="*")
     parser.add_argument("--ex_input_prev", type=str, nargs="*")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
+    parser.add_argument("--data_means", type=str)
+    parser.add_argument("--data_stds", type=str)
     args = parser.parse_args()
     print(args)
 
