@@ -13,15 +13,18 @@ from normalization import normalize_data_var_names, inverse_data_var_names
 from data_shape import to_inference_shape, inverse_to_inference_shape
 from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_filename, \
     gen_multistep_col_indices
+from preprocess import get_min_max_coords
 from tqdm.autonotebook import tqdm
 
 def region_slice2d(region_mask2d):
     mask, pad = region_mask2d
-    min_x = np.min(np.where(mask)[0])
-    max_x = np.max(np.where(mask)[0])
-    min_y = np.min(np.where(mask)[1])
-    max_y = np.max(np.where(mask)[1])
-    return min_x-pad, max_x+1+pad, min_y-pad, max_y+1+pad
+    return get_min_max_coords(mask, pad)
+    # min_x = np.min(np.where(mask)[0])
+    # max_x = np.max(np.where(mask)[0])
+    # min_y = np.min(np.where(mask)[1])
+    # max_y = np.max(np.where(mask)[1])
+    # return min_x-pad, max_x+1+pad, min_y-pad, max_y+1+pad
+
 
 class PairDatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'

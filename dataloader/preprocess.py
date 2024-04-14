@@ -68,7 +68,12 @@ def get_min_max_coords(mask, pad):
     # wid_y = math.floor((max_y - min_y)/2)*2
     # return int(min_x-pad), int(min_x+wid_x+pad), \
     #     int(min_y-pad), int(min_y+wid_y+pad)
-    return min_x-pad, max_x+pad+1, min_y-pad, max_y+pad+1
+    min_x, max_x, min_y, max_y =  min_x-pad, max_x+pad+1, min_y-pad, max_y+pad+1
+    min_x = max(0, min_x)
+    max_x = min(mask.shape[0], max_x)
+    min_y = max(0, min_y)
+    max_y = min(mask.shape[1], max_y)
+    return int(min_x), int(max_x), int(min_y), int(max_y)
 
 class RectRegionMaskTransform:
     def __init__(self, mask, pad=2, include_raw=False):
