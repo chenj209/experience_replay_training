@@ -224,6 +224,7 @@ def main(args):
     # Train and test
     current_iters = 0
     for epoch in range(args.epoch):
+        print("here_start", epoch, args.epoch)
         """
         training
         """

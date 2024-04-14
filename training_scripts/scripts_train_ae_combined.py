@@ -11,8 +11,8 @@ if __name__ == "__main__":
     parser.add_argument("--region_mask", type=str, default="all")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
-    parser.add_argument("--rec_weight", type=float, default=0.2)
-    parser.add_argument("--pred_weight", type=float, default=0.8)
+    parser.add_argument("--rec_weight", type=float, default=0.4)
+    parser.add_argument("--pred_weight", type=float, default=0.6)
     parser.add_argument("--ae_config", type=str, default=str)
     parser.add_argument("--resume", type=str, nargs="?")
     args = parser.parse_args()
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"seacombined_ae_model029_sampled1_0413_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"combined_ae_model029_sampled1_0414_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
 
     for epoch in ['100']:
         for num_blocks in ['7']:

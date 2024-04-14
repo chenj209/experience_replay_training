@@ -188,12 +188,12 @@ def main(args):
     col_names_x_resmlp = delevelwise_variable(col_names_x_resmlp)
     prev_ex_vars_resmlp = delevelwise_variable(prev_ex_vars_resmlp)
     col_names_y = ae_config["resmlp_target"]
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
-    data_means.update(data_means_by_lvl)
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
-    data_stds.update(data_stds_by_lvl)
+    data_means = dict(np.load(args.data_means))
+    #data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    #data_means.update(data_means_by_lvl)
+    data_stds = dict(np.load(args.data_stds))
+    #data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    #data_stds.update(data_stds_by_lvl)
 
     # use the same mean and std for variables except for q related
     # use the same mean and std for variables except for q related
@@ -437,6 +437,8 @@ if __name__ == "__main__":
     #parser.add_argument("--latent_dim", type=int, help="latent_dim", default=256)
     #parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument('--region_mask', type=str, help='path to region mask npy file', default="all")
+    parser.add_argument('--data_means', type=str, help='path to region mask npy file', default="all")
+    parser.add_argument('--data_stds', type=str, help='path to region mask npy file', default="all")
     parser.add_argument("--thick", action="store_true", help="use thick mask")
     args = parser.parse_args()
     torch.multiprocessing.set_sharing_strategy('file_system')

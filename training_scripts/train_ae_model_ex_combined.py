@@ -402,6 +402,8 @@ def main(args):
         filtered_state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
         print("Loading:", filtered_state_dict.keys())
         model.load_state_dict(filtered_state_dict, strict=False)
+        #model.load_state_dict(state_dict)
+
         #optimizer.load_state_dict(checkpoint['optimizer'])
         #logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
@@ -423,6 +425,20 @@ def main(args):
     best_valid_loss = 9999
     vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
     for epoch in range(args.epoch):
+        if epoch >= ae_warmup_epochs:
+            # freeze resmlp during warmup epochs
+            for param in model.module.resmlp.parameters():
+                param.requires_grad = True
+            param_groups = [
+                {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+                {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+                {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+            ]
+            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999),
+                                   eps=1e-8, weight_decay=args.weight_decay)
+            reduce_on_plateau_scheduler = \
+                ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
+                                  patience=50, verbose=True, min_lr=1e-6)
         """
         training
         """
@@ -586,20 +602,6 @@ def main(args):
                 'optimizer': optimizer.state_dict()
                 }, checkpoint=args.checkpoint)
 
-        if epoch > ae_warmup_epochs:
-            # freeze resmlp during warmup epochs
-            for param in model.module.resmlp.parameters():
-                param.requires_grad = True
-            param_groups = [
-                {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
-                {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
-                {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
-            ]
-            optimizer = optim.Adam(param_groups, betas=(0.9, 0.999),
-                                   eps=1e-8, weight_decay=args.weight_decay)
-            reduce_on_plateau_scheduler = \
-                ReduceLROnPlateau(optimizer, mode='min', factor=0.5,
-                                  patience=50, verbose=True, min_lr=1e-6)
 
 
     logger.close()

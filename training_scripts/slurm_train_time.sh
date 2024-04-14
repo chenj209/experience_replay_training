@@ -8,7 +8,7 @@
 #SBATCH -c 32
 #SBATCH --gpus-per-task=1
 #SBATCH --gpu-bind=none
-#SBATCH -J baseline_time
+#SBATCH -J baseline_time0413
 #SBATCH -o %x_%j.out
 
 module load cudatoolkit/11.7
@@ -46,7 +46,7 @@ done &
 gpu_monitor_pid=$!
 
 
-srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask ../consts/twp_region.npy --ex_input $2 --ex_input_prev $1
+srun --constraint=gpu --ntasks 1 -G 1 python scripts_train_time_model029_ex.py  --region_mask all --data_means ../consts/all_means.npz --data_stds ../consts/all_stds.npz --ex_input $2 --ex_input_prev $1
 
 kill $cpu_monitor_pid
 kill $gpu_monitor_pid
