@@ -285,13 +285,13 @@ class SepInputAutoencoderResMLP(nn.Module):
         mu, logvar = self.encoder(x_ae)
         latent = self.reparameterize(mu, logvar)
         x_rec = self.decoder(latent) # reconstruct all inputs
-        #print("x shape:", x.shape)
+        # print("x shape:", x_rec.shape)
         if self.resmlp_flag and self.latent_size > 0:
             #x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
             # x_resmlp = x # Q, T, ps, dqls, dtls of current step
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = latent
-            #print(x_resmlp_ex.shape)
+            # print(x_resmlp_ex.shape)
             # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
             x_resmlp_ex = x_resmlp_ex.view(
                 x_resmlp_ex.shape[0],
