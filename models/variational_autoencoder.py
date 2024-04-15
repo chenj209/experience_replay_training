@@ -278,6 +278,22 @@ class SepInputAutoencoderResMLP(nn.Module):
             return mu + eps * std
         else:
             return mu
+    
+    def ftforward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
+        # 3D conv 30 perssure
+        # latent = self.encoder(x) # 256
+        mu, logvar = self.encoder(x_ae)
+        latent = self.reparameterize(mu, logvar)
+        x_resmlp_ex = latent
+        x_resmlp_ex = x_resmlp_ex.view(
+            x_resmlp_ex.shape[0],
+            self.latent_size, self.latent_window[0], self.latent_window[1])
+        x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
+        if self.sub_region_mask is not None:
+            x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
+        x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
+        x_resmlp = self.resmlp(x_resmlp) # predict qtend
+        return x_resmlp 
 
     def forward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
