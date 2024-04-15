@@ -48,7 +48,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '32'
+                        batch_size = '16'
                         lr_strategy = 'constant'
 
                         network = 'resnet_output30'
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex_combined.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 24 --region_mask {} --data_means {} --data_stds {} ' \
+                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 16 --region_mask {} --data_means {} --data_stds {} ' \
                                 '--rec_weight {} --pred_weight {} --ae_config {} ' \
                                 '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,

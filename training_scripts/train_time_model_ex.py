@@ -232,6 +232,7 @@ def main(args):
         train_time_begin = time.time()
         for iter, batch in enumerate(trainloader):
             if batch is None:
+                print("skip empty batch")
                 # skip empty batch due to missing data
                 continue
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr,

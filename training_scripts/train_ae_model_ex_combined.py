@@ -394,19 +394,28 @@ def main(args):
     # Resume
     title = ''
     if args.resume:
+        vae_only_flag = False
+        resume = args.resume
+        if args.resume.endswith("_vae_only"):
+            resume = args.resume.rstrip("_vae_only")
+            vae_only_flag = True
+
         # Load checkpoint.
         print('==> Resuming from checkpoint..')
-        assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
+        assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(args.resume)
         state_dict = checkpoint['state_dict']
-        filtered_state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
-        print("Loading:", filtered_state_dict.keys())
-        model.load_state_dict(filtered_state_dict, strict=False)
+        if vae_only_flag:
+            state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+        print("Loading:", state_dict.keys())
+        model.load_state_dict(state_dict, strict=(not vae_only_flag))
         #model.load_state_dict(state_dict)
 
         #optimizer.load_state_dict(checkpoint['optimizer'])
-        #logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
-        logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
+        if os.path.isdir(args.checkpoint):
+            logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
+        else:
+            logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
         logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)

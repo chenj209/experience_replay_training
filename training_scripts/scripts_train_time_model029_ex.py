@@ -46,7 +46,7 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '32'
+                        batch_size = '16'
                         lr_strategy = 'constant'
 
                         network = 'resnet_output30'
