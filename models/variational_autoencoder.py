@@ -250,7 +250,7 @@ class Decoder3D(nn.Module):
 #         return x
 class SepInputAutoencoderResMLP(nn.Module):
     def __init__(self, encoder_config, decoder_config, input_size, latent_size, output_size, m, activation, \
-                 num_blocks, sub_region_mask=None, resmlp=True):
+                 num_blocks, sub_region_mask=None, resmlp=True, sample_latent=True):
         super(SepInputAutoencoderResMLP, self).__init__()
         self.encoder = Encoder(encoder_config)
         self.decoder = Decoder(decoder_config)
@@ -258,6 +258,10 @@ class SepInputAutoencoderResMLP(nn.Module):
         self.latent_size = latent_size
         self.latent_window = encoder_config["input_size"][1:]
         self.input_size = input_size
+        if "sample_latent" in encoder_config:
+            self.sample_latent = encoder_config["sample_latent"]
+        else:
+            self.sample_latent = sample_latent
         if self.resmlp_flag and self.latent_size > 0:
             self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
                                   m, activation, num_blocks)
@@ -272,7 +276,7 @@ class SepInputAutoencoderResMLP(nn.Module):
         print(f"Autoencoder, resmlp: {resmlp}, latent_dim {self.latent_size}")
 
     def reparameterize(self, mu, logvar):
-        if self.training:
+        if self.training and self.sample_latent:
             std = torch.exp(0.5 * logvar)
             eps = torch.randn_like(std)
             return mu + eps * std
