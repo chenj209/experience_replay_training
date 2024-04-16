@@ -281,7 +281,7 @@ if __name__ == "__main__":
     min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
     lon = np.linspace(0,357.5,144)
     lat = np.linspace(-90,90,96)
-    print("Region window coordinates: ", lon[min_y], lon[max_y], lat[min_x], lat[max_x])
+    print("Region window coordinates: ", lon[min_y], lon[max_y-1], lat[min_x], lat[max_x-1])
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
     if args.thick:

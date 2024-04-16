@@ -3,24 +3,24 @@ def compute_omega(u, v, pressure_levels, longitude, latitude):
     # Constants
     earth_radius = 6378137  # Radius of Earth in meters
     deg_to_rad = np.pi / 180  # Conversion factor from degrees to radians
-    
+
     # Convert latitude and longitude to radians for derivative calculation
     lat_rad = latitude * deg_to_rad
     lon_rad = longitude * deg_to_rad
-    
+
     # Calculate distances in meters for each grid point
-    print("lon_rad gradient:", np.gradient(lon_rad).shape)
-    print("cos(lat_rad):", np.cos(lat_rad).shape)
+    #print("lon_rad gradient:", np.gradient(lon_rad).shape)
+    #print("cos(lat_rad):", np.cos(lat_rad).shape)
     dx = np.cos(lat_rad)[None, :, None] * earth_radius * np.gradient(lon_rad)[None, None, :]
-    print("dx:", dx.shape)
+    #print("dx:", dx.shape)
     # (1, 96, 144)
     dy = earth_radius * np.gradient(lat_rad)[:, None]
-    print("dy:", dy.shape)
+    #print("dy:", dy.shape)
     # (96, 1)
     dp = np.gradient(pressure_levels, axis=0)*(-1)
-    print("dp:", dp.shape)
+    #print("dp:", dp.shape)
     # dp Pa (30, 96, 144)
-    
+
     # Compute central differences for u and v
     # u m/s
     # v m/s
@@ -28,23 +28,23 @@ def compute_omega(u, v, pressure_levels, longitude, latitude):
     # du_dx (30, 96, 144)
     dv_dy = np.gradient(v, axis=1) / dy
     # dv_dy (30, 96, 144)
-    print("du_dx:", du_dx.shape)
-    print("dv_dy:", dv_dy.shape)
-    
+    #print("du_dx:", du_dx.shape)
+    #print("dv_dy:", dv_dy.shape)
+
     # Initialize omega array with zeros
     omega = np.zeros((31,96,144))
-    print("omega:", omega.shape)
+    #print("omega:", omega.shape)
     # omega Pa/s
-    
+
     # Loop over pressure levels (except the surface)
     # surface being zero level 30
     for k in range(len(pressure_levels)-1,0,-1):
         # Compute domega/dp using the continuity equation
         domega_dp = -(du_dx[k,:,:] + dv_dy[k,:,:])
-        
+
         # Integrate domega/dp with respect to p to get omega
         omega[k,:,:] = omega[k+1,:,:] + domega_dp * dp[k]
-    
+
     return omega
 
 def get_pmid_from_x(ps, hyam, hybm):
