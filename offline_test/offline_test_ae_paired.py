@@ -68,7 +68,7 @@ def prep_dataloaders(
         include_filename=True,
         region_mask2d=(region_mask,2)
         )
-    testloader = data.DataLoader(testing_set, shuffle=True,
+    testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=1,
                                  num_workers=4,
                                  collate_fn=filter_collate,
