@@ -13,3 +13,4 @@ tree_reg_*
 *.zip
 ckpts
 .vscode/**
+*.json
