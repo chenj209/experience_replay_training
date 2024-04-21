@@ -376,7 +376,7 @@ def main(args):
     """
     Define Residual Methods and Optimizer
     """
-    ae_warmup_epochs = ae_config["ae_warmup_epochs"]
+    # ae_warmup_epochs = ae_config["ae_warmup_epochs"]
     criterion = nn.MSELoss()
 
     # freeze resmlp during warmup epochs
