@@ -287,7 +287,8 @@ class SepInputAutoencoderResMLP(nn.Module):
         # 3D conv 30 perssure
         # latent = self.encoder(x) # 256
         mu, logvar = self.encoder(x_ae)
-        latent = self.reparameterize(mu, logvar)
+        # latent = self.reparameterize(mu, logvar)
+        latent = mu
         x_resmlp_ex = latent
         x_resmlp_ex = x_resmlp_ex.view(
             x_resmlp_ex.shape[0],

@@ -420,10 +420,10 @@ def main(args):
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         else:
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
-        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', 'train time', 'val time'])
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
-        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', 'train time', 'val time'])
 
     #lr_scheduler = {'coslr': tools.cosine_lr,
     #                'constant': tools.constant}
@@ -436,7 +436,7 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
-    vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
+    # vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
     for epoch in range(args.epoch):
         """
         training
@@ -456,20 +456,21 @@ def main(args):
             # compute output
             # l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                outputs_y = model.ftforward(x_ae, x_resmlp)
                 # double check this
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
-                vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
-                kld = vae_gaussian_kl_loss(mu, log_var)
-                loss_pred = 0
+                # vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
+                # kld = vae_gaussian_kl_loss(mu, log_var)
+                # loss_pred = 0
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, y_resmlp)
-                loss_rec = criterion(x_rec, x_ae)
-                if epoch <= ae_warmup_epochs:
-                    loss = vae_loss
-                else:
-                    loss = args.pred_weight*loss_pred + \
-                        args.rec_weight*(vae_loss)
+                # loss_rec = criterion(x_rec, x_ae)
+                loss = loss_pred
+                # if epoch <= ae_warmup_epochs:
+                    # loss = vae_loss
+                # else:
+                    # loss = args.pred_weight*loss_pred + \
+                        # args.rec_weight*(vae_loss)
             else:
                 raise NotImplementedError
             #     outputs_y, x_rec = model(points_x)
@@ -480,11 +481,11 @@ def main(args):
             #     loss = args.pred_weight*loss_pred + \
             #         args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
             # saving big checkpoints to see the reconstruction effect
-            if (epoch+1)%20 == 0 and iter < 3:
-                np.savez(
-                    f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
-                    x=x_ae.detach().cpu().numpy(),
-                    x_rec=x_rec.detach().cpu().numpy())
+            # if (epoch+1)%20 == 0 and iter < 3:
+            #     np.savez(
+            #         f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
+            #         x=x_ae.detach().cpu().numpy(),
+            #         x_rec=x_rec.detach().cpu().numpy())
 
             # print(points_y)
             # print(torch.min(points_y))
@@ -500,9 +501,9 @@ def main(args):
                 loss_pred = loss_pred.item()
             if variational_flag:
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e},{:.2e} | \
-                    train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} |'.format(
+                    train pred mse:{:.2e} |'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr1, lr2, loss_pred, loss_rec.item(), kld.item()))
+                        lr1, lr2, loss_pred))
             else:
                 raise NotImplementedError
         train_time = time.time() - train_time_begin
@@ -535,7 +536,8 @@ def main(args):
 
             # compute output
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                #outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                outputs_y = model.ftforward(x_ae, x_resmlp)
                 # kld = vae_gaussian_kl_loss(mu, log_var)
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
@@ -545,13 +547,13 @@ def main(args):
             loss_pred = 0
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, y_resmlp).item()
-            loss_rec = reconstruction_loss(x_rec, x_ae, ltype="ssim").item()
+            # loss_rec = reconstruction_loss(x_rec, x_ae, ltype="ssim").item()
             test_losses[0].update(loss_pred, batch[0].size(0))
-            test_losses[1].update(loss_rec, batch[0].size(0))
+            # test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
             suffix = suffix + loss_name[0].format(test_losses[0].avg)
-            suffix = suffix + loss_name[1].format(test_losses[1].avg)
+            # suffix = suffix + loss_name[1].format(test_losses[1].avg)
             print(suffix)
 
 
@@ -562,16 +564,16 @@ def main(args):
             #pass
             # reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
-        if args.pred_weight >= args.rec_weight:
-           reduce_on_plateau_scheduler.step(loss_pred)
-        else:
-           reduce_on_plateau_scheduler.step(loss_rec)
+        # if args.pred_weight >= args.rec_weight:
+        reduce_on_plateau_scheduler.step(loss_pred)
+        # else:
+            # reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
         save_log = [epoch, f"{lr1},{lr2}", train_losses.avg]
-        for i in range(2):
+        for i in range(1):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
             save_log.append(test_losses[i].avg)
 
@@ -591,8 +593,8 @@ def main(args):
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
         valid_loss = test_losses[0].avg
-        if args.pred_weight < args.rec_weight:
-            valid_loss = test_losses[1].avg
+        # if args.pred_weight < args.rec_weight:
+            # valid_loss = test_losses[1].avg
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             print("Saving best model: epoch ", epoch)
