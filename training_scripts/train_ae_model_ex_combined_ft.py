@@ -517,7 +517,7 @@ def main(args):
         for i in range(2):
             test_losses[i] = AverageMeter()
         loss_name = [args.output_type + '_pred: {:.2e} | ']
-        loss_name.append(args.output_type + '_rec: {:.2e} | ')
+        #loss_name.append(args.output_type + '_rec: {:.2e} | ')
         # loss_name.append(args.output_type + '_kl: {:.2e}')
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
