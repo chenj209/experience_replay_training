@@ -262,6 +262,7 @@ class SepInputAutoencoderResMLP(nn.Module):
             self.sample_latent = encoder_config["sample_latent"]
         else:
             self.sample_latent = sample_latent
+        print("Sample latent: ", self.sample_latent)
         if self.resmlp_flag and self.latent_size > 0:
             self.resmlp = ResMLP(self.input_size+self.latent_size, output_size,
                                   m, activation, num_blocks)
@@ -282,7 +283,7 @@ class SepInputAutoencoderResMLP(nn.Module):
             return mu + eps * std
         else:
             return mu
-    
+
     def ftforward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         # 3D conv 30 perssure
         # latent = self.encoder(x) # 256
@@ -298,7 +299,7 @@ class SepInputAutoencoderResMLP(nn.Module):
             x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
         x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
         x_resmlp = self.resmlp(x_resmlp) # predict qtend
-        return x_resmlp 
+        return x_resmlp
 
     def forward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
         if self.sample_latent:
