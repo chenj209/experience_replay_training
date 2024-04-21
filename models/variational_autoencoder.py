@@ -301,30 +301,33 @@ class SepInputAutoencoderResMLP(nn.Module):
         return x_resmlp 
 
     def forward(self, x_ae, x_resmlp): # (Q,T,ps,dqls, dtls, qtend,stend, radiation_related, cloud, lwup)t-1, (Q,T,ps,dqls,dtls)
-        # 3D conv 30 perssure
-        # latent = self.encoder(x) # 256
-        mu, logvar = self.encoder(x_ae)
-        latent = self.reparameterize(mu, logvar)
-        x_rec = self.decoder(latent) # reconstruct all inputs
-        # print("x shape:", x_rec.shape)
-        if self.resmlp_flag and self.latent_size > 0:
-            #x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
-            # x_resmlp = x # Q, T, ps, dqls, dtls of current step
-            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
-            x_resmlp_ex = latent
-            # print(x_resmlp_ex.shape)
-            # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
-            x_resmlp_ex = x_resmlp_ex.view(
-                x_resmlp_ex.shape[0],
-                self.latent_size, self.latent_window[0], self.latent_window[1])
-            x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
-            if self.sub_region_mask is not None:
-                x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
-            # print("x_resmlp shape:", x_resmlp.shape)
-            x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
-            x_resmlp = self.resmlp(x_resmlp) # predict qtend
-            return x_resmlp, x_rec, mu, logvar
-        return None, x_rec, mu, logvar
+        if self.sample_latent:
+            # 3D conv 30 perssure
+            # latent = self.encoder(x) # 256
+            mu, logvar = self.encoder(x_ae)
+            latent = self.reparameterize(mu, logvar)
+            x_rec = self.decoder(latent) # reconstruct all inputs
+            # print("x shape:", x_rec.shape)
+            if self.resmlp_flag and self.latent_size > 0:
+                #x_resmlp = x[:, -self.input_size:, :, :] # Q, T, ps, dqls, dtls of current step
+                # x_resmlp = x # Q, T, ps, dqls, dtls of current step
+                # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+                x_resmlp_ex = latent
+                # print(x_resmlp_ex.shape)
+                # x_resmlp_ex = F.relu(self.fc(latent)) # 4x96x144
+                x_resmlp_ex = x_resmlp_ex.view(
+                    x_resmlp_ex.shape[0],
+                    self.latent_size, self.latent_window[0], self.latent_window[1])
+                x_resmlp = torch.cat((x_resmlp, x_resmlp_ex), dim=1) # concat 4 extra variable
+                if self.sub_region_mask is not None:
+                    x_resmlp = x_resmlp[:, :, self.sub_region_mask] # 96x144 boolean value
+                # print("x_resmlp shape:", x_resmlp.shape)
+                x_resmlp = x_resmlp.permute(0, 2, 1).reshape(-1, x_resmlp.shape[1])
+                x_resmlp = self.resmlp(x_resmlp) # predict qtend
+                return x_resmlp, x_rec, mu, logvar
+            return None, x_rec, mu, logvar
+        else:
+            return self.ftforward(x_ae, x_resmlp)
 
 
 class AutoencoderResMLP(nn.Module):

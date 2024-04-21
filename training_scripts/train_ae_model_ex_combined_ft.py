@@ -456,7 +456,7 @@ def main(args):
             # compute output
             # l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
-                outputs_y = model.ftforward(x_ae, x_resmlp)
+                outputs_y = model(x_ae, x_resmlp)
                 # double check this
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
                 # vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
@@ -537,7 +537,7 @@ def main(args):
             # compute output
             if variational_flag:
                 #outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
-                outputs_y = model.ftforward(x_ae, x_resmlp)
+                outputs_y = model(x_ae, x_resmlp)
                 # kld = vae_gaussian_kl_loss(mu, log_var)
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
