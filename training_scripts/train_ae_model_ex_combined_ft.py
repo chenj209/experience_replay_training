@@ -382,12 +382,13 @@ def main(args):
     # freeze resmlp during warmup epochs
     for param in model.module.decoder.parameters():
         param.requires_grad = False
-    for param in model.module.encoder.conv.parameters():
-        param.requires_grad = False
+    #for param in model.module.encoder.conv.parameters():
+        #param.requires_grad = False
     for param in model.module.encoder.em2.parameters():
         param.requires_grad = False
     param_groups = [
-        {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+        {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+        {'params': model.module.encoder.conv.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
         {'params': model.module.encoder.em1.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
         # {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
     ]

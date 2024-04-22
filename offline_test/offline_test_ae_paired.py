@@ -37,7 +37,7 @@ END_LEV = 29
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
+    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail, report_qtend_1d
 
 def prep_dataloaders(
     args,
@@ -188,12 +188,14 @@ def main(args):
     col_names_x_resmlp = delevelwise_variable(col_names_x_resmlp)
     prev_ex_vars_resmlp = delevelwise_variable(prev_ex_vars_resmlp)
     col_names_y = ae_config["resmlp_target"]
-    data_means = dict(np.load(args.data_means))
-    #data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
-    #data_means.update(data_means_by_lvl)
-    data_stds = dict(np.load(args.data_stds))
-    #data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
-    #data_stds.update(data_stds_by_lvl)
+    #data_means = dict(np.load(args.data_means))
+    data_means = dict(np.load(data_dir + "/data_means.npz"))
+    data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+    data_means.update(data_means_by_lvl)
+    # data_stds = dict(np.load(args.data_stds))
+    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+    data_stds.update(data_stds_by_lvl)
 
     # use the same mean and std for variables except for q related
     # use the same mean and std for variables except for q related
@@ -336,16 +338,12 @@ def main(args):
             thickness = get_thickness(x_raw[:,-1].numpy())
 
         if variational_flag:
-            if args.resmlp_only:
-                outputs_y = model(x_ae, x_resmlp)
-            else:
-                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+            outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
         else:
             raise NotImplementedError
             outputs_y, x_rec = model(points_x)
 
-        if not args.resmlp_only:
-            loss_rec = criterion(x_rec, x_ae).item()
+        loss_rec = criterion(x_rec, x_ae).item()
         loss_pred = criterion(outputs_y, y_resmlp).item()
         if loss_pred < best_loss:
             best_loss = loss_pred
@@ -355,16 +353,14 @@ def main(args):
             worst_filenames = filenames
         avg_pred += outputs_y.cpu().detach().numpy()
         avg_gt += y_resmlp.cpu().detach().numpy()
+        avg_mse += loss_rec
         avg_pred_mse += loss_pred
-
-        if not args.resmlp_only:
-            avg_mse += loss_rec
-            avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
-            x_rec = x_rec.cpu().detach().numpy()
-
-        x_ae = x_ae.cpu().detach().numpy()
+        avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
         avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
+        avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
+        x_ae = x_ae.cpu().detach().numpy()
         y_resmlp = y_resmlp.cpu().detach().numpy()
+        x_rec = x_rec.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
         if iter < 10:
         #if filenames[0] in ['37621', '41029', '42601', '44018', '44270', '47930', '53919', '53823', '50666']:
@@ -375,14 +371,14 @@ def main(args):
             # qtend_log_lvl = report_qtend_vert(y_resmlp*thickness, outputs_y*thickness)
             # print(qtend_log_lvl)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x.npy", x_ae)
+            np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y.npy", y_resmlp)
             np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_y_pred.npy", outputs_y)
             if args.thick:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_thickness.npy", thickness)
-            if variational_flag and not args.resmlp_only:
+            if variational_flag:
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_mu.npy", mu.cpu().detach().numpy())
                 np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_log_var.npy", log_var.cpu().detach().numpy())
-                np.save(f"{args.save_path}/offline_test_ae_{'-'.join(filenames)}_x_rec.npy", x_rec)
         # if get_thickness is not None:
             # outputs_y = outputs_y * thickness
             # y_resmlp = y_resmlp * thickness
@@ -390,8 +386,6 @@ def main(args):
         y_pred.append(outputs_y)
 
         current_iters += 1
-        if args.resmlp_only:
-            loss_rec = -1
         print('testing: iters:{}/{}| pred mse:{:.2e} | rec mse:{:.2e} |'\
               .format(iter+1, len(testloader), loss_pred, loss_rec))
     avg_mse /= current_iters
@@ -414,12 +408,19 @@ def main(args):
     print(f"Worst loss: {worst_loss}")
     print(f"Best filenames: {best_filenames}")
     print(f"Worst filenames: {worst_filenames}")
+    y_gt_sample = np.concatenate([y[None,] for y in y_gt], axis=0)
+    y_pred_sample = np.concatenate([y[None,] for y in y_pred], axis=0)
+    qtend_log_spatial = report_qtend_1d(y_gt_sample, y_pred_sample)
+    qtend_log_time = Regression_Metrics_axis(y_gt_sample, y_pred_sample, axis=1)
+    np.savez(f"{args.save_path}/offline_test_ae_spatial.npz", **qtend_log_spatial)
+    np.savez(f"{args.save_path}/offline_test_ae_time.npz", **qtend_log_time)
     y_gt = np.concatenate(y_gt, axis=0)
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
+
     qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
+    np.savez(f"{args.save_path}/offline_test_ae_vert.npz", **qtend_log_time)
     print(qtend_log_lvl)
-    np.save(f"{args.save_path}/offline_test_ae_vert.npz", **qtend_log_lvl)
     for quantile in [0.5,0.7,0.9,1]:
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
@@ -449,7 +450,6 @@ if __name__ == "__main__":
     parser.add_argument('--data_means', type=str, help='path to region mask npy file', default="all")
     parser.add_argument('--data_stds', type=str, help='path to region mask npy file', default="all")
     parser.add_argument("--thick", action="store_true", help="use thick mask")
-    parser.add_argument("--resmlp_only", action="store_true", help="use resmlp only")
     args = parser.parse_args()
     torch.multiprocessing.set_sharing_strategy('file_system')
     random.seed(0)
