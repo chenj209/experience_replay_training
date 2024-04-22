@@ -337,7 +337,7 @@ def main(args):
 
         if variational_flag:
             if args.resmlp_only:
-                outputs_y = model(x_resmlp)
+                outputs_y = model(x_ae, x_resmlp)
             else:
                 outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
         else:
@@ -361,8 +361,8 @@ def main(args):
             avg_mse += loss_rec
             avg_mse_by_variable += np.mean((x_rec - x_ae).cpu().detach().numpy()**2, axis=(0,2,3))
             x_rec = x_rec.cpu().detach().numpy()
-            x_ae = x_ae.cpu().detach().numpy()
 
+        x_ae = x_ae.cpu().detach().numpy()
         avg_mse_by_level += np.mean((y_resmlp - outputs_y).cpu().detach().numpy()**2, axis=0)
         y_resmlp = y_resmlp.cpu().detach().numpy()
         outputs_y = outputs_y.cpu().detach().numpy()
@@ -390,6 +390,8 @@ def main(args):
         y_pred.append(outputs_y)
 
         current_iters += 1
+        if args.resmlp_only:
+            loss_rec = -1
         print('testing: iters:{}/{}| pred mse:{:.2e} | rec mse:{:.2e} |'\
               .format(iter+1, len(testloader), loss_pred, loss_rec))
     avg_mse /= current_iters
@@ -416,6 +418,8 @@ def main(args):
     y_pred = np.concatenate(y_pred, axis=0)
     qtend_log = report_qtend(y_gt, y_pred)
     qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
+    print(qtend_log_lvl)
+    np.save(f"{args.save_path}/offline_test_ae_vert.npz", **qtend_log_lvl)
     for quantile in [0.5,0.7,0.9,1]:
         print(f"Quantile {quantile} results:")
         qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
@@ -426,7 +430,6 @@ def main(args):
         print("Top:", qtend_log_lvl["r2"])
         qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
         print("Bottom:", qtend_log_lvl["r2"])
-    print(qtend_log_lvl)
 
 if __name__ == "__main__":
     import argparse
