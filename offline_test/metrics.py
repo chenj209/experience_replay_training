@@ -198,6 +198,17 @@ def report_stend(y_gt, stend, mask=None):
     print(stend_log)
     return out
 
+def report_qtend_1d(y_gt, qtend):
+    # results = []
+    # for i in range(y_gt.shape[1]):
+        # qtend_qt = np.quantile(qtend[:,i], [tail, 1-tail])
+        # results.append(Regression_Metrics_axis(y_gt[:,i:i+1], qtend[:,i:i+1], axis=1))
+    # merged_results = {}
+    # for key in results[0].keys():
+        # merged_results[key] = [result[key] for result in results]
+    # return merged_results
+    return Regression_Metrics_axis(y_gt, qtend, axis=0)
+
 def report_qtend_spatial(y_gt, qtend):
     y_gt = y_gt[:,0:30]
     original_shape = (30, 96, 144)
