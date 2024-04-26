@@ -2,6 +2,8 @@ import netCDF4 as nc
 import pandas as pd
 import numpy as np
 
+out_dir = "/share3/chenj209/spcam_new_data_32/"
+
 def to_npz(fn):
     print(f"Processing {fn}")
     try:
@@ -54,7 +56,8 @@ def to_npz(fn):
     starting_idx = int(dataset.variables['time'][0]*48)+1
     for i in range(48):
         reshaped_data = final_data_np[i*96*144:(i+1)*96*144,:].reshape(96,144,-1).transpose(2,0,1)
-        np.save(str(i+starting_idx).zfill(5)+".npy", reshaped_data.data)
+        data = reshaped_data.data.astype(np.float32)
+        np.save(out_dir + "/" + str(i+starting_idx).zfill(5)+".npy", data)
 
 if __name__ == "__main__":
     import glob
@@ -62,7 +65,8 @@ if __name__ == "__main__":
 
     # Open the NetCDF file
     #dataset = nc.Dataset('path_to_your_file.nc')
-    dataset = nc.Dataset('/global/cfs/cdirs/m4359/zhangtao/nncam/raw-spcam-data//spcam_std_rad.cam.h1.1997-01-01-00000.nc')
+    #dataset = nc.Dataset('/global/cfs/cdirs/m4359/zhangtao/nncam/raw-spcam-data//spcam_std_rad.cam.h1.1997-01-01-00000.nc')
+    dataset = nc.Dataset('/share1/x-w19/raw-spcam-data/spcam_std_rad.cam.h1.1997-01-01-00000.nc')
 
     # generate col_names
 
@@ -102,10 +106,11 @@ if __name__ == "__main__":
 
     np.savetxt("col_names.txt", col_names_all, fmt="%s")
 
-    all_files = glob.glob("/global/cfs/cdirs/m4359/zhangtao/nncam/raw-spcam-data/*.nc")
+    #all_files = glob.glob("/global/cfs/cdirs/m4359/zhangtao/nncam/raw-spcam-data/*.nc")
+    all_files = glob.glob("/share1/x-w19/raw-spcam-data/*.nc")
     all_files.sort()
     from multiprocessing import Pool
-    with Pool(4) as p:
+    with Pool(8) as p:
         print(p.map(to_npz, all_files))
 
 
