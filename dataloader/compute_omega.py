@@ -1,4 +1,49 @@
 import numpy as np
+class OmegaSurrogateTransform:
+    def __init__(
+        self, 
+        ps_idx, 
+        u_idx, 
+        v_idx, 
+        hyam, 
+        hybm, 
+        longitude, 
+        latitude,
+        omega_means=None,
+        omega_stds=None
+        ):
+        self.ps_idx = ps_idx
+        self.u_idx = u_idx
+        self.v_idx = v_idx
+        self.hyam = hyam
+        self.hybm = hybm
+        self.longitude = longitude
+        self.latitude = latitude
+        self.omega_means = omega_means
+        self.omega_stds = omega_stds
+    def __cal__(self, sample):
+        """
+        Takes in data_x and data_y and computes the omega field from the u and v components.
+
+        data_x: input data, shape (n_features, lat, lon)
+        data_y: output data, shape (n_features, lat, lon)
+
+        returns:
+            data_x: input data, shape (n_features, lat, lon)
+        """
+        if sample is None:
+            return None
+        data_x, data_y = sample[:2]
+        ps = data_x[self.ps_idx[0]:self.ps_idx[1]].squeeze()
+        pmid = get_pmid_from_x(ps, self.hyam, self.hybm)
+        u = data_x[self.u_idx[0]:self.u_idx[1]]
+        v = data_x[self.v_idx[0]:self.v_idx[1]]
+        omega = compute_omega(u, v, pmid, self.longitude, self.latitude)
+        if self.omega_means is not None and self.omega_stds is not None:
+            omega = (omega - self.omega_means) / self.omega_stds
+        data_x = np.concatenate((data_x, omega), axis=0)
+        return data_x, data_y, *sample[2:]
+
 def compute_omega(u, v, pressure_levels, longitude, latitude):
     # Constants
     earth_radius = 6378137  # Radius of Earth in meters
