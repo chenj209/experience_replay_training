@@ -112,9 +112,9 @@ def test_single_column_multistep0():
     print("input_indices_resmlp:", col_names[input_indices_resmlp])
     print("prev_input_indices_resmlp:", col_names[prev_input_indices_resmlp])
     print("output_indices_resmlp:", col_names[output_indices_resmlp])
-    ps_idx = get_index_from_colnames(col_names, "SPPS")
-    u_idx = get_index_from_colnames(col_names, "UL")
-    v_idx = get_index_from_colnames(col_names, "VL")
+    ps_idx = get_index_from_colnames(col_names[input_indices_ae], "SPPS")
+    u_idx = get_index_from_colnames(col_names[input_indices_ae], "UL")
+    v_idx = get_index_from_colnames(col_names[input_indices_ae], "VL")
     pconst = np.load("../consts/phys_consts.npz")
     hyam = pconst["hyam"]
     hybm = pconst["hybm"]
