@@ -105,9 +105,12 @@ def prep_models(args, ae_config, output_size, sub_region_mask):
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
 
     model.float()
-    model = torch.nn.DataParallel(model).cuda()
-    #model = model.cuda()
-    model.load_state_dict(torch.load(args.resume)["state_dict"])
+    state_dict = torch.load(args.resume)["state_dict"]
+    model = model.cuda()
+    if not args.non_parallel:
+        state_dict = {k[7:] if k.startswith("module.") else k: v for k,v in state_dict.items()}
+    print("Loading: ", state_dict.keys())
+    model.load_state_dict(state_dict)
     cudnn.benchmark = True
 
     return model, variational_flag
@@ -305,8 +308,8 @@ def main(args):
     criterion = nn.MSELoss()
     avg_mse = 0
     avg_pred_mse = 0
-    avg_pred = np.zeros((model.module.sub_region_mask.sum(),30))
-    avg_gt = np.zeros((model.module.sub_region_mask.sum(),30))
+    avg_pred = np.zeros((model.sub_region_mask.sum(),30))
+    avg_gt = np.zeros((model.sub_region_mask.sum(),30))
     avg_mse_by_variable = np.zeros(ae_config["encoder"]["input_size"][0])
     avg_mse_by_level = np.zeros(30)
     # avg_ssim_by_level = np.zeros(30)
@@ -331,7 +334,7 @@ def main(args):
         # points_x = (points_x.float()).cuda()
         # points_y = (points_y.float()).cuda()
         x_ae, x_resmlp, y_resmlp, x_raw, y_raw, filenames = \
-            prep_batchdata(args, batch, model.module.sub_region_mask)
+            prep_batchdata(args, batch, model.sub_region_mask)
         if get_thickness is not None:
             # x_raw = x_raw[:, :, model.module.sub_region_mask]
             # x_raw = x_raw.permute(0,2,1).reshape(-1, x_raw.shape[1])
@@ -458,6 +461,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_stds', type=str, help='path to region mask npy file', default="all")
     parser.add_argument("--thick", action="store_true", help="use thick mask")
     parser.add_argument("--resmlp_only", action="store_true", help="use resmlp only")
+    parser.add_argument("--non_parallel", type=bool, default=True)
     args = parser.parse_args()
     torch.multiprocessing.set_sharing_strategy('file_system')
     random.seed(0)
