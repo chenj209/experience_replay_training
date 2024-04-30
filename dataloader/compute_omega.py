@@ -21,6 +21,7 @@ class OmegaSurrogateTransform:
         self.latitude = latitude
         self.omega_means = omega_means
         self.omega_stds = omega_stds
+
     def __cal__(self, sample):
         """
         Takes in data_x and data_y and computes the omega field from the u and v components.

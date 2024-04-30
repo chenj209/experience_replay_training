@@ -12,11 +12,14 @@ from torch.utils import data
 from preprocess import FlattenSpatialTransform, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, levelwise_variable, \
     delevelwise_variable
-from dataloader_newformat import PairDatasetDisk, filter_collate
+from dataloader_newformat import PairDatasetDisk, filter_collate, get_index_from_colnames
 from compute_omega import OmegaSurrogateTransform
 from debug_utils import print_mean_std_by_var
 from logger import debug_print
 # import torch transforms
+test_out_path = "tests/test_out/"
+if not os.path.isdir(test_out_path):
+    os.mkdir(test_out_path)
 
 DEBUG = True
 START_LEV = 6
@@ -66,12 +69,15 @@ if not os.path.isdir(data_dir):
     # data_dir = "./data/"
     data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
 
-data_means = dict(np.load(data_dir + "/data_means.npz"))
-data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
-data_means.update(data_means_by_lvl)
-data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
-data_stds.update(data_stds_by_lvl)
+
+data_means = dict(np.load("../consts/all_means.npz"))
+data_stds = dict(np.load("../consts/all_stds.npz"))
+# data_means = dict(np.load(data_dir + "/data_means.npz"))
+# data_means_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_means.npz"))
+# data_means.update(data_means_by_lvl)
+# data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+# data_stds_by_lvl = dict(np.load(data_dir + "/std_mean_by_level_stds.npz"))
+# data_stds.update(data_stds_by_lvl)
 
 # use the same mean and std for variables except for q related
 for k in data_means:
@@ -92,6 +98,7 @@ def test_single_column_multistep0():
     print("file_names:", file_names[:10])
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_y = ["qtend_check"]
+    col_names_y = ["qtend_check"]
     # varaibles that are used as input in the previous time step
 
     input_indices_ae, prev_input_indices_ae, output_indices_ae = gen_multistep_col_indices(
@@ -105,29 +112,52 @@ def test_single_column_multistep0():
     print("input_indices_resmlp:", col_names[input_indices_resmlp])
     print("prev_input_indices_resmlp:", col_names[prev_input_indices_resmlp])
     print("output_indices_resmlp:", col_names[output_indices_resmlp])
-
+    ps_idx = get_index_from_colnames(col_names, "SPPS")
+    u_idx = get_index_from_colnames(col_names, "UL")
+    v_idx = get_index_from_colnames(col_names, "VL")
+    pconst = np.load("../consts/phys_consts.npz")
+    hyam = pconst["hyam"]
+    hybm = pconst["hybm"]
+    lon = np.linspace(0,357.5,144)
+    lat = np.linspace(-90,90,96)
     transform_ae = transforms.Compose([
-        StandardizeTransform(
-            data_means,
-            data_stds,
-            col_names_x_ae,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True
-            ),
+        OmegaSurrogateTransform(
+            ps_idx,
+            u_idx,
+            v_idx,
+            hyam,
+            hybm,
+            lon,
+            lat),
+        # StandardizeTransform(
+        #     data_means,
+        #     data_stds,
+        #     col_names_x_ae,
+        #     col_names_y,
+        #     col_names,
+        #     normalize_input=True,
+        #     normalize_output=True
+        #     ),
         FlattenSpatialTransform()
         ])
     transform_resmlp = transforms.Compose([
-        StandardizeTransform(
-            data_means,
-            data_stds,
-            col_names_x_resmlp,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True
-            ),
+        OmegaSurrogateTransform(
+            ps_idx,
+            u_idx,
+            v_idx,
+            hyam,
+            hybm,
+            lon,
+            lat),
+        # StandardizeTransform(
+        #     data_means,
+        #     data_stds,
+        #     col_names_x_resmlp,
+        #     col_names_y,
+        #     col_names,
+        #     normalize_input=True,
+        #     normalize_output=True
+        #     ),
         FlattenSpatialTransform()
         ])
 
@@ -149,10 +179,10 @@ def test_single_column_multistep0():
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, 
                                   num_workers=1, collate_fn=filter_collate)
-    norm_data_x_ae = []
-    norm_data_y_ae = []
-    norm_data_x_resmlp = []
-    norm_data_y_resmlp = []
+    data_x_ae = []
+    data_y_ae = []
+    data_x_resmlp = []
+    data_y_resmlp = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         if batch is None:
@@ -164,23 +194,25 @@ def test_single_column_multistep0():
         x_resmlp, y_resmlp = x_resmlp.reshape(-1, x_resmlp.shape[-1]), \
             y_resmlp.reshape(-1, y_resmlp.shape[-1])
         print(idx, x_resmlp.size(), y_resmlp.size(), filenames)
-        norm_data_x_ae.append(x_ae.numpy())
-        norm_data_y_ae.append(y_ae.numpy())
-        norm_data_x_resmlp.append(x_resmlp.numpy())
-        norm_data_y_resmlp.append(y_resmlp.numpy())
-    norm_data_x_ae = np.concatenate(norm_data_x_ae, axis=0)
-    norm_data_y_ae = np.concatenate(norm_data_y_ae, axis=0)
-    norm_data_x_resmlp = np.concatenate(norm_data_x_resmlp, axis=0)
-    norm_data_y_resmlp = np.concatenate(norm_data_y_resmlp, axis=0)
-    print("norm_data_x_ae shape: ", norm_data_x_ae.shape)
-    print("norm_data_x_resmlp shape: ", norm_data_x_resmlp.shape)
+        data_x_ae.append(x_ae.numpy())
+        data_y_ae.append(y_ae.numpy())
+        data_x_resmlp.append(x_resmlp.numpy())
+        data_y_resmlp.append(y_resmlp.numpy())
+    data_x_ae = np.concatenate(data_x_ae, axis=0)
+    data_y_ae = np.concatenate(data_y_ae, axis=0)
+    data_x_resmlp = np.concatenate(data_x_resmlp, axis=0)
+    data_y_resmlp = np.concatenate(data_y_resmlp, axis=0)
+    np.save(data_x_ae, test_out_path + "data_x_ae.npy")
+    np.save(data_x_resmlp, test_out_path + "data_x_resmlp.npy")
+    print("norm_data_x_ae shape: ", data_x_ae.shape)
+    print("norm_data_x_resmlp shape: ", data_x_resmlp.shape)
     print("norm ae:")
-    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae, col_names)
-    print_mean_std_by_var(norm_data_x_ae, col_names_x_ae, col_names, delevelwise=True, reduce_lvl=6)
+    print_mean_std_by_var(data_x_ae, col_names_x_ae, col_names)
+    print_mean_std_by_var(data_x_ae, col_names_x_ae, col_names, delevelwise=True, reduce_lvl=6)
     print("norm resmlp:")
-    print_mean_std_by_var(norm_data_x_resmlp, col_names_x_resmlp, col_names)
-    print("qtend_check ae: ", norm_data_y_ae.mean(), norm_data_y_ae.std())
-    print("qtend_check resmlp: ", norm_data_y_resmlp.mean(), norm_data_y_resmlp.std())
+    print_mean_std_by_var(data_x_resmlp, col_names_x_resmlp, col_names)
+    print("qtend_check ae: ", data_y_ae.mean(), data_y_ae.std())
+    print("qtend_check resmlp: ", data_y_resmlp.mean(), data_y_resmlp.std())
     
 def test_single_column_multistep1():
     file_names = glob.glob(data_dir + "*.npy")
@@ -498,9 +530,9 @@ def test_image_multistep1():
     print("qtend_check resmlp: ", norm_data_y_resmlp.mean(), norm_data_y_resmlp.std())
 
 if __name__ == "__main__":
-    # test_single_column_multistep0()
+    test_single_column_multistep0()
     # test_image_multistep0()
     # test_single_column_multistep1()
     # test_image_multistep1()
-    test_image_multistep1_thres()
+    # test_image_multistep1_thres()
 
