@@ -25,9 +25,9 @@ if __name__ == "__main__":
         ex_input_prev = []
 
 
-    DATA_DIR = "/home/users/data/nncam_data/image_set/"
-    if not os.path.exists(DATA_DIR):
-        DATA_DIR = "/data/nncam_data/image_set/"
+    DATA_DIR = "/share3/chenj209/spcam_new_data_32/"
+    #if not os.path.exists(DATA_DIR):
+        #DATA_DIR = "/data/nncam_data/image_set/"
     if not os.path.exists(DATA_DIR):
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
