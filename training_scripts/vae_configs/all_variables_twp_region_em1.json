@@ -1,0 +1,162 @@
+{
+"resmlp_input_size": [0, 33, 59],
+"variational": true,
+"latent_size": 8,
+"sample_rate": 12,
+"ae_lr": 0.0001,
+"resmlp_lr": 0.001,
+"ae_warmup_epochs": 200,
+"beta": 0.002,
+"ltype": "mse",
+"reduce_lvl": false,
+"resmlp_target": ["qtend_check"],
+"x_ae": [
+    "QL_lev",
+    "T_nn_in_lev",
+    "dqvls_nn_in_lev",
+    "dTls_nn_in_lev",
+    "SOLIN",
+    "SPPS",
+    "LWUP",
+    "CAPE",
+    "UL_lev",
+    "VL_lev"
+],
+"x_ae_prev": [
+    "qtend_check_lev",
+    "stend_check_lev",
+    "SOLL",
+    "SOLLD",
+    "SOLS",
+    "SOLSD",
+    "FSDS",
+    "CLOUD_lev",
+    "SPPRECC",
+    "FLNS",
+    "FLNT",
+    "SPQRL_lev",
+    "SPQRS_lev"
+],
+"x_resmlp": [
+    "QL_lev",
+    "T_nn_in_lev",
+    "dqvls_nn_in_lev",
+    "dTls_nn_in_lev",
+    "SOLIN",
+    "SPPS",
+    "LWUP",
+    "CAPE",
+    "UL_lev",
+    "VL_lev"
+],
+"x_resmlp_prev": [
+    "qtend_check_lev",
+    "stend_check_lev",
+    "SOLL",
+    "SOLLD",
+    "SOLS",
+    "SOLSD",
+    "FSDS",
+    "CLOUD_lev",
+    "SPPRECC",
+    "FLNS",
+    "FLNT",
+    "SPQRL_lev",
+    "SPQRS_lev"
+],
+"encoder": {
+    "variational": true,
+    "input_size": [
+        0,
+        33,
+        59
+    ],
+    "channel_sizes": [
+        512,
+        256,
+        128,
+        64,
+        32,
+        8
+    ],
+    "kernel_size": 3,
+    "stride": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "conv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "output_padding": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "fc_sizes": [],
+    "num_em_layers": 1
+}
+,
+"decoder": {
+    "variational": true,
+    "input_size": [
+        0,
+        33,
+        59
+    ],
+    "channel_sizes": [
+        8,
+        32,
+        64,
+        128,
+        256,
+        512
+    ],
+    "kernel_size": 3,
+    "stride": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "conv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "deconv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "output_padding": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "fc_sizes": [],
+    "num_em_layers": 1
+}
+}

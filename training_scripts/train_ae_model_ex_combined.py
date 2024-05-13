@@ -367,8 +367,8 @@ def main(args):
             layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
             print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
     model = model.float()
-    model = torch.nn.DataParallel(model).cuda()
-    #model = model.cuda()
+    #model = torch.nn.DataParallel(model).cuda()
+    model = model.cuda()
     cudnn.benchmark = True
 
 
@@ -380,13 +380,22 @@ def main(args):
     criterion = nn.MSELoss()
 
     # freeze resmlp during warmup epochs
-    for param in model.module.resmlp.parameters():
-        param.requires_grad = False
-    param_groups = [
-        # {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
-        {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
-        {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
-    ]
+    if args.non_parallel:
+        for param in model.resmlp.parameters():
+            param.requires_grad = False
+        param_groups = [
+            # {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+            {'params': model.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            {'params': model.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+        ]
+    else:
+        for param in model.module.resmlp.parameters():
+            param.requires_grad = False
+        param_groups = [
+            # {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
+            {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+        ]
     optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True, min_lr=1e-6)
 
@@ -407,6 +416,9 @@ def main(args):
         state_dict = checkpoint['state_dict']
         if vae_only_flag:
             state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+        if args.non_parallel:
+            state_dict = {k[7:] if k.startswith("module.") else k: v for k, v in state_dict.items()}
+
         print("Loading:", state_dict.keys())
         model.load_state_dict(state_dict, strict=(not vae_only_flag))
         #model.load_state_dict(state_dict)
@@ -436,13 +448,22 @@ def main(args):
     for epoch in range(args.epoch):
         if epoch >= ae_warmup_epochs:
             # freeze resmlp during warmup epochs
-            for param in model.module.resmlp.parameters():
-                param.requires_grad = True
-            param_groups = [
-                {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
-                {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
-                {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
-            ]
+            if args.non_parellel:
+                for param in model.resmlp.parameters():
+                    param.requires_grad = True
+                param_groups = [
+                    {'params': model.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+                    {'params': model.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+                    {'params': model.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+                ]
+            else:
+                for param in model.module.resmlp.parameters():
+                    param.requires_grad = True
+                param_groups = [
+                    {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+                    {'params': model.module.encoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+                    {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+                ]
             optimizer = optim.Adam(param_groups, betas=(0.9, 0.999),
                                    eps=1e-8, weight_decay=args.weight_decay)
             reduce_on_plateau_scheduler = \
@@ -453,6 +474,11 @@ def main(args):
         """
         train_losses = AverageMeter()
         train_time_begin = time.time()
+        if args.non_parallel:
+            sub_region_mask = model.sub_region_mask
+        else:
+            sub_region_mask = model.module.sub_region_mask
+
         for iter, batch in enumerate(trainloader):
             if batch is None:
                 # skip empty batch due to missing data
@@ -461,7 +487,7 @@ def main(args):
             lr2 = optimizer.param_groups[1]['lr']
             model.train()
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
-                args, batch, model.module.sub_region_mask)
+                args, batch, sub_region_mask)
 
             # compute output
             # l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
@@ -538,7 +564,7 @@ def main(args):
             model.eval()
 
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
-                args, batch, model.module.sub_region_mask)
+                args, batch, sub_region_mask)
 
 
         #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
@@ -630,6 +656,7 @@ if __name__ == '__main__':
     parser.add_argument("--ae_config", type=str, help="path to ae config file", default=None)
     parser.add_argument('--rec_weight', type=float, default=0.1)
     parser.add_argument('--pred_weight', type=float, default=0.9)
+    parser.add_argument('--non_parallel', type=bool, default=True)
 
     args = parser.parse_args()
     print(args)

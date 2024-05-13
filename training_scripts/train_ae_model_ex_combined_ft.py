@@ -367,7 +367,10 @@ def main(args):
             layer_size_gb = (num_params * 4) / (1024**3)  # Calculating size in GB
             print(f"{name}: {type(module).__name__}, Parameters: {num_params}, Size: {layer_size_gb:.6f} GB")
     model = model.float()
-    model = torch.nn.DataParallel(model).cuda()
+    if not args.non_parallel:
+        model = torch.nn.DataParallel(model).cuda()
+    else:
+        model = model.cuda()
     #model = model.cuda()
     cudnn.benchmark = True
 
@@ -376,21 +379,37 @@ def main(args):
     """
     Define Residual Methods and Optimizer
     """
-    ae_warmup_epochs = ae_config["ae_warmup_epochs"]
+    # ae_warmup_epochs = ae_config["ae_warmup_epochs"]
     criterion = nn.MSELoss()
 
     # freeze resmlp during warmup epochs
-    for param in model.module.decoder.parameters():
-        param.requires_grad = False
-    for param in model.module.encoder.conv.parameters():
-        param.requires_grad = False
-    for param in model.module.encoder.em2.parameters():
-        param.requires_grad = False
-    param_groups = [
-        {'params': model.module.resmlp.parameters(), 'lr': 1e-3},    # Learning rate for ResMLP
-        {'params': model.module.encoder.em1.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
-        # {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
-    ]
+    if args.non_parallel:
+        for param in model.decoder.parameters():
+            param.requires_grad = False
+        #for param in model.module.encoder.conv.parameters():
+            #param.requires_grad = False
+        for param in model.encoder.em2.parameters():
+            param.requires_grad = False
+        param_groups = [
+            {'params': model.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+            {'params': model.encoder.conv.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            {'params': model.encoder.em1.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            # {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+        ]
+    else:
+        for param in model.module.decoder.parameters():
+            param.requires_grad = False
+        #for param in model.module.encoder.conv.parameters():
+            #param.requires_grad = False
+        for param in model.module.encoder.em2.parameters():
+            param.requires_grad = False
+
+        param_groups = [
+            {'params': model.module.resmlp.parameters(), 'lr': ae_config["resmlp_lr"]},    # Learning rate for ResMLP
+            {'params': model.module.encoder.conv.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            {'params': model.module.encoder.em1.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for encoder
+            # {'params': model.module.decoder.parameters(), 'lr': ae_config["ae_lr"]},  # Learning rate for decoder
+        ]
     optimizer = optim.Adam(param_groups, betas=(0.9, 0.999), eps=1e-8, weight_decay=args.weight_decay)
     reduce_on_plateau_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=50, verbose=True, min_lr=1e-6)
 
@@ -410,7 +429,10 @@ def main(args):
         checkpoint = torch.load(resume)
         state_dict = checkpoint['state_dict']
         if vae_only_flag:
-            state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+            if args.non_parallel:
+                state_dict = {k: v for k, v in state_dict.items() if k.startswith("encoder") or k.startswith("decoder")}
+            else:
+                state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
         print("Loading:", state_dict.keys())
         model.load_state_dict(state_dict, strict=(not vae_only_flag))
         #model.load_state_dict(state_dict)
@@ -420,10 +442,10 @@ def main(args):
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
         else:
             logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
-        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', 'train time', 'val time'])
     else:
         logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title)
-        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', args.output_type +'_rec', 'train time', 'val time'])
+        logger.set_names(['Epoch', 'LR', 'train mse', args.output_type +'_pred', 'train time', 'val time'])
 
     #lr_scheduler = {'coslr': tools.cosine_lr,
     #                'constant': tools.constant}
@@ -436,7 +458,11 @@ def main(args):
     # Train and test
     current_iters = 0
     best_valid_loss = 9999
-    vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
+    # vae_loss_fn = compute_vae_loss_fn(beta=ae_config["beta"], ltype=ae_config["ltype"])
+    if args.non_parallel:
+        sub_region_mask = model.sub_region_mask
+    else:
+        sub_region_mask = model.module.sub_region_mask
     for epoch in range(args.epoch):
         """
         training
@@ -451,25 +477,26 @@ def main(args):
             lr2 = optimizer.param_groups[1]['lr']
             model.train()
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
-                args, batch, model.module.sub_region_mask)
+                args, batch, sub_region_mask)
 
             # compute output
             # l1_penalty = sum(torch.abs(param).sum() for param in model.parameters())
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                outputs_y = model(x_ae, x_resmlp)
                 # double check this
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp(),dim=1).mean()
-                vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
-                kld = vae_gaussian_kl_loss(mu, log_var)
-                loss_pred = 0
+                # vae_loss = vae_loss_fn(mu, log_var, x_rec, x_ae)
+                # kld = vae_gaussian_kl_loss(mu, log_var)
+                # loss_pred = 0
                 if outputs_y is not None:
                     loss_pred = criterion(outputs_y, y_resmlp)
-                loss_rec = criterion(x_rec, x_ae)
-                if epoch <= ae_warmup_epochs:
-                    loss = vae_loss
-                else:
-                    loss = args.pred_weight*loss_pred + \
-                        args.rec_weight*(vae_loss)
+                # loss_rec = criterion(x_rec, x_ae)
+                loss = loss_pred
+                # if epoch <= ae_warmup_epochs:
+                    # loss = vae_loss
+                # else:
+                    # loss = args.pred_weight*loss_pred + \
+                        # args.rec_weight*(vae_loss)
             else:
                 raise NotImplementedError
             #     outputs_y, x_rec = model(points_x)
@@ -480,11 +507,11 @@ def main(args):
             #     loss = args.pred_weight*loss_pred + \
             #         args.rec_weight*(loss_rec) + ae_config["l1"]*l1_penalty
             # saving big checkpoints to see the reconstruction effect
-            if (epoch+1)%20 == 0 and iter < 3:
-                np.savez(
-                    f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
-                    x=x_ae.detach().cpu().numpy(),
-                    x_rec=x_rec.detach().cpu().numpy())
+            # if (epoch+1)%20 == 0 and iter < 3:
+            #     np.savez(
+            #         f"{args.checkpoint}/epoch{epoch}_iter{iter}_x_rec",
+            #         x=x_ae.detach().cpu().numpy(),
+            #         x_rec=x_rec.detach().cpu().numpy())
 
             # print(points_y)
             # print(torch.min(points_y))
@@ -500,9 +527,9 @@ def main(args):
                 loss_pred = loss_pred.item()
             if variational_flag:
                 print('training- epoch:{}/{} | iters:{}/{}| lr:{:.2e},{:.2e} | \
-                    train pred mse:{:.2e}| train rec mse: {:.2e} | kl: {:.2e} |'.format(
+                    train pred mse:{:.2e} |'.format(
                         epoch, args.epoch, iter+1, len(trainloader),
-                        lr1, lr2, loss_pred, loss_rec.item(), kld.item()))
+                        lr1, lr2, loss_pred))
             else:
                 raise NotImplementedError
         train_time = time.time() - train_time_begin
@@ -516,7 +543,7 @@ def main(args):
         for i in range(2):
             test_losses[i] = AverageMeter()
         loss_name = [args.output_type + '_pred: {:.2e} | ']
-        loss_name.append(args.output_type + '_rec: {:.2e} | ')
+        #loss_name.append(args.output_type + '_rec: {:.2e} | ')
         # loss_name.append(args.output_type + '_kl: {:.2e}')
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
@@ -528,14 +555,15 @@ def main(args):
             model.eval()
 
             x_ae, x_resmlp, y_resmlp, filenames = prep_batchdata(
-                args, batch, model.module.sub_region_mask)
+                args, batch, sub_region_mask)
 
 
         #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
 
             # compute output
             if variational_flag:
-                outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                #outputs_y, x_rec, mu, log_var = model(x_ae, x_resmlp)
+                outputs_y = model(x_ae, x_resmlp)
                 # kld = vae_gaussian_kl_loss(mu, log_var)
                 # kl_divergence = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
             else:
@@ -545,13 +573,13 @@ def main(args):
             loss_pred = 0
             if outputs_y is not None:
                 loss_pred = criterion(outputs_y, y_resmlp).item()
-            loss_rec = reconstruction_loss(x_rec, x_ae, ltype="ssim").item()
+            # loss_rec = reconstruction_loss(x_rec, x_ae, ltype="ssim").item()
             test_losses[0].update(loss_pred, batch[0].size(0))
-            test_losses[1].update(loss_rec, batch[0].size(0))
+            # test_losses[1].update(loss_rec, batch[0].size(0))
             # test_losses[2].update(kl_divergence.item(), batch[0].size(0))
                 # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
             suffix = suffix + loss_name[0].format(test_losses[0].avg)
-            suffix = suffix + loss_name[1].format(test_losses[1].avg)
+            # suffix = suffix + loss_name[1].format(test_losses[1].avg)
             print(suffix)
 
 
@@ -562,16 +590,16 @@ def main(args):
             #pass
             # reduce_on_plateau_scheduler.step(train_losses.avg)
             # reduce lr for validating
-        if args.pred_weight >= args.rec_weight:
-           reduce_on_plateau_scheduler.step(loss_pred)
-        else:
-           reduce_on_plateau_scheduler.step(loss_rec)
+        # if args.pred_weight >= args.rec_weight:
+        reduce_on_plateau_scheduler.step(loss_pred)
+        # else:
+            # reduce_on_plateau_scheduler.step(loss_rec)
 
         current_datetime = datetime.now()
         print(f"Epoch {epoch} time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         #### save the log and ckpt ###################################
         save_log = [epoch, f"{lr1},{lr2}", train_losses.avg]
-        for i in range(2):
+        for i in range(1):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
             save_log.append(test_losses[i].avg)
 
@@ -591,8 +619,8 @@ def main(args):
                 }, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
 
         valid_loss = test_losses[0].avg
-        if args.pred_weight < args.rec_weight:
-            valid_loss = test_losses[1].avg
+        # if args.pred_weight < args.rec_weight:
+            # valid_loss = test_losses[1].avg
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             print("Saving best model: epoch ", epoch)
@@ -620,6 +648,7 @@ if __name__ == '__main__':
     parser.add_argument("--ae_config", type=str, help="path to ae config file", default=None)
     parser.add_argument('--rec_weight', type=float, default=0.1)
     parser.add_argument('--pred_weight', type=float, default=0.9)
+    parser.add_argument("--non_parallel", type=bool, default=True)
 
     args = parser.parse_args()
     print(args)
