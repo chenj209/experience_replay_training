@@ -55,6 +55,7 @@ vertical_levels_ticks = np.array([
 vertical_levels_ticks = [str(v) for v in vertical_levels_ticks]
 
 plt.figure(figsize=(10, 8))
+plot_lvl = 16
 
 #baseline[baseline<0]=0
 #baseline2[baseline2<0]=0
@@ -62,20 +63,19 @@ plt.figure(figsize=(10, 8))
 #vae2[vae2<0] = 0
 
 #plt.plot(baseline2, vertical_levels, label="baseline2", marker='s', color='red')  # Add VAE_train in blue
-plt.plot(baseline, vertical_levels, label="baseline", marker='s', color='blue')  # Add VAE_train in blue
-plt.plot(baseline2, vertical_levels, label="baseline+new_vars", marker='s', color='red')  # Add VAE_train in blue
-#plt.plot(vae, vertical_levels, label="vae_loc_code", marker='o', color='purple')  # Add VAE_train in blue
+plt.plot(baseline[plot_lvl:], vertical_levels[plot_lvl:], label="baseline", marker='s', color='blue')  # Add VAE_train in blue
+plt.plot(baseline2[plot_lvl:], vertical_levels[plot_lvl:], label="baseline+new_vars", marker='s', color='red')  # Add VAE_train in blue
+plt.plot(vae[plot_lvl:], vertical_levels[plot_lvl:], label="vae_pre50", marker='o', color='purple')  # Add VAE_train in blue
 #plt.plot(vae3, vertical_levels, label="vae_loc_code3", marker='o', color='orange')  # Add VAE_train in blue
-plt.plot(vae4, vertical_levels, label="vae_loc_code4", marker='o', color='black')  # Add VAE_train in blue
-plt.plot(vae4_rlvl, vertical_levels, label="vae_loc_code4_rlvl", marker='o', color='green')  # Add VAE_train in blue
+plt.plot(vae4[plot_lvl:], vertical_levels[plot_lvl:], label="vae_pre382", marker='o', color='black')  # Add VAE_train in blue
+plt.plot(vae4_rlvl[plot_lvl:], vertical_levels[plot_lvl:], label="vae_pre982", marker='o', color='green')  # Add VAE_train in blue
 #plt.plot(vae2, vertical_levels, label="vae_loc_code2", marker='o', color='green')  # Add VAE_train in blue
-plt.yticks(vertical_levels, vertical_levels_ticks)
+plt.yticks(vertical_levels[plot_lvl:], vertical_levels_ticks[plot_lvl:])
 
 plt.title("Model Performance Comparison in Mean Error for 30 Vertical Levels")
 plt.ylabel("Vertical Levels(hPa)")
 plt.xlabel("Mean error (standardized)")
 plt.gca().invert_yaxis()  # Invert y-axis to have level 1 at the top
-plt.yticks(vertical_levels)
 plt.legend()
 plt.grid(True)
 plt.show()

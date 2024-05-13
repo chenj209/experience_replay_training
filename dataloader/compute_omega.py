@@ -36,7 +36,10 @@ class OmegaSurrogateTransform:
             return None
         data_x, data_y = sample[:2]
         ps = data_x[self.ps_idx[0]:self.ps_idx[1]].squeeze()
-        pmid = get_pmid_from_x(ps, self.hyam, self.hybm)
+        print("ps shape:", ps.shape)
+        if len(ps.shape) == 1:
+
+            pmid = get_pmid_from_x(ps, self.hyam, self.hybm)
         u = data_x[self.u_idx[0]:self.u_idx[1]]
         v = data_x[self.v_idx[0]:self.v_idx[1]]
         omega = compute_omega(u, v, pmid, self.longitude, self.latitude)
@@ -94,7 +97,7 @@ def compute_omega(u, v, pressure_levels, longitude, latitude):
     return omega
 
 def get_pmid_from_x(ps, hyam, hybm):
-    # ps: surface pressure, shape (96, 144)
+    # ps: surface pressure, shape (96, 144) or shape (nsamples)
     ps_level = ps[np.newaxis, :, :] * np.array(hybm)[:, np.newaxis, np.newaxis]
     ps_level += np.array(hyam)[:, np.newaxis, np.newaxis] * 100000
     return ps_level # 30x96x144 pmid
@@ -112,6 +115,7 @@ if __name__ == "__main__":
     ps_idx = get_index_from_colnames(col_names, "SPPS")
     print(ps_idx)
     ps = sample_file[ps_idx[0]:ps_idx[1]].squeeze()
+    print("ps shape:", ps.shape)
     pmid = get_pmid_from_x(ps, hyam, hybm)
     u_idx = get_index_from_colnames(col_names, "UL")
     v_idx = get_index_from_colnames(col_names, "VL")
