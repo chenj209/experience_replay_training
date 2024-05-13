@@ -1,0 +1,6 @@
+#CKPT_DIR = "/pscratch/sd/c/chenjd21/ckpts_time/"
+CKPT_DIR = "ckpts_time/"
+DATA_DIR = "/share3/chenj209/spcam_new_data_32/"
+SAMPLE_RATE = 12
+BASELINE_CKPT_PREFIX = "baseline_model"
+VAE_CKPT_PREFIX = "vae_model"
