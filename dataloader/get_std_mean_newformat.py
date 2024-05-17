@@ -42,7 +42,7 @@ def region_slice2d(region_mask2d):
     return min_x-pad, max_x+pad, min_y-pad, max_y+pad 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--datapath", type=str, default="./data/")
+    parser.add_argument("--data_path", type=str, default="./data/")
     parser.add_argument("--region_mask", type=str, default="all")
     parser.add_argument("--out_name", type=str)
     parser.add_argument("--debug", action="store_true")
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     var_names = list(set(var_names))
     var_names.sort()
     print(var_names)
-    all_files = glob.glob(args.datapath + "/*.npy")
+    all_files = glob.glob(args.data_path + "/*.npy")
     all_files.sort()
     all_files = all_files[:35040]
     print(all_files[:10], "...", all_files[-10:])

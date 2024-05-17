@@ -4,15 +4,25 @@ from consts import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--multistep", type=int, help="multistep", default=1)
+    parser.add_argument("--multistep", type=int, help="number of previous timesteps to be used as inputs", default=1)
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
-    parser.add_argument("--lr", type=int, help="learning rate", default=0.001)
-    parser.add_argument("--region_mask", type=str, default="all")
-    parser.add_argument("--data_means", type=str, default="../consts/all_means.npz")
-    parser.add_argument("--data_stds", type=str, default="../consts/all_stds.npz")
-    parser.add_argument("--ex_input_prev", type=str, nargs="?")
-    parser.add_argument("--ex_input", type=str, nargs="?")
-    parser.add_argument("--resume", type=bool, default=False)
+    parser.add_argument("--lr", type=int, help="learning rate (default to 0.001)", default=0.001)
+    parser.add_argument("--region_mask", type=str, default="all", 
+        help="default to all 96x144 grid, otherwirse path to a region mask (in ../consts folder)")
+    parser.add_argument("--data_means", type=str, default="../consts/all_means.npz",
+        help="path to npz files that stores means for all variables (in ../consts folder),\
+                default to ../consts/all_means.npz")
+    parser.add_argument("--data_stds", type=str, default="../consts/all_stds.npz",
+        help="path to npz files that stores stds for all variables (in ../consts folder),\
+                default to ../consts/all_stds.npz")
+    parser.add_argument("--ex_input_prev", type=str, nargs="?",
+        help="input variables to be added for previous timesteps \
+                (in addition to Q,T,dTls,dqls,solin,ps,qtend,stend,SOLL,SOLLD,SOLS,SOLSD,FSDS")
+    parser.add_argument("--ex_input", type=str, nargs="?",
+        help="input variables to be added for previous timesteps \
+                (in addition to Q,T,dTls,dqls,solin,ps")
+    parser.add_argument("--resume", type=bool, default=False,
+        help="resume from saved checkpoints training")
     args = parser.parse_args()
 
     if args.ex_input is not None:
