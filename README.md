@@ -71,6 +71,7 @@ optional arguments:
         --ex_input LWUP+CAPE+U+V
         --ex_input_prev CLOUD+SPPRECC+FLNS+FLNT+SPQRL+SPQRS
     ```
+### VAE training 
 
 
 
