@@ -25,7 +25,7 @@ if __name__ == "__main__":
                 (in addition to Q,T,dTls,dqls,solin,ps")
     parser.add_argument("--rec_weight", type=float, default=0.4)
     parser.add_argument("--pred_weight", type=float, default=0.6)
-    parser.add_argument("--ae_config", type=str, default=str)
+    parser.add_argument("--ae_config", type=str, default=str, help="path to json file that stores the autoencoder configuration")
     parser.add_argument("--resume", type=str, nargs="?", help="path to checkpoint to resume training")
     args = parser.parse_args()
 
