@@ -34,6 +34,7 @@ from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operati
     get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
+from consts import *
 
 
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
@@ -134,16 +135,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     qtend_log = report_qtend(y_gt, y_1)
     qtend_log_lvl = report_qtend_vert(y_gt, y_1)
-    for quantile in [0.5,0.7,0.9,1]:
-        print(f"Quantile {quantile} results:")
-        qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_1, quantile)
-        print(qtend_log_lvl["r2"])
-    for tail in [0.1,0.2,0.3]:
-        print(f"tail {tail} results:")
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=True)
-        print("Top:", qtend_log_lvl["r2"])
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=False)
-        print("Bottom:", qtend_log_lvl["r2"])
+    if False:
+        for quantile in [0.5,0.7,0.9,1]:
+            print(f"Quantile {quantile} results:")
+            qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_1, quantile)
+            print(qtend_log_lvl["r2"])
+        for tail in [0.1,0.2,0.3]:
+            print(f"tail {tail} results:")
+            qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=True)
+            print("Top:", qtend_log_lvl["r2"])
+            qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=False)
+            print("Bottom:", qtend_log_lvl["r2"])
     if args.region_mask == "all":
         qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
@@ -217,12 +219,14 @@ if __name__ == "__main__":
     parser.add_argument("out_json", help="path to output json file")
     parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
-    parser.add_argument("--save_path", type=str)
+    #parser.add_argument("--save_path", type=str)
     parser.add_argument("--region_mask", type=str)
     parser.add_argument("--start_ts", type=int, default=0)
     parser.add_argument("--multistep", type=int, default=1)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
+    parser.add_argument("--data_means", type=str)
+    parser.add_argument("--data_stds", type=str)
     args = parser.parse_args()
     #print(args.config)
     # with open(args.config, "r") as f:
@@ -239,12 +243,13 @@ if __name__ == "__main__":
     #     model_type="resmlp_122_30"
     # )
     np.random.seed(0)
-    data_dir = "/home/users/data/nncam_data/image_testset/"
-    if not os.path.isdir(data_dir):
-        data_dir = "/data/nncam_data/image_testset/"
-    if not os.path.isdir(data_dir):
-        #data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+    #data_dir = "/home/users/data/nncam_data/image_testset/"
+    #if not os.path.isdir(data_dir):
+    #    data_dir = "/data/nncam_data/image_testset/"
+    #if not os.path.isdir(data_dir):
+    #    #data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
+    #    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+    data_dir = DATA_DIR
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
@@ -252,8 +257,10 @@ if __name__ == "__main__":
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     col_names_y = ["qtend_check"]
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    #data_means = dict(np.load(data_dir + "/data_means.npz"))
+    #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_means = dict(np.load(args.data_means))
+    data_stds = dict(np.load(args.data_stds))
 
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()

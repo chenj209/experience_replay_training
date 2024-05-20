@@ -27,7 +27,9 @@ class FlattenSpatialTransform:
         data_x, data_y = sample[:2]
         data_x = data_x.reshape(data_x.shape[0], -1).T
         data_y = data_y.reshape(data_y.shape[0], -1).T
-        return data_x, data_y, *sample[2:]
+        res = [data_x, data_y]
+        res.extend(sample[2:])
+        return res
 
 class RegionMaskTransform:
     def __init__(self, mask, include_raw=False):
@@ -52,12 +54,16 @@ class RegionMaskTransform:
         # debug_print(f"RegionMaskTransform: sample {len(sample)}", DEBUG)
         data_x, data_y = sample[:2]
         if self.include_raw:
-            return data_x[:, (self.mask).astype(bool)], \
-                data_y[:, (self.mask).astype(bool)], \
-                data_x[:, (self.mask).astype(bool)], *sample[2:]
+            res = [ 
+            data_x[:, (self.mask).astype(bool)], \
+            data_y[:, (self.mask).astype(bool)], \
+            data_x[:, (self.mask).astype(bool)]]
+        else:
+            res = [data_x[:, (self.mask).astype(bool)], \
+            data_y[:, (self.mask).astype(bool)]] 
+        res.extend(sample[2:])
+        return res
 
-        return data_x[:, (self.mask).astype(bool)], \
-            data_y[:, (self.mask).astype(bool)], *sample[2:]
 
 def get_min_max_coords(mask, pad):
     min_x = np.min(np.where(mask)[0])
@@ -101,12 +107,14 @@ class RectRegionMaskTransform:
             return None
         data_x, data_y = sample[:2]
         if self.include_raw:
-            return data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
+            res = [data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
                 data_y[:, self.min_x:self.max_x, self.min_y:self.max_y], \
-                data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], *sample[2:]
-
-        return data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
-            data_y[:, self.min_x:self.max_x, self.min_y:self.max_y], *sample[2:]
+                data_x[:, self.min_x:self.max_x, self.min_y:self.max_y]]
+        else:
+            res = [data_x[:, self.min_x:self.max_x, self.min_y:self.max_y], \
+            data_y[:, self.min_x:self.max_x, self.min_y:self.max_y]]
+        res.extend(sample[2:])
+        return res
 
 
 class StandardizeTransform:
@@ -188,7 +196,9 @@ class StandardizeTransform:
                                     self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
         if x is None or y is None:
             return None
-
         if self.include_raw:
-            return x, y, data_x, data_y, *sample[2:]
-        return x, y, *sample[2:]
+            res = [x, y, data_x, data_y]
+        else:
+            res = [x, y]
+        res.extend(sample[2:])
+        return res
