@@ -317,4 +317,40 @@ optional arguments:
 ### VAE offline test
 
 * Usage
+```
+usage: offline_test_ae_paired.py [-h] [--ae_config AE_CONFIG] [--multistep MULTISTEP] [--resume RESUME] [--save_path SAVE_PATH]
+                                 [--sample_rate SAMPLE_RATE] [--region_mask REGION_MASK] [--data_means DATA_MEANS] [--data_stds DATA_STDS] [--thick]
+                                 [--resmlp_only] [--non_parallel NON_PARALLEL]
 
+offline test for autoencoder
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --ae_config AE_CONFIG
+                        path to ae config file
+  --multistep MULTISTEP
+                        multistep
+  --resume RESUME       path to ae model file
+  --save_path SAVE_PATH
+                        path to save results
+  --sample_rate SAMPLE_RATE
+                        sample_rate
+  --region_mask REGION_MASK
+                        path to region mask npy file
+  --data_means DATA_MEANS
+                        path to region mask npy file
+  --data_stds DATA_STDS
+                        path to region mask npy file
+  --thick               use thick mask
+  --resmlp_only         use resmlp only
+  --non_parallel NON_PARALLEL
+```
+* Examples
+    * Offline test sea region finetuned VAE
+    ```
+    python offline_test_ae_paired.py --ae_config sample_ae_config.json --resume sea_finetuned_vae.pth.tar --data_means ../cosnts/seamask_means.npz --data_stds ../consts/seamask_stds.npz --resmlp_only
+    ```
+
+### Results
+* All model performance
+    ![all_model_performance](./figures/annual_report.png)
