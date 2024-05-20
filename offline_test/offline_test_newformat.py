@@ -16,9 +16,11 @@ from torch.utils import data
 from torchvision.transforms import Compose
 from sklearn.metrics import r2_score
 
-sys.path.append(os.path.join(sys.path[0], '..', 'consts'))
-sys.path.append(os.path.join(sys.path[0], '..', 'dataloader'))
-sys.path.append(os.path.join(sys.path[0], '..', 'models'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from configs import *
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'consts'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dataloader'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'models'))
 import phys_consts
 from load_models import load_resmlp_newformat
 #from dataloader_refactor import DatasetDisk
@@ -34,7 +36,6 @@ from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operati
     get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
-from consts import *
 
 
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):

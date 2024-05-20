@@ -4,7 +4,7 @@
 
 ### Setup
 
-* Edit `consts.py`:
+* Edit `configs.py`:
     * `CKPT_DIR`: directory to save model checkpoints (need to be created manually)
     * `DATA_DIR`: directory containing `*.npy` files and `col_names.txt`
     * `SAMPLE_RATE`: 12 (6 hours)/1 (30 minutes)
