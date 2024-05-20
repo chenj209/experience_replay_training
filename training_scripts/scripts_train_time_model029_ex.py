@@ -6,7 +6,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--multistep", type=int, help="number of previous timesteps to be used as inputs", default=1)
     #parser.add_argument("--gpu", type=int, help="gpu index", default=0)
-    parser.add_argument("--lr", type=int, help="learning rate (default to 0.001)", default=0.001)
+    parser.add_argument("--lr", type=float, help="learning rate (default to 0.001)", default=0.001)
     parser.add_argument("--region_mask", type=str, default="all", 
         help="default to all 96x144 grid, otherwirse path to a region mask (in ../consts folder)")
     parser.add_argument("--data_means", type=str, default="../consts/all_means.npz",
