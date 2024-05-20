@@ -51,18 +51,19 @@ optional arguments:
 
 * Examples
     * Default training setting for 96x144 grids
-        | | Input variables|
-        |:-------------------------------------:|:-------------------------------------:|
-        | Current timestep | Q,T,dqls,dTls,solin,ps                |
-        |Previous timestep | Q,T,dqls,dTls,solin,ps,qtend,stend,SOLL,SOLLD,SOLS,SOLSD,FSDS|
+    
+    |                          | Input variables |
+    |:-------------------------|:----------------|
+    | Current timestep         | Q, T, dqls, dTls, solin, ps |
+    | Previous timestep        | Q, T, dqls, dTls, solin, ps, qtend, stend, SOLL, SOLLD, SOLS, SOLSD, FSDS |
     ```
     python scripts_train_time_model029_ex.py
     ```
     * Training with full variables in sea region only 
-        | | Input variables|
+        |                                       | Input variables|
         |:-------------------------------------:|:-------------------------------------:|
-        | Current timestep | Q,T,dqls,dTls,solin,ps,LWUP,CAPE,U,V|
-        |Previous timestep | Q,T,dqls,dTls,solin,ps,LWUP,CAPE,U,V,qtend,stend,SOLL,SOLLD,SOLS,SOLSD,FSDS,CLOUD,SPPRECC,FLNS,FLNT,SPQRL,SPQRS|
+        | Current timestep                      | Q,T,dqls,dTls,solin,ps,LWUP,CAPE,U,V|
+        |Previous timestep                      | Q,T,dqls,dTls,solin,ps,LWUP,CAPE,U,V,qtend,stend,SOLL,SOLLD,SOLS,SOLSD,FSDS,CLOUD,SPPRECC,FLNS,FLNT,SPQRL,SPQRS|
     ```
     python scripts_train_time_model029_ex.py 
         --region_mask ../consts/seamask.npy 
