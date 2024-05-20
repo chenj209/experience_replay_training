@@ -71,6 +71,37 @@ optional arguments:
         --ex_input LWUP+CAPE+U+V
         --ex_input_prev CLOUD+SPPRECC+FLNS+FLNT+SPQRL+SPQRS
     ```
+
+### Baseline Offline Evaluation
+
+* Usage
+```
+usage: offline_test_newformat.py [-h] [--sample_rate SAMPLE_RATE] [--thick]
+                                 [--region_mask REGION_MASK]
+                                 [--start_ts START_TS] [--multistep MULTISTEP]
+                                 [--ex_input [EX_INPUT [EX_INPUT ...]]]
+                                 [--ex_input_prev [EX_INPUT_PREV [EX_INPUT_PREV ...]]]
+                                 [--data_means DATA_MEANS]
+                                 [--data_stds DATA_STDS]
+                                 resume out_json
+
+positional arguments:
+  resume                path to configuration file
+  out_json              path to output json file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --sample_rate SAMPLE_RATE
+                        sample frequency to use
+  --thick
+  --region_mask REGION_MASK
+  --start_ts START_TS
+  --multistep MULTISTEP
+  --ex_input [EX_INPUT [EX_INPUT ...]]
+  --ex_input_prev [EX_INPUT_PREV [EX_INPUT_PREV ...]]
+  --data_means DATA_MEANS
+  --data_stds DATA_STDS
+```
 ### VAE training 
 
 
