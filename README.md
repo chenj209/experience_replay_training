@@ -316,3 +316,5 @@ optional arguments:
 
 ### VAE offline test
 
+* Usage
+

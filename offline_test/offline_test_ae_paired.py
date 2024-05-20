@@ -15,16 +15,17 @@ from torchvision.transforms import Compose
 from datetime import datetime
 # from torch.utils.data.dataloader import default_collate
 
-sys.path.append(os.path.join(sys.path[0], "..", "models"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "models"))
 import autoencoder
 import variational_autoencoder
-sys.path.append(os.path.join(sys.path[0], ".."))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from configs import *
 from utils import Logger, AverageMeter, mkdir_p
-sys.path.append(os.path.join(sys.path[0], "..", "utils"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "utils"))
 # import argsparser
 import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
-sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "dataloader"))
 from preprocess import StandardizeTransform, get_min_max_coords
 from dataloader_newformat import PairDatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices, levelwise_variable2, \
@@ -149,7 +150,8 @@ def main(args):
     with open(args.ae_config, 'r') as f:
         ae_config = json.load(f)
     # region_mask = to_inference_shape(region_mask).squeeze()
-    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+    #data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+    data_dir = DATA_DIR
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     # col_names_x = [
     #     "QL_lev",
@@ -236,7 +238,7 @@ def main(args):
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
     if args.thick:
-        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
+        pconsts = np.load(os.path.join(os.path.dirname(__file__),"..","consts","phys_consts.npz"))
         hyai = pconsts["hyai"]
         hybi = pconsts["hybi"]
         get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
@@ -431,16 +433,16 @@ def main(args):
     qtend_log_lvl = report_qtend_vert(y_gt, y_pred)
     np.savez(f"{args.save_path}/offline_test_ae_vert.npz", **qtend_log_time)
     print(qtend_log_lvl)
-    for quantile in [0.5,0.7,0.9,1]:
-        print(f"Quantile {quantile} results:")
-        qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
-        print(qtend_log_lvl["r2"])
-    for tail in [0.1,0.2,0.3]:
-        print(f"tail {tail} results:")
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=True)
-        print("Top:", qtend_log_lvl["r2"])
-        qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
-        print("Bottom:", qtend_log_lvl["r2"])
+    # for quantile in [0.5,0.7,0.9,1]:
+    #     print(f"Quantile {quantile} results:")
+    #     qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_pred, quantile)
+    #     print(qtend_log_lvl["r2"])
+    # for tail in [0.1,0.2,0.3]:
+    #     print(f"tail {tail} results:")
+    #     qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=True)
+    #     print("Top:", qtend_log_lvl["r2"])
+    #     qtend_log_lvl = report_qtend_vert_tail(y_gt, y_pred, tail, top=False)
+    #     print("Bottom:", qtend_log_lvl["r2"])
 
 if __name__ == "__main__":
     import argparse
