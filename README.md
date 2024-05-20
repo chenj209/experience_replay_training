@@ -131,14 +131,188 @@ optional arguments:
                         path to npz files that stores means for all variables (in ../consts folder), default to ../consts/all_means.npz
   --data_stds DATA_STDS
                         path to npz files that stores stds for all variables (in ../consts folder), default to ../consts/all_stds.npz
-  --ex_input_prev [EX_INPUT_PREV]
-                        input variables to be added for previous timesteps (in addition to Q,T,dTls,dqls,solin,ps,qtend,stend,SOLL,SOLLD,SOLS,SOLSD,FSDS
-  --ex_input [EX_INPUT]
-                        input variables to be added for previous timesteps (in addition to Q,T,dTls,dqls,solin,ps
   --rec_weight REC_WEIGHT
+                        weight for reconstruction loss
   --pred_weight PRED_WEIGHT
+                        weight for prediction loss
   --ae_config AE_CONFIG
+                        path to json file that stores the autoencoder configuration
   --resume [RESUME]     path to checkpoint to resume training
   ```
+  * Sample `ae_config` file
+```
+{
+"resmlp_input_size": [0, 96, 144],
+"variational": true,
+"latent_size": 8,
+"sample_rate": 12,
+"ae_lr": 0.0001,
+"resmlp_lr": 0.001,
+"ae_warmup_epochs": 200,
+"beta": 0.002,
+"ltype": "mse",
+"reduce_lvl": false,
+"resmlp_target": ["qtend_check"],
+"x_ae": [
+    "QL_lev",
+    "T_nn_in_lev",
+    "dqvls_nn_in_lev",
+    "dTls_nn_in_lev",
+    "SOLIN",
+    "SPPS",
+    "LWUP",
+    "CAPE",
+    "UL_lev",
+    "VL_lev"
+],
+"x_ae_prev": [
+    "qtend_check_lev",
+    "stend_check_lev",
+    "SOLL",
+    "SOLLD",
+    "SOLS",
+    "SOLSD",
+    "FSDS",
+    "CLOUD_lev",
+    "SPPRECC",
+    "FLNS",
+    "FLNT",
+    "SPQRL_lev",
+    "SPQRS_lev"
+],
+"x_resmlp": [
+    "QL_lev",
+    "T_nn_in_lev",
+    "dqvls_nn_in_lev",
+    "dTls_nn_in_lev",
+    "SOLIN",
+    "SPPS",
+    "LWUP",
+    "CAPE",
+    "UL_lev",
+    "VL_lev"
+],
+"x_resmlp_prev": [
+    "qtend_check_lev",
+    "stend_check_lev",
+    "SOLL",
+    "SOLLD",
+    "SOLS",
+    "SOLSD",
+    "FSDS",
+    "CLOUD_lev",
+    "SPPRECC",
+    "FLNS",
+    "FLNT",
+    "SPQRL_lev",
+    "SPQRS_lev"
+],
+"encoder": {
+    "variational": true,
+    "input_size": [
+        0,
+        96,
+        144
+    ],
+    "channel_sizes": [
+        512,
+        256,
+        128,
+        64,
+        32,
+        8
+    ],
+    "kernel_size": 3,
+    "stride": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "conv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "output_padding": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "fc_sizes": [],
+    "num_em_layers": 2
+}
+,
+"decoder": {
+    "variational": true,
+    "input_size": [
+        0,
+        96,
+        144
+    ],
+    "channel_sizes": [
+        8,
+        32,
+        64,
+        128,
+        256,
+        512
+    ],
+    "kernel_size": 3,
+    "stride": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "conv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "deconv_padding": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+    ],
+    "output_padding": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "fc_sizes": [],
+    "num_em_layers": 2
+}
+}
+```
+* Examples
+    * Pretrain VAE for sea region
+    ```
+    python scripts_train_ae_combined.py --region_mask ../consts/seamask.npy --data_means ../consts/seamask_means.npz --data_stds ../consts/seamask_stds.npz --rec_weight 1.0 --pred_weight 0.0 --ae_config sample_ae_config.json
+    ```
+    * Finetune VAE and resmlp for sea region
+    ```
+    python scripts_train_ae_combined.py --region_mask ../consts/seamask.npy --data_means ../consts/seamask_means.npz --data_stds ../consts/seamask_stds.npz --rec_weight 0.0 --pred_weight 1.0 --ae_config sample_ae_config.json --resume pretrain_sea_vae.pth.tar
+    ```
 
+### VAE offline test
 
