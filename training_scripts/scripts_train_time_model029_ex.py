@@ -2,7 +2,8 @@ import os
 import argparse
 import os
 import sys
-from consts import *
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
+from configs import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
