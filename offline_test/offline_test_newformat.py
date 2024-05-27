@@ -374,7 +374,7 @@ if __name__ == "__main__":
     with open(args.out_json, "w") as f:
         json.dump({
             # "dq/dt": logs["qtend_log"],
-            args.output_type: logs[f"log"],
+            args.output_type: logs["log"],
             #"dT/dt": logs["stend_log"],
             #"radiation": rad_log,
             #"dqdt_lvl": qtend_log_lvl,
@@ -392,9 +392,9 @@ if __name__ == "__main__":
     #         }, f, indent=4)
 
     if args.region_mask == "all":
-        np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_spatial.npz", **logs[f"{output_name}_log_spatial"])
+        np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_spatial.npz", **logs["log_spatial"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
-    np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_vert.npz", **logs[f"{output_name}_log_lvl"])
+    np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_vert.npz", **logs["log_lvl"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
 
 
