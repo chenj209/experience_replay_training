@@ -46,7 +46,7 @@ if __name__ == "__main__":
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         #DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"{BASELINE_CKPT_PREFIX}_sampled{SAMPLE_RATE}_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1][:-4]}" # remove ".npy" suffix
+    name = f"{BASELINE_CKPT_PREFIX}3059_sampled{SAMPLE_RATE}_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1].rstrip('.npy')}"
 
     for epoch in ['50']:
         for num_blocks in ['7']:
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 
                         network = 'resnet_output30'
                         print(name)
-                        commands = f"python train_time_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
+                        commands = f"python train_time_model_ex.py --data_dir {DATA_DIR}" + " --output_type 30-59 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --worker 8 ' \
                                 '--checkpoint {} --multistep {} --sample_rate {} --region_mask {} --data_means {} --data_stds {} --ex_input {} --ex_input_prev {}'.format(str(noise_std),

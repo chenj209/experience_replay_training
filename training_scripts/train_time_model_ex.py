@@ -70,7 +70,20 @@ def main(args):
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    col_names_y = ["qtend_check"]
+    if args.output_type == '0-29':
+        #batch[1] = batch[1][:, :, :30]
+        col_names_y = ["qtend_check"]
+    if args.output_type == '30-59':
+        # batch[1] = batch[1][:, :, 30:60]
+        col_names_y = ["stend_check"]
+    if args.output_type == '60':
+        #batch[1] = batch[1][:, :, 60:61]
+        raise NotImplementError
+    if args.output_type == '61-65':
+        #batch[1] = batch[1][:, :, 61:66]
+        col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+#             if args.output_type == '61-65':
+    #col_names_y = ["qtend_check"]
     data_means = dict(np.load(args.data_means))
     data_stds = dict(np.load(args.data_stds))
 
@@ -156,7 +169,11 @@ def main(args):
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
-        model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
+        #model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
+        input_size = len(training_set.input_indices)\
+                    +int(args.multistep)*(len(training_set.prev_input_indices))
+        print(f"Model input size: {input_size}")
+        model = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
         model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'mlp_output30':
@@ -222,6 +239,7 @@ def main(args):
     total_train_time = time.time()
 
     # Train and test
+    best_loss = 999
     current_iters = 0
     for epoch in range(args.epoch):
         print("here_start", epoch, args.epoch)
@@ -237,15 +255,6 @@ def main(args):
                 continue
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr,
                                                 current_iters, len(trainloader) * args.epoch)
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:, :, :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, :, 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:, :, 60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:, :, 61:66]
-#             if args.output_type == '61-65':
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
             bp_time = time.time()
@@ -271,14 +280,6 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-            if args.output_type == '0-29':
-                batch[1] = batch[1][:, :, :30]
-            if args.output_type == '30-59':
-                batch[1] = batch[1][:, :, 30:60]
-            if args.output_type == '60':
-                batch[1] = batch[1][:, :, 60:61]
-            if args.output_type == '61-65':
-                batch[1] = batch[1][:, :, 61:66]
             test_mses = tools.test_de(batch, model, criterion)
             for i in range(1):
                 test_mse = test_mses[i]
@@ -291,6 +292,7 @@ def main(args):
         test_time = time.time() - test_time_begin
         #### save the log and ckpt ###################################
         save_log = [epoch, lr, train_losses.avg]
+        curr_test_loss = test_losses[i].avg
         for i in range(1):
             # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
             save_log.append(test_losses[i].avg)
@@ -304,9 +306,15 @@ def main(args):
 
         if (epoch)%5 == 0:
             tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
-
+        if curr_test_loss < best_loss:
+            best_loss = curr_test_loss
+            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_best_loss.pth.tar')
 
         tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+
+
+
+        
         print("here", epoch, args.epoch)
 
 

@@ -29,15 +29,6 @@ if __name__ == "__main__":
     parser.add_argument("--resume", type=str, nargs="?", help="path to checkpoint to resume training")
     args = parser.parse_args()
 
-    if args.ex_input is not None:
-        ex_input = args.ex_input.split("+")
-    else:
-        ex_input = []
-
-    if args.ex_input_prev is not None:
-        ex_input_prev = args.ex_input_prev.split("+")
-    else:
-        ex_input_prev = []
 
     # DATA_DIR = "/home/users/data/nncam_data/image_set/"
     # if not os.path.exists(DATA_DIR):
@@ -46,7 +37,7 @@ if __name__ == "__main__":
     #     #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
     #     DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"{VAE_CKPT_PREFIX}_sampled{SAMPLE_RATE}_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"{VAE_CKPT_PREFIX}_sampled{SAMPLE_RATE}_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}"
 
     for epoch in ['200']:
         for num_blocks in ['7']:
@@ -69,16 +60,16 @@ if __name__ == "__main__":
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
                                 f"--checkpoint {CKPT_DIR}"+'/{} --multistep {} '+f"--sample_rate {SAMPLE_RATE} --workers 16"+' --region_mask {} --data_means {} --data_stds {} ' \
-                                '--rec_weight {} --pred_weight {} --ae_config {} ' \
-                                '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
+                                '--rec_weight {} --pred_weight {} --ae_config {} '
+                        commands = commands.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
                                                                 name, args.multistep, args.region_mask,
                                                                 args.data_means, args.data_stds,
-                                                                args.rec_weight, args.pred_weight, args.ae_config,
-                                                                " ".join(ex_input), " ".join(ex_input_prev))
+                                                                args.rec_weight, args.pred_weight, args.ae_config
+                                                                )
                         if args.resume:
                             commands += f" --resume {args.resume}"
 
