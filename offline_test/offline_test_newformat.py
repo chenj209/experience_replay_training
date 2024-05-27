@@ -239,7 +239,8 @@ if __name__ == "__main__":
         with open(args.train_configs, "r") as f:
             train_configs = yaml.safe_load(f)
             for key in train_configs:
-                setattr(args, key, train_configs[key])
+                if train_configs[key] is not None:
+                    setattr(args, key, train_configs[key])
         print("After train_configs overwrite:", args)
 
     #print(args.config)
