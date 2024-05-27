@@ -23,7 +23,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'consts'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dataloader'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'models'))
 import phys_consts
-from load_models import load_resmlp_newformat
+from load_models import load_resmlp_newformat, load_resmlp_newformat2
 #from dataloader_refactor import DatasetDisk
 from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
@@ -84,7 +84,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             points_x = (points_x.float()).cuda()
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
-            y1 = all_models['0_29'](points_x).detach().cpu().numpy()
+            y1 = all_models['model'](points_x).detach().cpu().numpy()
             points_y = points_y.cpu().numpy()
             #points_y = points_y[0]
             #y1 = y1[0]
@@ -278,15 +278,19 @@ if __name__ == "__main__":
     if args.output_type == '0-29':
         #batch[1] = batch[1][:, :, :30]
         col_names_y = ["qtend_check"]
+        output_size = 30
     elif args.output_type == '30-59':
         # batch[1] = batch[1][:, :, 30:60]
         col_names_y = ["stend_check"]
+        output_size = 30
     elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+        output_size = 5
 #             if args.output_type == '61-65':
     else:
         col_names_y = [args.output_type]
+        output_size = 1
     output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
     #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
@@ -357,7 +361,8 @@ if __name__ == "__main__":
     else:
         get_thickness = None
     input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
-    all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
+    # all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
+    all_models = {'model': load_resmlp_newformat2(model_ckpt_path, input_size, output_size)}
 
 
     logs, problem_files = offline_test(args, all_models, testloader, get_thickness)
