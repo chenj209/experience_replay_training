@@ -373,7 +373,7 @@ if __name__ == "__main__":
     with open(args.out_json, "w") as f:
         json.dump({
             # "dq/dt": logs["qtend_log"],
-            args.output_type: logs[f"{output_name}_log"],
+            args.output_type: logs[f"log"],
             #"dT/dt": logs["stend_log"],
             #"radiation": rad_log,
             #"dqdt_lvl": qtend_log_lvl,
