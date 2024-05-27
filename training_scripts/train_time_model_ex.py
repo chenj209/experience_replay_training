@@ -73,16 +73,18 @@ def main(args):
     if args.output_type == '0-29':
         #batch[1] = batch[1][:, :, :30]
         col_names_y = ["qtend_check"]
-    if args.output_type == '30-59':
+    elif args.output_type == '30-59':
         # batch[1] = batch[1][:, :, 30:60]
         col_names_y = ["stend_check"]
-    if args.output_type == '60':
+    elif args.output_type == '60':
         #batch[1] = batch[1][:, :, 60:61]
         raise NotImplementError
-    if args.output_type == '61-65':
+    elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
 #             if args.output_type == '61-65':
+    else:
+        col_names_y = [args.output_type]
     #col_names_y = ["qtend_check"]
     data_means = dict(np.load(args.data_means))
     data_stds = dict(np.load(args.data_stds))
@@ -175,7 +177,11 @@ def main(args):
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
-        model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
+        #model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
+        input_size = len(training_set.input_indices)\
+                    +int(args.multistep)*(len(training_set.prev_input_indices))
+        print(f"Model input size: {input_size}")
+        model = models.ResMLP(input_size, 1, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'mlp_output30':
         model = models.mlp_output30(args.node_size, args.activation, args.num_blocks)
     elif args.network == 'mlp_output5':
