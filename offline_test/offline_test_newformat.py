@@ -1,5 +1,6 @@
 import sys
 import argparse
+import yaml
 import os
 import random
 import torch
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     random.seed(0)
     np.random.seed(0)
     parser = argparse.ArgumentParser()
-    #parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65")
+    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65, or other single output")
     #parser.add_argument("--resume", "-re", help="path to selected model")
     parser.add_argument("resume", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
@@ -228,7 +229,19 @@ if __name__ == "__main__":
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
+    parser.add_argument("--train_configs", type=str, nargs="?",
+                        help="path to training configuration file, this overwrites \
+                        all previous arguments if conflicts")
     args = parser.parse_args()
+    print(args)
+    # prioritize args from train_configs
+    if args.train_configs is not None:
+        with open(args.train_configs, "r") as f:
+            train_configs = yaml.safe_load(f)
+            for key in train_configs:
+                setattr(args, key, train_configs[key])
+        print("After train_configs overwrite:", args)
+
     #print(args.config)
     # with open(args.config, "r") as f:
         # config = json.load(f)
@@ -257,7 +270,19 @@ if __name__ == "__main__":
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    col_names_y = ["qtend_check"]
+    # col_names_y = ["qtend_check"]
+    if args.output_type == '0-29':
+        #batch[1] = batch[1][:, :, :30]
+        col_names_y = ["qtend_check"]
+    elif args.output_type == '30-59':
+        # batch[1] = batch[1][:, :, 30:60]
+        col_names_y = ["stend_check"]
+    elif args.output_type == '61-65':
+        #batch[1] = batch[1][:, :, 61:66]
+        col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+#             if args.output_type == '61-65':
+    else:
+        col_names_y = [args.output_type]
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
     #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     data_means = dict(np.load(args.data_means))
