@@ -34,7 +34,8 @@ from load_models import load_models
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
     report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
     report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail
+    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail, \
+    report_metric, report_metric_vert, report_metric_spatial
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 
@@ -125,8 +126,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
-    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
-    np.save(f"ex_qtend_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
+    np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
+    np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
 
     y_1 = np.concatenate(y_1, axis=0)
     # y_2 = np.concatenate(y_2, axis=0)
@@ -135,8 +136,10 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     test_time = time.time() - test_time_begin
 
-    qtend_log = report_qtend(y_gt, y_1)
-    qtend_log_lvl = report_qtend_vert(y_gt, y_1)
+    # qtend_log = report_qtend(y_gt, y_1)
+    # qtend_log_lvl = report_qtend_vert(y_gt, y_1)
+    log = report_metric(y_gt, y_1)
+    log_lvl = report_metric_vert(y_gt, y_1)
     if False:
         for quantile in [0.5,0.7,0.9,1]:
             print(f"Quantile {quantile} results:")
@@ -149,7 +152,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=False)
             print("Bottom:", qtend_log_lvl["r2"])
     if args.region_mask == "all":
-        qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
+        #qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
+        log_spatial = report_metric_spatial(y_gt, y_1, (y_1.shape[-1], 96, 144))
     # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
@@ -164,17 +168,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     #rad_log_individual = report_rad_prog_individual(y_gt, y_4)
 
     res = {
-        "qtend_log": qtend_log,
+        "log": log,
         # "stend_log": stend_log,
         #"rad_log": rad_log,
         #"rad_log_individual": rad_log_individual,
-        "qtend_log_lvl": qtend_log_lvl,
+        "log_lvl": log_lvl,
         # "qtend_log_spatial": qtend_log_spatial,
         # "stend_log_lvl": stend_log_lvl,
         # "stend_log_spatial": stend_log_spatial
     }
     if args.region_mask == "all":
-        res["qtend_log_spatial"] = qtend_log_spatial
+        res["log_spatial"] = log_spatial
     return res, problem_files
 
 def prep_dataloaders(
@@ -283,6 +287,7 @@ if __name__ == "__main__":
 #             if args.output_type == '61-65':
     else:
         col_names_y = [args.output_type]
+    output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
     #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
     data_means = dict(np.load(args.data_means))
@@ -362,7 +367,8 @@ if __name__ == "__main__":
 
     with open(args.out_json, "w") as f:
         json.dump({
-            "dq/dt": logs["qtend_log"],
+            # "dq/dt": logs["qtend_log"],
+            args.output_type: logs[f"{output_name}_log"],
             #"dT/dt": logs["stend_log"],
             #"radiation": rad_log,
             #"dqdt_lvl": qtend_log_lvl,
@@ -380,9 +386,9 @@ if __name__ == "__main__":
     #         }, f, indent=4)
 
     if args.region_mask == "all":
-        np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["qtend_log_spatial"])
+        np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_spatial.npz", **logs[f"{output_name}_log_spatial"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
-    np.savez(f"ex_qtend_{args.out_json.rstrip('.json')}_vert.npz", **logs["qtend_log_lvl"])
+    np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_vert.npz", **logs[f"{output_name}_log_lvl"])
     #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
 
 

@@ -209,6 +209,13 @@ def report_qtend_1d(y_gt, qtend):
     # return merged_results
     return Regression_Metrics_axis(y_gt, qtend, axis=0)
 
+def report_metric_spatial(y_gt, y_pred, original_shape):
+    y_gt = y_gt
+    # original_shape = (30, 96, 144)
+    y_gt = reverse_operations(y_gt, original_shape)
+    qtend = reverse_operations(qtend, original_shape)
+    return Regression_Metrics_axis(y_gt, qtend, axis=0)
+
 def report_qtend_spatial(y_gt, qtend):
     y_gt = y_gt[:,0:30]
     original_shape = (30, 96, 144)
@@ -248,6 +255,14 @@ def report_qtend_vert_quantile(y_gt, qtend, quantile):
         merged_results[key] = [result[key] for result in results]
     return merged_results
 
+def report_metric_vert(y_gt, y_pred):
+    y_gt = y_gt
+    #original_shape = (30, 96, 144)
+    #y_gt = reverse_operations(y_gt, original_shape)
+    #qtend = reverse_operations(qtend, original_shape)
+    #print(qtend.shape)
+    return Regression_Metrics_axis(y_gt, y_pred, axis=0)
+
 def report_qtend_vert(y_gt, qtend):
     y_gt = y_gt[:,0:30]
     #original_shape = (30, 96, 144)
@@ -255,6 +270,23 @@ def report_qtend_vert(y_gt, qtend):
     #qtend = reverse_operations(qtend, original_shape)
     #print(qtend.shape)
     return Regression_Metrics_axis(y_gt, qtend, axis=0)
+
+def report_metric(y_gt, y_pred, mask=None):
+    if mask is not None:
+        out = Regression_Metrics(y_gt[mask], y_pred[mask])
+    else:
+        out = Regression_Metrics(y_gt, y_pred)
+    metrics = '{}\t{:.4}\t{:.4}\t{:.4}({:.4%})\t{:.4}\t{:.4} \
+    \t{:.4}({:.4%})\t'.format(
+        50, out["r2"], out["mse"], out["rmse"], out["rmse"]/out["std"], 
+        out["mae"], out["max_ae"], out["bias"], out["bias"]/out["std"])
+    log = ""
+    log += "metrics:\n"
+    log += "epoch\tr2\tmse\trmse\t\tmae\tmax_ae\tbias\n"
+    log += metrics
+    log += "\n"
+    print(log)
+    return out
 
 def report_qtend(y_gt, qtend, mask=None):
     if mask is not None:
