@@ -78,7 +78,7 @@ def main(args):
         col_names_y = ["stend_check"]
     elif args.output_type == '60':
         #batch[1] = batch[1][:, :, 60:61]
-        raise NotImplementError
+        raise NotImplementedError
     elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
