@@ -14,3 +14,4 @@ tree_reg_*
 ckpts
 .vscode/**
 *.json
+*.log
