@@ -414,8 +414,10 @@ def main(args):
         assert os.path.isfile(resume), 'Error: no checkpoint directory found!'
         checkpoint = torch.load(resume)
         state_dict = checkpoint['state_dict']
+        print("before filter:", state_dict.keys())
         if vae_only_flag:
-            state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") or k.startswith("module.decoder")}
+            state_dict = {k: v for k, v in state_dict.items() if k.startswith("module.encoder") \
+                    or k.startswith("module.decoder") or k.startswith("encoder.") or k.startswith("decoder.")}
         if args.non_parallel:
             state_dict = {k[7:] if k.startswith("module.") else k: v for k, v in state_dict.items()}
 
@@ -448,7 +450,7 @@ def main(args):
     for epoch in range(args.epoch):
         if epoch >= ae_warmup_epochs:
             # freeze resmlp during warmup epochs
-            if args.non_parellel:
+            if args.non_parallel:
                 for param in model.resmlp.parameters():
                     param.requires_grad = True
                 param_groups = [

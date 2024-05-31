@@ -90,6 +90,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             #y1 = y1[0]
             #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
             #print("y1:", y1.shape, y1.mean(), y1.std())
+            if True:
+                if iter % 200 == 0:
+                    print(batch[-1])
+                    filename = batch[-1][0][-1].split("/")[-1][:-4]
+                    np.savez(f"offline_test_{filename}", gt=points_y, pred=y1)
             if get_thickness is not None:
                 y1 = y1* thickness * phys_consts.LATVAP
                 points_y = points_y*thickness*phys_consts.LATVAP
@@ -243,7 +248,7 @@ if __name__ == "__main__":
         with open(args.train_configs, "r") as f:
             train_configs = yaml.safe_load(f)
             for key in train_configs:
-                if train_configs[key] is not None:
+                if train_configs[key] is not None and key != "resume": # resume is always chosen from args.resume args
                     setattr(args, key, train_configs[key])
         print("After train_configs overwrite:", args)
 
