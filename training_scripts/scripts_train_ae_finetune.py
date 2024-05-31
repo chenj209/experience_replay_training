@@ -1,5 +1,8 @@
 import os
 import argparse
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from configs import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -27,14 +30,14 @@ if __name__ == "__main__":
     else:
         ex_input_prev = []
 
-    DATA_DIR = "/home/users/data/nncam_data/image_set/"
-    if not os.path.exists(DATA_DIR):
-        DATA_DIR = "/data/nncam_data/image_set/"
-    if not os.path.exists(DATA_DIR):
-        #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
-        DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
+    #DATA_DIR = "/home/users/data/nncam_data/image_set/"
+    #if not os.path.exists(DATA_DIR):
+    #    DATA_DIR = "/data/nncam_data/image_set/"
+    #if not os.path.exists(DATA_DIR):
+    #    #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
+    #    DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"finetune_ae_model029_sampled12_0421_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config.rstrip('.json')}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}"
+    name = f"finetune710_ae_model029_sampled12_0528_multistep{args.multistep}_weight{args.pred_weight}_{args.rec_weight}_{args.ae_config[:-5]}"
 
     for epoch in ['200']:
         for num_blocks in ['7']:
@@ -56,17 +59,16 @@ if __name__ == "__main__":
                         commands = f"python train_ae_model_ex_combined_ft.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
                                 '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} ' \
-                                '--checkpoint /pscratch/sd/c/chenjd21/ckpts_time/{} --multistep {} --sample_rate 12 --workers 16 --region_mask {} --data_means {} --data_stds {} ' \
-                                '--rec_weight {} --pred_weight {} --ae_config {} ' \
-                                '--ex_input {} --ex_input_prev {}'.format(str(noise_std),
+                                +f"--checkpoint {CKPT_DIR}"+'{} --multistep {} --sample_rate 12 --workers 16 --region_mask {} --data_means {} --data_stds {} ' \
+                                '--rec_weight {} --pred_weight {} --ae_config {} '
+                        commands = commands.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
                                                                 batch_size, lr_strategy, lr, epoch,
                                                                 weight_decay,
                                                                 name, args.multistep, args.region_mask,
                                                                 args.data_means, args.data_stds,
-                                                                args.rec_weight, args.pred_weight, args.ae_config,
-                                                                " ".join(ex_input), " ".join(ex_input_prev))
+                                                                args.rec_weight, args.pred_weight, args.ae_config)
                         if args.resume:
                             commands += f" --resume {args.resume}"
 

@@ -232,7 +232,7 @@ def main(args):
 
     input_indices_resmlp, prev_input_indices_resmlp, output_indices_resmlp = gen_multistep_col_indices(
         col_names, prev_ex_vars_resmlp, col_names_x_resmlp, col_names_y, 1)
-    print("input_indices_resmlp:", col_names[input_indices_resmlp])
+    ("input_indices_resmlp:", col_names[input_indices_resmlp])
     print("prev_input_indices_resmlp:", col_names[prev_input_indices_resmlp])
     print("output_indices_resmlp:", col_names[output_indices_resmlp])
     # resmlp input size
