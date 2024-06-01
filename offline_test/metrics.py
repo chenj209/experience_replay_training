@@ -213,8 +213,8 @@ def report_metric_spatial(y_gt, y_pred, original_shape):
     y_gt = y_gt
     # original_shape = (30, 96, 144)
     y_gt = reverse_operations(y_gt, original_shape)
-    qtend = reverse_operations(qtend, original_shape)
-    return Regression_Metrics_axis(y_gt, qtend, axis=0)
+    y_pred = reverse_operations(y_pred, original_shape)
+    return Regression_Metrics_axis(y_gt, y_pred, axis=0)
 
 def report_qtend_spatial(y_gt, qtend):
     y_gt = y_gt[:,0:30]

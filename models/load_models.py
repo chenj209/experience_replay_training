@@ -73,13 +73,14 @@ def load_resmlp_newformat2(ckpt_path, input_size, output_size, gpu_index=0):
     model = models.ResMLP(input_size, output_size, node_size, activation, num_blocks)
     resume = ckpt_path
     real_gpu_id = gpu_index
-    print("\nLoading DNN model to GPU_{}".format(real_gpu_id))
-    model = torch.nn.DataParallel(model, device_ids=[real_gpu_id])
+    device = torch.device(f"cuda:{real_gpu_id}" if torch.cuda.is_available() else "cpu")
+    print("\nLoading DNN model to {}".format(device))
+    model = torch.nn.DataParallel(model).to(device)
 
     #print('------------------------output type: {}-----------------------'.format(output_type))
     print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
 
-    checkpoint = torch.load(resume)['state_dict']
+    checkpoint = torch.load(resume,map_location=device)['state_dict']
     model.load_state_dict(checkpoint)
 
     return model

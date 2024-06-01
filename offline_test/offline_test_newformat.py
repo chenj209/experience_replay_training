@@ -27,7 +27,8 @@ from load_models import load_resmlp_newformat, load_resmlp_newformat2
 #from dataloader_refactor import DatasetDisk
 from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
-from preprocess import StandardizeTransform, FlattenSpatialTransform, get_min_max_coords
+from preprocess import MinMaxTransformLegacy, StandardizeTransform, \
+FlattenSpatialTransform, get_min_max_coords
 from normalization import get_inverse_newformat, inverse_data_var_names
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
@@ -39,6 +40,27 @@ from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operati
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 
+def inverse_61_65(x):
+    x[:,0] = (x[:,0]) * (1412 - 0)
+    x[:,1] = (x[:,1]) * (1412 - 0)
+    x[:,2] = (x[:,2]) * (1412 - 0)
+    x[:,3] = (x[:,3]) * (1412 - 0)
+    x[:,4] = (x[:,4]) * (1412 - 0)
+    return x
+
+def inverse_61_64(x):
+    x[:,0] = (x[:,0]+1)/2*(332+53)-53       # flns
+    x[:,1] = (x[:,1]+1)/2*(419-83)+83       # flnt
+    x[:,2] = (x[:,2]+1)/2*(1063+2.13)-2.13  # fsns
+    x[:,3] = (x[:,3]+1)/2*(1299)+0          # fsnt
+    return x
+
+inverse = {}
+inverse['0_29']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
+inverse['30_59'] = lambda x: (x+1)/2*(3.63*2)-3.63
+inverse['60']    = lambda x: (x+1)/2*(2.12e-6)
+inverse['61_64'] = lambda x: inverse_61_64(x)
+inverse['61_65'] = lambda x: inverse_61_65(x)
 
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
 def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
@@ -63,9 +85,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     best_filenames = None
     worst_loss = 0
     worst_filenames = None
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for iter, batch in enumerate(testloader):
         # allow empty batch
-        print(f"testing {iter}/{len(testloader)}", end='\r')
         if batch[0].shape[0] == 0:
             continue
         suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
@@ -75,13 +97,14 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             points_x, points_y, x_raw = batch[:3]
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
-            x_raw = x_raw.permute((0,2,1))
-            x_raw = x_raw.reshape(-1, x_raw.shape[-1])
+            # print(x_raw)
             if get_thickness is not None:
+                x_raw = x_raw.permute((0,2,1))
+                x_raw = x_raw.reshape(-1, x_raw.shape[-1])
                 thickness = get_thickness(x_raw[:,-1].numpy())
                 #print("thickness:", thickness.shape)
             #points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
-            points_x = (points_x.float()).cuda()
+            points_x = (points_x.float()).to(device)
             #y1 = inverse_output['qtend_check'](all_models['0_29'](points_x).detach()
             #                                            .cpu().numpy())
             y1 = all_models['model'](points_x).detach().cpu().numpy()
@@ -107,6 +130,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if loss > worst_loss:
                 worst_loss = loss
                 worst_filenames = batch[-1]
+        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
@@ -201,11 +225,12 @@ if __name__ == "__main__":
     parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
     #parser.add_argument("--save_path", type=str)
-    parser.add_argument("--region_mask", type=str)
-    parser.add_argument("--start_ts", type=int, default=0)
+    parser.add_argument("--region_mask", type=str, default="all")
+    parser.add_argument("--start_ts", type=int, default=35040)
     parser.add_argument("--multistep", type=int, default=1)
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
+    parser.add_argument("--norm_type", type=str, help="choose from [std, minmax_legacy], default to std", default="std")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--train_configs", type=str, nargs="?",
@@ -270,13 +295,12 @@ if __name__ == "__main__":
     output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
     #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
-    data_means = dict(np.load(args.data_means))
-    data_stds = dict(np.load(args.data_stds))
 
     all_files = glob.glob(data_dir+'/*.npy')
     all_files.sort()
     # testing data starts from 35040
-    test_files = all_files[35040:]
+    # all files are formatted in name 00010.npy, find idx where name is 35040
+    test_files = all_files[args.start_ts:]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
@@ -310,20 +334,31 @@ if __name__ == "__main__":
     else:
         get_thickness = None
 
-    transform = Compose([
-        StandardizeTransform(
-            data_means,
-            data_stds,
-            multistep_col_names_x,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True,
-            include_raw=True,
-            threshold=1e10
-            ),
-        FlattenSpatialTransform(),
-        ])
+    if args.norm_type == "std":
+        data_means = dict(np.load(args.data_means))
+        data_stds = dict(np.load(args.data_stds))
+        transform = Compose([
+            StandardizeTransform(
+                data_means,
+                data_stds,
+                multistep_col_names_x,
+                col_names_y,
+                col_names,
+                normalize_input=True,
+                normalize_output=True,
+                include_raw=True,
+                threshold=1e10
+                ),
+            FlattenSpatialTransform(),
+            ])
+    elif args.norm_type == "minmax_legacy":
+        transform = Compose([
+            MinMaxTransformLegacy(include_raw=True),
+            FlattenSpatialTransform(),
+            ])
+    else:
+        raise ValueError("Invalid norm_type")
+            
 
     testloader = prep_dataloaders(args, test_files, input_indices,
                                   prev_input_indices, output_indices,

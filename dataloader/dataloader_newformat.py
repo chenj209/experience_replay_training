@@ -329,7 +329,7 @@ class DatasetDisk(data.Dataset):
         if not os.path.exists(target_file):
             raise ValueError(f"File {target_file} does not exist")
         tx = self.load_slice(target_file, self.input_indices)
-        print("tx shape: ", tx.shape)
+        # print("tx shape: ", tx.shape)
         y = self.load_slice(target_file, self.output_indices)
 
         tokens = target_file.split("/")
