@@ -329,6 +329,7 @@ class DatasetDisk(data.Dataset):
         if not os.path.exists(target_file):
             raise ValueError(f"File {target_file} does not exist")
         tx = self.load_slice(target_file, self.input_indices)
+        print("tx shape: ", tx.shape)
         y = self.load_slice(target_file, self.output_indices)
 
         tokens = target_file.split("/")
@@ -437,7 +438,7 @@ if __name__ == '__main__':
         is_train=True,
         transform=transform,
         include_filename=True,
-        region_mask1d=region_mask
+        # region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
     dqvls_norm = []

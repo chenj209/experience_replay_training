@@ -28,7 +28,7 @@ from load_models import load_resmlp_newformat, load_resmlp_newformat2
 from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
 from preprocess import StandardizeTransform, FlattenSpatialTransform, get_min_max_coords
-from normalization import get_inverse_newformat
+from normalization import get_inverse_newformat, inverse_data_var_names
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
 from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
@@ -107,27 +107,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if loss > worst_loss:
                 worst_loss = loss
                 worst_filenames = batch[-1]
-            # r2 = r2_score(y1, points_y, multioutput="variance_weighted")
-            # if r2>=0:
-            #     y_1.append(y1)
-            #     if args.save_path is not None:
-            #         y1 = inverse_to_inference_shape(y1)
-            #         for b in range(y1.shape[0]):
-            #             file_name = file_names[0][b].split("/")[-1]
-            #             np.save(args.save_path + "/" + file_name, y1[b])
-            #     # y2 = get_inverse()['30_59'](all_models['30_59'](points_x).detach()
-            #     #                                  .cpu().numpy())
-            #     # if get_thickness is not None:
-            #     #     y2 *= thickness
-            #     # y_2.append(y2)
-            #     #y_4.append(get_inverse()['61_65'](all_models['61_65'](points_x).detach()
-            #                                     #.cpu().numpy()))
-            #         #points_y[:,30:60] *= thickness
-            #     # points_y = points_y.numpy()
-            #     y_gt.append(points_y)
-            # else:
-            #     print(f"Skipping {file_names}, r2: {r2}")
-            #     problem_files.append(file_names)
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
@@ -162,15 +141,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
     #print(json.dumps(qtend_log_lvl, indent=4))
     del y_1
-
-    # stend_log = report_stend(y_gt, y_2)
-    # stend_log_lvl = report_stend_vert(y_gt, y_2)
-    # stend_log_spatial = report_stend_spatial(y_gt, y_2)
-    # del y_2
-
-    #rad_log = report_rad_prog(y_gt, y_4)
-
-    #rad_log_individual = report_rad_prog_individual(y_gt, y_4)
 
     res = {
         "log": log,
