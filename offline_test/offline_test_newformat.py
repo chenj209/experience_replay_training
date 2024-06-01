@@ -94,10 +94,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         # file_names = batch[-1]
         #model.eval()
         with torch.no_grad():
-            points_x, points_y, x_raw = batch[:3]
+            points_x, points_y, x_raw, y_raw = batch[:4]
+            filename = batch[-1][0][0].split("/")[-1]
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
-            # print(x_raw)
+            if iter == 0:
+                np.savez(f"offline_test_{filename}", 
+                         points_x=points_x.cpu().numpy(), 
+                         points_y=points_y.cpu().numpy(),
+                         x_raw=x_raw.cpu().numpy(),
+                         y_raw=y_raw.cpu().numpy())
+            print(x_raw.shape)
             if get_thickness is not None:
                 x_raw = x_raw.permute((0,2,1))
                 x_raw = x_raw.reshape(-1, x_raw.shape[-1])
@@ -130,7 +137,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if loss > worst_loss:
                 worst_loss = loss
                 worst_filenames = batch[-1]
-        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
+        #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
+        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
+        print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
