@@ -139,13 +139,13 @@ class MinMaxTransformLegacy:
 
         data_y[0:30] = (data_y[0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1
         data_y[30:60] = (data_y[30:60] + 3.63)    / (3.63*2) * 2    - 1
-        data_y[60:61]    =  data_y[60:61,:,:] / (2.12e-6) * 2 - 1
+        # data_y[60:61]    =  data_y[60:61,:,:] / (2.12e-6) * 2 - 1
         
+        data_y[60:61]    = (data_y[60:61] - 0) / (1412 - 0)
         data_y[61:62]    = (data_y[61:62] - 0) / (1412 - 0)
         data_y[62:63]    = (data_y[62:63] - 0) / (1412 - 0)
         data_y[63:64]    = (data_y[63:64] - 0) / (1412 - 0)
-        data_y[64:65]    = (data_y[64:65] - 0) / (1412 - 0)
-        data_y[65:66]    = (data_y[65:66] - 0) / (1412 - 0)    
+        data_y[64:65]    = (data_y[64:65] - 0) / (1412 - 0)    
 
         if self.include_raw:
             res = [data_x, data_y, data_x_raw, data_y_raw]
