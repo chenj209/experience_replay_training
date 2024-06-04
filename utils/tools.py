@@ -11,6 +11,33 @@ def cosine_lr(opt, base_lr, e, epochs):
 def constant(opt, base_lr, e, epochs):
     return opt.param_groups[-1]['lr']
 
+def train2(points_x, points_y, model, criterion, optimizer):
+
+    # switch to train mode
+    model.train()
+
+    #points_x, points_y = batch[:2]
+    points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+    
+    
+#     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+
+    # compute output
+    outputs_y = model(points_x)
+    # print(outputs_y.size(), points_y.size())
+    loss = criterion(outputs_y, points_y)
+
+    # print(points_y)
+    # print(torch.min(points_y))
+    # compute gradient and do SGD step
+    optimizer.zero_grad()
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    optimizer.step()
+
+    loss_item = loss.item()
+    return loss_item
+
 def train(batch, model, criterion, optimizer):
 
     # switch to train mode

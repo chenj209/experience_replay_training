@@ -15,6 +15,7 @@ from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_fi
     gen_multistep_col_indices
 from preprocess import get_min_max_coords
 from tqdm.autonotebook import tqdm
+PROFILE = False
 
 def region_slice2d(region_mask2d):
     mask, pad = region_mask2d
@@ -315,15 +316,22 @@ class DatasetDisk(data.Dataset):
 
 
     def load_slice(self, filename, slice):
+        if PROFILE:
+            start_time = time.time()
         data = np.load(filename, mmap_mode="r")
         if self.region_mask1d is not None:
-            return np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
+            slice_data = np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
         if self.region_mask2d is not None:
             min_x, max_x, min_y, max_y = self.region_mask2d
-            return data[slice, min_x:max_x, min_y:max_y]
-        return data[slice]
+            slice_data = data[slice, min_x:max_x, min_y:max_y]
+        slice_data = data[slice]
+        if PROFILE:
+            print(f"load_slice time for {filename}: {time.time() - start_time:.4f}s")
+        return slice_data
 
     def load_data(self, index):
+        if PROFILE:
+            start_time = time.time()
         target_file = self.file_names[index]
         file_names = [target_file]
         if not os.path.exists(target_file):
@@ -349,6 +357,8 @@ class DatasetDisk(data.Dataset):
             noise_y = np.random.randn(y.shape[0]) * self.noise_std
             x = x + noise_x
             y = y + noise_y
+        if PROFILE:
+            print(f"load_data time for {file_names}: {time.time() - start_time:.4f}s")
 
         return x, y, file_names[::-1]
 
@@ -360,16 +370,33 @@ class DatasetDisk(data.Dataset):
         if self.include_filename:
             sample.append(file_names)
         if self.transform:
+            if PROFILE:
+                start_time = time.time()
             sample = self.transform(sample)
+            if PROFILE:
+                print(f"transform time for {file_names}: {time.time() - start_time:.4f}s")
         return sample
 
 
 
 def filter_collate(batch):
-    batch = list(filter (lambda x:x is not None, batch))
+    if PROFILE:
+        start_time = time.time()
+    #batch = list(filter (lambda x:x is not None, batch))
+    batch = [x for x in batch if x is not None]
+    
+    # Return an empty tensor if the batch is empty
     if not batch:
-        return None
-    return default_collate(batch)
+        return torch.tensor([]), torch.tensor([])
+    
+    #return default_collate(batch)
+    #if not batch:
+    #    return None
+    collated_batch = default_collate(batch)
+    if PROFILE:
+        end_time = time.time()
+        print(f"filter_collate time: {end_time - start_time:.4f}s")
+    return collated_batch
 
 
 if __name__ == '__main__':

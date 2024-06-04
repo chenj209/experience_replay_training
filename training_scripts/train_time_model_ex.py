@@ -264,21 +264,25 @@ def main(args):
         """
         train_losses = AverageMeter()
         train_time_begin = time.time()
+        batch_start = time.time()
         for iter, batch in enumerate(trainloader):
             if batch is None:
                 print("skip empty batch")
                 # skip empty batch due to missing data
                 continue
+            points_x, points_y = batch[:2]
+            print(f"Data loading time for batch {iter}: {time.time() - batch_start:.4f}s")
             lr = lr_scheduler[args.lr_strategy](optimizer, args.lr,
                                                 current_iters, len(trainloader) * args.epoch)
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
             bp_time = time.time()
-            train_mse = tools.train(batch, model, criterion, optimizer)
+            train_mse = tools.train2(points_x, points_y, model, criterion, optimizer)
             bp_time = time.time() - bp_time
             train_losses.update(train_mse, batch[0].size(0))
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | train mse:{:.6f}| bp time: {:.2f} '.format(epoch, args.epoch, iter+1, len(trainloader), lr, train_mse, bp_time))
+            batch_start = time.time()
         train_time = time.time() - train_time_begin
 
         """
