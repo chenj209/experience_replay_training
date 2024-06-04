@@ -60,14 +60,14 @@ if __name__ == "__main__":
                         #!!!!!!!!!!!!!!!!!!!!!!!!!!!!注意######################
 
                         activation = 'relu'
-                        batch_size = '8'
-                        lr_strategy = 'constant'
+                        batch_size = '4'
+                        lr_strategy = 'coslr'
 
                         network = 'resnet_output30'
                         print(name)
                         commands = f"python train_time_model_ex.py --data_dir {DATA_DIR}" + " --output_type 0-29 --noise_std {} " \
                                 '--network {} --node_size {} --num_blocks {} --activation {} --dropout {} ' \
-                                '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --worker 8 ' \
+                                '--train_batch {} --lr_strategy {} --lr {} --epoch {} --wd {} --worker 4 ' \
                                 '--checkpoint {} --multistep {} --sample_rate {} --region_mask {} --data_means {} --data_stds {} --ex_input {} --ex_input_prev {}'.format(str(noise_std),
                                                                 network, node_size, num_blocks, activation,
                                                                 dropout,
