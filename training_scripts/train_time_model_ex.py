@@ -193,8 +193,18 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
     model = model.float()
-    model = torch.nn.DataParallel(model).cuda()
+    #model = torch.nn.DataParallel(model).cuda()
     #model = model.cuda()
+    model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
+    #print("Devices used by DataParallel:", model.device_ids)
+    # Check the location of model parameters
+    #for name, param in model.named_parameters():
+    #    print(f"Parameter '{name}' is on device: {param.device}")
+
+    # Check the location of model buffers (if any)
+    #for name, buffer in model.named_buffers():
+    #        print(f"Buffer '{name}' is on device: {buffer.device}")
+    #model = model.cuda(2)
     cudnn.benchmark = True
 
 
