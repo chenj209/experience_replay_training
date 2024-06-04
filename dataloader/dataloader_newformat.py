@@ -130,7 +130,7 @@ class PairDatasetDisk(data.Dataset):
 
 
     def load_slice(self, filename, slice):
-        #data = np.load(filename, mmap_mode="r")
+        data = np.load(filename, mmap_mode="r")
         if self.region_mask1d is not None:
             return np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
         if self.region_mask2d is not None:
