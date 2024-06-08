@@ -99,6 +99,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
             if iter == 0:
+                print("saving: ", batch[-1])
                 np.savez(f"offline_test_{filename}", 
                          points_x=points_x.cpu().numpy(), 
                          points_y=points_y.cpu().numpy(),
@@ -252,7 +253,9 @@ if __name__ == "__main__":
         with open(args.train_configs, "r") as f:
             train_configs = yaml.safe_load(f)
             for key in train_configs:
-                if train_configs[key] is not None and key != "resume": # resume is always chosen from args.resume args
+                if train_configs[key] is not None \
+                    and key != "resume" \
+                    and key != "sample_rate": # resume is always chosen from args.resume args
                     setattr(args, key, train_configs[key])
         print("After train_configs overwrite:", args)
 
