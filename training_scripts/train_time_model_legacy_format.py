@@ -49,16 +49,13 @@ class EarlyStopper:
 def main(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+        data_dir = "../dataloader/data/"
+        # data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "../analysis/test_data/"
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*.npy')
+    all_files = glob.glob(args.data_dir+'/*.npz')
     all_files.sort()
     all_files = all_files[:35040]
 
@@ -69,8 +66,11 @@ def main(args):
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
     if args.output_type == '0-29':
         #batch[1] = batch[1][:, :, :30]
         col_names_y = ["qtend_check"]
@@ -90,15 +90,18 @@ def main(args):
     data_means = dict(np.load(args.data_means))
     data_stds = dict(np.load(args.data_stds))
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
+    input_indices = [("X", np.arange(122))]
+    output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
+    prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
+    # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
     # print("input_indices:", col_names[input_indices])
     # print("prev_input_indices:", col_names[prev_input_indices])
     # print("output_indices:", col_names[output_indices])
-    if args.region_mask == "all":
-        region_mask = np.ones((96,144))
-    else:
-        region_mask = np.load(args.region_mask)
+    # if args.region_mask == "all":
+        # region_mask = np.ones((96,144))
+    # else:
+        # region_mask = np.load(args.region_mask)
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -129,9 +132,10 @@ def main(args):
         sample_rate=int(args.sample_rate),
         is_train=True,
         transform=transform,
-        include_filename=True,
-        region_mask1d=None if args.region_mask=="all"
-                           else np.load(args.region_mask))
+        include_filename=True
+    )
+        # region_mask1d=None if args.region_mask=="all"
+                        #    else np.load(args.region_mask))
 
     trainloader = data.DataLoader(training_set, shuffle=True,
                                   batch_size=args.train_batch,
