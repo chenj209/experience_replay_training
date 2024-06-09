@@ -45,6 +45,12 @@ class EarlyStopper:
                 return True
         return False
 
+def cal_input_size(col_names_):
+    s = 0
+    for i in range(len(col_names_)):
+        s += len(col_names_[i][1])
+    return s
+
 
 def main(args):
     data_dir = args.data_dir
@@ -172,8 +178,8 @@ def main(args):
     elif args.network == 'resnet_output30':
         #model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
         #model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
-        input_size = len(training_set.input_indices)\
-                    +int(args.multistep)*(len(training_set.prev_input_indices))
+        input_size = cal_input_size(training_set.input_indices)\
+                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
