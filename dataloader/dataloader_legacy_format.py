@@ -15,7 +15,6 @@ from dataloader_utils import get_index_from_colnames, filename_to_idx, idx_to_fi
     gen_multistep_col_indices
 from preprocess import get_min_max_coords
 from tqdm.autonotebook import tqdm
-PROFILE = False
 
 def region_slice2d(region_mask2d):
     mask, pad = region_mask2d
@@ -48,6 +47,8 @@ class PairDatasetDisk(data.Dataset):
         include_filename=False,
         region_mask1d=None,
         region_mask2d=None):
+        # TODO: modify paired dataset to use legacy format too
+        raise NotImplementedError
         ### load the data ###
         all_files = file_names[:]
         # self.data_std = data_std
@@ -237,6 +238,19 @@ class DatasetDisk(data.Dataset):
         include_filename=False,
         region_mask1d=None,
         region_mask2d=None):
+        """
+        Args:
+            curr_input_indices (tuple): 
+                [('X'/'Y'/'EX': [int])]
+                if pos0 == 'X':
+                    load data from np.load(filename)['data_x']
+                if pos0 == 'Y':
+                    load data from np.load(filename)['data_y']
+                if pos0 == 'EX':
+                    load data from np.load(ex_dir + filename)
+            prev_input_indices (_type_): same as curr_input_indices
+            output_indices (_type_): same as curr_input_indices
+        """
         ### load the data ###
         all_files = file_names[:]
         # self.data_std = data_std
@@ -267,16 +281,16 @@ class DatasetDisk(data.Dataset):
         self.silent = silent
         self.multistep = multistep
         self.all_files = all_files[:]
-        self.all_files.sort(key=filename_to_idx)
+        self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npz"))
         self.file_names = []
         if self.multistep > 0:
             for file_name in self.all_files[::sample_rate]:
-                cur_idx = filename_to_idx(file_name)
+                cur_idx = filename_to_idx(file_name, suffix="\.npz")
                 missing_flag = False
                 for p in range(1, self.multistep+1):
                     prev_idx = cur_idx - p
                     tokens = file_name.split("/")
-                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
+                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npz")])
                     if prev_file_name not in self.all_files:
                         print(f"Missing {prev_file_name} for {file_name}")
                         missing_flag = True
@@ -314,38 +328,49 @@ class DatasetDisk(data.Dataset):
                 self.col_names, self.data_mean, self.data_std)
         return inverse
 
+    def load_slice_ex(self, filename, slice):
+        """
 
-    def load_slice(self, filename, slice):
-        if PROFILE:
-            start_time = time.time()
-        data = np.load(filename, mmap_mode="r")
-        if self.region_mask1d is not None:
-            slice_data = np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
-        if self.region_mask2d is not None:
-            min_x, max_x, min_y, max_y = self.region_mask2d
-            slice_data = data[slice, min_x:max_x, min_y:max_y]
-        slice_data = data[slice]
-        if PROFILE:
-            print(f"load_slice time for {filename}: {time.time() - start_time:.4f}s")
-        return slice_data
+        Args:
+            slice (tuple): 
+                [('X'/'Y'/'EX', [int])]
+                if pos0 == 'X':
+                    load data from np.load(filename)['data_x']
+                if pos0 == 'Y':
+                    load data from np.load(filename)['data_y']
+                if pos0 == 'EX':
+                    load data from np.load(ex_dir + filename)
 
-    def load_data(self, index):
-        if PROFILE:
-            start_time = time.time()
+        """
+        output_data = []
+        for dtype, indices in slice:
+            if dtype == "EX":
+                data = np.load(self.ex_dir + "/" + filename.split("/")[-1]) # data shape (channels, lat, lon)
+            elif dtype == "X":
+                data = np.load(filename)["data_x"].squeeze() # data shape (channels, lat, lon)
+            elif dtype == "Y":
+                data = np.load(filename)["data_y"].squeeze() # data shape (channels, lat, lon)
+            else:
+                raise Exception(f"Invalid key {dtype}")
+            output_data.append(data[indices])
+        output_data = np.concatenate(output_data, axis=0)
+        return output_data
+
+    def load_data_ex(self, index):
         target_file = self.file_names[index]
         file_names = [target_file]
         if not os.path.exists(target_file):
             raise ValueError(f"File {target_file} does not exist")
-        tx = self.load_slice(target_file, self.input_indices)
+        tx = self.load_slice_ex(target_file, self.input_indices)
         # print("tx shape: ", tx.shape)
-        y = self.load_slice(target_file, self.output_indices)
+        y = self.load_slice_ex(target_file, self.output_indices)
 
         tokens = target_file.split("/")
-        target_fileidx = filename_to_idx(tokens[-1])
+        target_fileidx = filename_to_idx(tokens[-1], suffix="\.npz")
         prev_inputs = []
         for p in range(1,self.multistep+1):
-            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            tx_prev = self.load_slice(prev_file, self.prev_input_indices)
+            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p, suffix=".npz")])
+            tx_prev = self.load_slice_ex(prev_file, self.prev_input_indices)
             prev_inputs.append(tx_prev)
             # prev_raws.append(tx_raw_prev)
             file_names.append(prev_file)
@@ -358,46 +383,76 @@ class DatasetDisk(data.Dataset):
             noise_y = np.random.randn(y.shape[0]) * self.noise_std
             x = x + noise_x
             y = y + noise_y
-        if PROFILE:
-            print(f"load_data time for {file_names}: {time.time() - start_time:.4f}s")
+
+        return x, y, file_names[::-1]
+
+
+    def load_slice(self, filename, slice, data_input=True):
+        if data_input:
+            data = np.load(filename)["data_x"].squeeze()
+        else:
+            data = np.load(filename)["data_y"].squeeze()
+            data = np.delete(data, 60, axis=0) # remove unused output 
+        # if self.region_mask1d is not None:
+            # return np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
+        # if self.region_mask2d is not None:
+            # min_x, max_x, min_y, max_y = self.region_mask2d
+            # return data[slice, min_x:max_x, min_y:max_y]
+        # return data[slice]
+        return data
+
+
+    def load_data(self, index):
+        target_file = self.file_names[index]
+        file_names = [target_file]
+        if not os.path.exists(target_file):
+            raise ValueError(f"File {target_file} does not exist")
+        tx = self.load_slice(target_file, self.input_indices, data_input=True)
+        # print("tx shape: ", tx.shape)
+        y = self.load_slice(target_file, self.output_indices, data_input=False)
+
+        tokens = target_file.split("/")
+        target_fileidx = filename_to_idx(tokens[-1])
+        prev_inputs = []
+        for p in range(1,self.multistep+1):
+            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
+            tx_prev_x = self.load_slice(prev_file, None, data_input=True)
+            tx_prev_y = self.load_slice(prev_file, None, data_input=False)
+            tx_prev = np.concatenate([tx_prev_x, tx_prev_y], axis=0)
+            prev_inputs.append(tx_prev)
+            # prev_raws.append(tx_raw_prev)
+            file_names.append(prev_file)
+
+        x = np.concatenate([*prev_inputs, tx], axis=0)
+
+        if self.is_train and self.noise_std>0:
+            # print(self.noise_std)
+            noise_x = np.random.randn(x.shape[0]) * self.noise_std
+            noise_y = np.random.randn(y.shape[0]) * self.noise_std
+            x = x + noise_x
+            y = y + noise_y
 
         return x, y, file_names[::-1]
 
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        x, y, file_names = self.load_data(index)
+        #x, y, file_names = self.load_data(index)
+        x, y, file_names = self.load_data_ex(index)
         sample = [x, y]
         if self.include_filename:
             sample.append(file_names)
         if self.transform:
-            if PROFILE:
-                start_time = time.time()
             sample = self.transform(sample)
-            if PROFILE:
-                print(f"transform time for {file_names}: {time.time() - start_time:.4f}s")
         return sample
 
 
 
 def filter_collate(batch):
-    if PROFILE:
-        start_time = time.time()
-    #batch = list(filter (lambda x:x is not None, batch))
-    batch = [x for x in batch if x is not None]
-    
-    # Return an empty tensor if the batch is empty
+    batch = list(filter (lambda x:x is not None, batch))
     if not batch:
-        return torch.tensor([]), torch.tensor([])
-    
-    #return default_collate(batch)
-    #if not batch:
-    #    return None
-    collated_batch = default_collate(batch)
-    if PROFILE:
-        end_time = time.time()
-        print(f"filter_collate time: {end_time - start_time:.4f}s")
-    return collated_batch
+        return None
+    return default_collate(batch)
 
 
 if __name__ == '__main__':
@@ -411,34 +466,58 @@ if __name__ == '__main__':
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     args = parser.parse_args()
     print(args)
-    data_dir = "/home/users/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
-        data_dir = "/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "../analysis/test_data/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
-    file_names = glob.glob(data_dir + "*.npy")
+    # data_dir = "/home/users/data/nncam_data/image_set/"
+    # if not os.path.isdir(data_dir):
+    #     data_dir = "/data/nncam_data/image_set/"
+    # if not os.path.isdir(data_dir):
+    #     # data_dir = "./data/"
+    #     data_dir = "../analysis/test_data/"
+    # if not os.path.isdir(data_dir):
+    #     # data_dir = "./data/"
+    #     data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    data_dir = "data"
+    file_names = glob.glob(data_dir + "/*.npz")
     file_names.sort()
     # file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names = np.loadtxt("col_names.txt", dtype=str)
+    col_names_legacy = {
+        "X": [
+            *[f"QL_lev{i}" for i in range(30)],
+            *[f"T_nn_in_lev{i}" for i in range(30)],
+            *[f"dqvls_lev{i}" for i in range(30)],
+            *[f"dTls_lev{i}" for i in range(30)],
+            "SOLIN",
+            "SPPS"
+        ],
+        "Y": [
+            *[f"qtend_check_lev{i}" for i in range(30)],
+            *[f"stend_check_lev{i}" for i in range(30)],
+            "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
+        ],
+        "EX": []
+    }
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
+    input_indices = [("X", np.arange(122))]
+    output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
+    prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
     # varaibles that are used as input in the previous time step
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    # data_means = dict(np.load(data_dir + "/data_means.npz"))
+    # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_means = dict(np.load("../consts/all_means.npz"))
+    data_stds = dict(np.load("../consts/all_stds.npz"))
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, 1)
-    print("input_indices:", col_names[input_indices])
-    print("prev_input_indices:", col_names[prev_input_indices])
-    print("output_indices:", col_names[output_indices])
+    # input_indices = {"X": np.arange(30)}
+    # prev_input_indices = {"X"}
+    # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        # col_names, prev_ex_vars, col_names_x, col_names_y, 1)
+    # print("input_indices:", col_names[input_indices])
+    # print("prev_input_indices:", col_names[prev_input_indices])
+    # print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
         StandardizeTransform(
@@ -450,10 +529,10 @@ if __name__ == '__main__':
             normalize_input=True,
             normalize_output=True
             ),
-        # FlattenSpatialTransform()
+        FlattenSpatialTransform()
         ])
 
-    region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "pacific_region_mask.npy"))
+    # region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "pacific_region_mask.npy"))
 
     training_set = DatasetDisk(
         file_names,
@@ -468,8 +547,8 @@ if __name__ == '__main__':
         # region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
-    dqvls_norm = []
-    dqvls = []
+    # dqvls_norm = []
+    # dqvls = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         x, y, filenames = batch

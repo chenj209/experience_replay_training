@@ -1,9 +1,9 @@
 import re
-def idx_to_filename(idx):
-  return str(idx).rjust(5,'0') + '.npy'
+def idx_to_filename(idx, suffix=".npy"):
+  return str(idx).rjust(5,'0') + suffix
 
-def filename_to_idx(filename):
-    data_pattern = ".*(\d{5})\.npy"
+def filename_to_idx(filename, suffix="\.npy"):
+    data_pattern = ".*(\d{5})" + suffix
     m = re.search(data_pattern, filename)
     if m is None:
         return -1
