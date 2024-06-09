@@ -281,16 +281,16 @@ class DatasetDisk(data.Dataset):
         self.silent = silent
         self.multistep = multistep
         self.all_files = all_files[:]
-        self.all_files.sort(key=filename_to_idx)
+        self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npz"))
         self.file_names = []
         if self.multistep > 0:
             for file_name in self.all_files[::sample_rate]:
-                cur_idx = filename_to_idx(file_name)
+                cur_idx = filename_to_idx(file_name, suffix="\.npz")
                 missing_flag = False
                 for p in range(1, self.multistep+1):
                     prev_idx = cur_idx - p
                     tokens = file_name.split("/")
-                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
+                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npz")])
                     if prev_file_name not in self.all_files:
                         print(f"Missing {prev_file_name} for {file_name}")
                         missing_flag = True
@@ -366,11 +366,11 @@ class DatasetDisk(data.Dataset):
         y = self.load_slice_ex(target_file, self.output_indices)
 
         tokens = target_file.split("/")
-        target_fileidx = filename_to_idx(tokens[-1])
+        target_fileidx = filename_to_idx(tokens[-1], suffix="\.npz")
         prev_inputs = []
         for p in range(1,self.multistep+1):
-            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            tx_prev = self.load_slice_ex(prev_file, self.prev_input_indices, data_input=True)
+            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p, suffix=".npz")])
+            tx_prev = self.load_slice_ex(prev_file, self.prev_input_indices)
             prev_inputs.append(tx_prev)
             # prev_raws.append(tx_raw_prev)
             file_names.append(prev_file)
@@ -437,7 +437,8 @@ class DatasetDisk(data.Dataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        x, y, file_names = self.load_data(index)
+        #x, y, file_names = self.load_data(index)
+        x, y, file_names = self.load_data_ex(index)
         sample = [x, y]
         if self.include_filename:
             sample.append(file_names)
