@@ -98,7 +98,8 @@ def main(args):
     data_stds = dict(np.load(args.data_stds))
 
     input_indices = [("X", np.arange(122))]
-    output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
+    #output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
+    output_indices = [("Y", np.arange(30))] # index 60 is not used
     prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
     # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))

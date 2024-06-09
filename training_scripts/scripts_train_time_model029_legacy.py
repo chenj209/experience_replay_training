@@ -41,6 +41,7 @@ if __name__ == "__main__":
 
     #DATA_DIR = "/share3/chenj209/spcam_new_data_32/"
     DATA_DIR = "/data/nncam_data/image_set/"
+    SAMPLE_RATE = 1
     #if not os.path.exists(DATA_DIR):
         #DATA_DIR = "/data/nncam_data/image_set/"
     #if not os.path.exists(DATA_DIR):
