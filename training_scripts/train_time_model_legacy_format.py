@@ -65,7 +65,8 @@ def main(args):
     test_files = [all_files[i] for i in test_idx]
     print('train files: {} test files: {}'.format(len(train_files), len(test_files)))
     # training_set = DatasetDisk(file_names=train_files, is_train=True, noise_std=args.noise_std, multistep=int(args.multistep))
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    #col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names = np.loadtxt(os.path.join(os.path.dirname(__file__), "..", "dataloader", "col_names.txt"), dtype=str)
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
