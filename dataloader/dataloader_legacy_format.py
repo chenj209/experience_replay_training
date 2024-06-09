@@ -240,13 +240,13 @@ class DatasetDisk(data.Dataset):
         region_mask2d=None):
         """
         Args:
-            curr_input_indices (dict): 
-                {'X'/'Y'/'EX': [int]}
-                if key == 'X':
+            curr_input_indices (tuple): 
+                [('X'/'Y'/'EX': [int])]
+                if pos0 == 'X':
                     load data from np.load(filename)['data_x']
-                if key == 'Y':
+                if pos0 == 'Y':
                     load data from np.load(filename)['data_y']
-                if key == 'EX':
+                if pos0 == 'EX':
                     load data from np.load(ex_dir + filename)
             prev_input_indices (_type_): same as curr_input_indices
             output_indices (_type_): same as curr_input_indices
@@ -328,49 +328,49 @@ class DatasetDisk(data.Dataset):
                 self.col_names, self.data_mean, self.data_std)
         return inverse
 
-    def load_slice_dict(self, filename, slice):
+    def load_slice_ex(self, filename, slice):
         """
 
         Args:
-            slice (dict): 
-                {'X'/'Y'/'EX': [int]}
-                if key == 'X':
+            slice (tuple): 
+                [('X'/'Y'/'EX', [int])]
+                if pos0 == 'X':
                     load data from np.load(filename)['data_x']
-                if key == 'Y':
+                if pos0 == 'Y':
                     load data from np.load(filename)['data_y']
-                if key == 'EX':
+                if pos0 == 'EX':
                     load data from np.load(ex_dir + filename)
 
         """
         output_data = []
-        for key, indices in slice.items():
-            if key == "EX":
+        for dtype, indices in slice:
+            if dtype == "EX":
                 data = np.load(self.ex_dir + "/" + filename.split("/")[-1]) # data shape (channels, lat, lon)
-            elif key == "X":
+            elif dtype == "X":
                 data = np.load(filename)["data_x"].squeeze() # data shape (channels, lat, lon)
-            elif key == "Y":
+            elif dtype == "Y":
                 data = np.load(filename)["data_y"].squeeze() # data shape (channels, lat, lon)
             else:
-                raise Exception(f"Invalid key {key}")
+                raise Exception(f"Invalid key {dtype}")
             output_data.append(data[indices])
         output_data = np.concatenate(output_data, axis=0)
         return output_data
 
-    def load_data_dict(self, index):
+    def load_data_ex(self, index):
         target_file = self.file_names[index]
         file_names = [target_file]
         if not os.path.exists(target_file):
             raise ValueError(f"File {target_file} does not exist")
-        tx = self.load_slice_dict(target_file, self.input_indices)
+        tx = self.load_slice_ex(target_file, self.input_indices)
         # print("tx shape: ", tx.shape)
-        y = self.load_slice_dict(target_file, self.output_indices)
+        y = self.load_slice_ex(target_file, self.output_indices)
 
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
         prev_inputs = []
         for p in range(1,self.multistep+1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            tx_prev = self.load_slice(prev_file, self.prev_input_indices, data_input=True)
+            tx_prev = self.load_slice_ex(prev_file, self.prev_input_indices, data_input=True)
             prev_inputs.append(tx_prev)
             # prev_raws.append(tx_raw_prev)
             file_names.append(prev_file)
@@ -465,34 +465,58 @@ if __name__ == '__main__':
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     args = parser.parse_args()
     print(args)
-    data_dir = "/home/users/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
-        data_dir = "/data/nncam_data/image_set/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "../analysis/test_data/"
-    if not os.path.isdir(data_dir):
-        # data_dir = "./data/"
-        data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
-    file_names = glob.glob(data_dir + "*.npy")
+    # data_dir = "/home/users/data/nncam_data/image_set/"
+    # if not os.path.isdir(data_dir):
+    #     data_dir = "/data/nncam_data/image_set/"
+    # if not os.path.isdir(data_dir):
+    #     # data_dir = "./data/"
+    #     data_dir = "../analysis/test_data/"
+    # if not os.path.isdir(data_dir):
+    #     # data_dir = "./data/"
+    #     data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+    data_dir = "data"
+    file_names = glob.glob(data_dir + "/*.npz")
     file_names.sort()
     # file_names = file_names[:10]
     # file_names = [data_dir + fn for fn in file_names]
     print("file_names:", file_names[:10])
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names = np.loadtxt("col_names.txt", dtype=str)
+    col_names_legacy = {
+        "X": [
+            *[f"QL_lev{i}" for i in range(30)],
+            *[f"T_nn_in_lev{i}" for i in range(30)],
+            *[f"dqvls_lev{i}" for i in range(30)],
+            *[f"dTls_lev{i}" for i in range(30)],
+            "SOLIN",
+            "SPPS"
+        ],
+        "Y": [
+            *[f"qtend_check_lev{i}" for i in range(30)],
+            *[f"stend_check_lev{i}" for i in range(30)],
+            "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
+        ],
+        "EX": []
+    }
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
+    input_indices = [("X", np.arange(122))]
+    output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
+    prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
     # varaibles that are used as input in the previous time step
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    # prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
 
-    data_means = dict(np.load(data_dir + "/data_means.npz"))
-    data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    # data_means = dict(np.load(data_dir + "/data_means.npz"))
+    # data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+    data_means = dict(np.load("../consts/all_means.npz"))
+    data_stds = dict(np.load("../consts/all_stds.npz"))
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, 1)
-    print("input_indices:", col_names[input_indices])
-    print("prev_input_indices:", col_names[prev_input_indices])
-    print("output_indices:", col_names[output_indices])
+    # input_indices = {"X": np.arange(30)}
+    # prev_input_indices = {"X"}
+    # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        # col_names, prev_ex_vars, col_names_x, col_names_y, 1)
+    # print("input_indices:", col_names[input_indices])
+    # print("prev_input_indices:", col_names[prev_input_indices])
+    # print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
         StandardizeTransform(
@@ -504,10 +528,10 @@ if __name__ == '__main__':
             normalize_input=True,
             normalize_output=True
             ),
-        # FlattenSpatialTransform()
+        FlattenSpatialTransform()
         ])
 
-    region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "pacific_region_mask.npy"))
+    # region_mask = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "pacific_region_mask.npy"))
 
     training_set = DatasetDisk(
         file_names,
@@ -522,8 +546,8 @@ if __name__ == '__main__':
         # region_mask1d=region_mask
         )
     trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
-    dqvls_norm = []
-    dqvls = []
+    # dqvls_norm = []
+    # dqvls = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")
     for idx, batch in enumerate(trainloader):
         x, y, filenames = batch
