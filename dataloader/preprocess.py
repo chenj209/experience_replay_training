@@ -223,7 +223,7 @@ class StandardizeTransform:
         # debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
         assert x.shape[0] == target_shape, f"Input data shape does not match \
             the expected shape {target_shape}"
-        print("before norm x shape: ", x.shape)
+        # print("before norm x shape: ", x.shape)
         if self.normalize_input:
             x = normalize_data_var_names2(x, self.data_cols_x, self.col_names,
                                  self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
