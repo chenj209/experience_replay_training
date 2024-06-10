@@ -81,15 +81,18 @@ def main(args):
     if args.output_type == '0-29':
         #batch[1] = batch[1][:, :, :30]
         col_names_y = ["qtend_check"]
+        output_indices = [("Y", np.arange(30))] # index 60 is not used
     elif args.output_type == '30-59':
         # batch[1] = batch[1][:, :, 30:60]
         col_names_y = ["stend_check"]
+        output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
     elif args.output_type == '60':
         #batch[1] = batch[1][:, :, 60:61]
         raise NotImplementedError
     elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+        output_indices = [("Y", np.arange(61, 66))] # index 60 is not used
 #             if args.output_type == '61-65':
     else:
         col_names_y = [args.output_type]
@@ -99,7 +102,7 @@ def main(args):
 
     input_indices = [("X", np.arange(122))]
     #output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
-    output_indices = [("Y", np.arange(30))] # index 60 is not used
+    #output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
     prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
     # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
@@ -185,8 +188,8 @@ def main(args):
         model = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
         #model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
-        input_size = len(training_set.input_indices)\
-                    +int(args.multistep)*(len(training_set.prev_input_indices))
+        input_size = cal_input_size(training_set.input_indices)\
+                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
@@ -206,9 +209,9 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
     model = model.float()
-    #model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).cuda()
     #model = model.cuda()
-    model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
+    #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
     # Check the location of model parameters
     #for name, param in model.named_parameters():

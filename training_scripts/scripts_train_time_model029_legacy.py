@@ -41,14 +41,14 @@ if __name__ == "__main__":
 
     #DATA_DIR = "/share3/chenj209/spcam_new_data_32/"
     DATA_DIR = "/data/nncam_data/image_set/"
-    SAMPLE_RATE = 1
+    SAMPLE_RATE = 7
     #if not os.path.exists(DATA_DIR):
         #DATA_DIR = "/data/nncam_data/image_set/"
     #if not os.path.exists(DATA_DIR):
         #DATA_DIR = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_set/"
         #DATA_DIR = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
 
-    name = f"{BASELINE_CKPT_PREFIX}_sampled{SAMPLE_RATE}_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1][:-4]}" # remove ".npy" suffix
+    name = f"{BASELINE_CKPT_PREFIX}029_sampled{SAMPLE_RATE}_multistep{args.multistep}_EX_{'+'.join(ex_input)}_EXPREV_{'+'.join(ex_input_prev)}_region_{args.region_mask.split('/')[-1][:-4]}" # remove ".npy" suffix
 
     for epoch in ['50']:
         for num_blocks in ['7']:
