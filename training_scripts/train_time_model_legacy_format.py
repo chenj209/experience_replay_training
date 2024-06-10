@@ -26,7 +26,8 @@ sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 #from dataloader_newformat import DatasetDisk, filter_collate
 from dataloader_legacy_format import DatasetDisk, filter_collate
 from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMaskTransform
-from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
+from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
+    gen_col_indices
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -51,6 +52,22 @@ def cal_input_size(col_names_):
         s += len(col_names_[i][1])
     return s
 
+COL_NAMES_LEGACY = {
+    "X": [
+        *[f"QL_lev{i}" for i in range(30)],
+        *[f"T_nn_in_lev{i}" for i in range(30)],
+        *[f"dqvls_lev{i}" for i in range(30)],
+        *[f"dTls_lev{i}" for i in range(30)],
+        "SOLIN",
+        "SPPS"
+    ],
+    "Y": [
+        *[f"qtend_check_lev{i}" for i in range(30)],
+        *[f"stend_check_lev{i}" for i in range(30)],
+        "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
+    ],
+    "EX": []
+}
 
 def main(args):
     data_dir = args.data_dir
@@ -74,36 +91,55 @@ def main(args):
     #col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names = np.loadtxt(os.path.join(os.path.dirname(__file__), "..", "dataloader", "col_names.txt"), dtype=str)
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
-    if args.output_type == '0-29':
-        #batch[1] = batch[1][:, :, :30]
-        col_names_y = ["qtend_check"]
-        output_indices = [("Y", np.arange(30))] # index 60 is not used
-    elif args.output_type == '30-59':
-        # batch[1] = batch[1][:, :, 30:60]
-        col_names_y = ["stend_check"]
-        output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
-    elif args.output_type == '60':
-        #batch[1] = batch[1][:, :, 60:61]
-        raise NotImplementedError
-    elif args.output_type == '61-65':
-        #batch[1] = batch[1][:, :, 61:66]
-        col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
-        output_indices = [("Y", np.arange(61, 66))] # index 60 is not used
-#             if args.output_type == '61-65':
-    else:
-        col_names_y = [args.output_type]
-    #col_names_y = ["qtend_check"]
+    #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    col_names_x = args.input_vars
+    input_indices = np.concatenate([
+        # input indices can only come from X and EX
+        # Y contains output variables which is not available at current step
+        gen_col_indices(col_names_x, COL_NAMES_LEGACY["X"]),
+        gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
+    ])
+    
+    prev_ex_vars = args.input_vars_prev
+    prev_input_indices = np.concatenate([
+        #  prev_input indices can come from X, Y and EX
+        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["X"]),
+        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["Y"]),
+        gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
+    ])
+    col_names_y = args.output_vars
+    output_indices = np.concatenate([
+        # output indices can only come from Y and EX
+        gen_col_indices(col_names_y, COL_NAMES_LEGACY["Y"]),
+        gen_col_indices(col_names_y, COL_NAMES_LEGACY["EX"]),
+    ])
     data_means = dict(np.load(args.data_means))
     data_stds = dict(np.load(args.data_stds))
+        
+#     if args.output_type == '0-29':
+#         #batch[1] = batch[1][:, :, :30]
+#         #col_names_y = ["qtend_check"]
+#         output_indices = [("Y", np.arange(30))] # index 60 is not used
+#     elif args.output_type == '30-59':
+#         # batch[1] = batch[1][:, :, 30:60]
+#         col_names_y = ["stend_check"]
+#         output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
+#     elif args.output_type == '60':
+#         #batch[1] = batch[1][:, :, 60:61]
+#         raise NotImplementedError
+#     elif args.output_type == '61-65':
+#         #batch[1] = batch[1][:, :, 61:66]
+#         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+#         output_indices = [("Y", np.arange(61, 66))] # index 60 is not used
+# #             if args.output_type == '61-65':
+#     else:
+#         col_names_y = [args.output_type]
+    #col_names_y = ["qtend_check"]
 
-    input_indices = [("X", np.arange(122))]
+    # input_indices = [("X", np.arange(122))]
     #output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
-    #output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
-    prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
+    # output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
+    # prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
     # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
     # print("input_indices:", col_names[input_indices])
@@ -116,7 +152,6 @@ def main(args):
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
-        multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(prev_ex_vars)
     multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
@@ -356,8 +391,27 @@ if __name__ == '__main__':
     parser = argsparser.get_argparser()
     parser.add_argument("--multistep", type=int, help="multistep", default=1)
     parser.add_argument("--sample_rate", type=int, help="sample_rate", default=12)
-    parser.add_argument("--ex_input", type=str, nargs="*")
-    parser.add_argument("--ex_input_prev", type=str, nargs="*")
+    # TODO: add input/input_prev/output order here
+    # parser.add_argument("--ex_input", type=str, nargs="*")
+    # parser.add_argument("--ex_input_prev", type=str, nargs="*")
+    parser.add_argument("--input_vars", type=str, nargs="*", default=[
+        "QL", 
+        "T_nn_in", 
+        "dqvls_nn_in", 
+        "dTls_nn_in", 
+        "SOLIN", 
+        "SPPS"
+    ])
+    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[
+        "qtend_check", 
+        "stend_check", 
+        "SOLL", 
+        "SOLS", 
+        "SOLSD", 
+        "SOLLD", 
+        "FSDS"
+    ])
+    parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)

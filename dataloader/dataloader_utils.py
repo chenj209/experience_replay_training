@@ -27,6 +27,13 @@ def get_index_from_colnames(col_names, var_name):
             return start_idx, end_idx+1
     return start_idx, end_idx+1
 
+def gen_col_indices(col_names, vars):
+    col_indices = []
+    for cn in vars:
+        start_idx, end_idx = get_index_from_colnames(col_names, cn)
+        if start_idx != -1:
+            col_indices.extend(list(range(start_idx, end_idx)))
+    return col_indices
 
 def gen_multistep_col_indices(col_names, prev_ex_vars, col_names_x, col_names_y, multistep):
     prev_input_indices = []
