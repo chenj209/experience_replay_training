@@ -1,4 +1,5 @@
 import re
+import numpy as np
 def idx_to_filename(idx, suffix=".npy"):
   return str(idx).rjust(5,'0') + suffix
 
@@ -34,8 +35,9 @@ def gen_col_indices(col_names, vars):
         if start_idx != -1:
             col_indices.extend(list(range(start_idx, end_idx)))
         else:
-            print(f"Variable {cn} not found in col_names")
-    return col_indices
+            pass
+            # print(f"Variable {cn} not found in col_names")
+    return np.array(col_indices)
 
 def gen_multistep_col_indices(col_names, prev_ex_vars, col_names_x, col_names_y, multistep):
     prev_input_indices = []
