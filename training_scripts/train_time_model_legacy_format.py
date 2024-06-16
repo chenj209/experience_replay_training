@@ -46,10 +46,11 @@ class EarlyStopper:
                 return True
         return False
 
-def cal_input_size(col_names_):
+def cal_input_size(col_names):
+    print(col_names)
     s = 0
-    for i in range(len(col_names_)):
-        s += len(col_names_[i][1])
+    for i in range(len(col_names)):
+        s += len(col_names[i][1])
     return s
 
 COL_NAMES_LEGACY = {
@@ -93,6 +94,8 @@ def main(args):
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_x = args.input_vars
+    col_names_y = args.output_vars
+    col_names_prev = args.input_vars_prev
     input_indices = np.concatenate([
         # input indices can only come from X and EX
         # Y contains output variables which is not available at current step
@@ -100,14 +103,12 @@ def main(args):
         gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
     ])
     
-    prev_ex_vars = args.input_vars_prev
     prev_input_indices = np.concatenate([
         #  prev_input indices can come from X, Y and EX
-        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["X"]),
-        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["Y"]),
-        gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
+        gen_col_indices(col_names_x, COL_NAMES_LEGACY["X"]),
+        gen_col_indices(col_names_prev, COL_NAMES_LEGACY["EX"]),
+        gen_col_indices(col_names_y, COL_NAMES_LEGACY["Y"]),
     ])
-    col_names_y = args.output_vars
     output_indices = np.concatenate([
         # output indices can only come from Y and EX
         gen_col_indices(col_names_y, COL_NAMES_LEGACY["Y"]),
@@ -152,7 +153,9 @@ def main(args):
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
-        multistep_col_names_x.extend(prev_ex_vars)
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(col_names_prev)
+        multistep_col_names_x.extend(col_names_y)
     multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
         #RegionMaskTransform(region_mask),
@@ -244,7 +247,8 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
     model = model.float()
-    model = torch.nn.DataParallel(model).cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = torch.nn.DataParallel(model).to(device)
     #model = model.cuda()
     #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
@@ -307,8 +311,8 @@ def main(args):
 
     # Train and test
     best_loss = 999
-    current_iters = 0
-    for epoch in range(args.epoch):
+    current_iters = 0+args.start_epoch
+    for epoch in range(args.start_epoch,args.epoch):
         print("here_start", epoch, args.epoch)
         """
         training
@@ -402,16 +406,12 @@ if __name__ == '__main__':
         "SOLIN", 
         "SPPS"
     ])
-    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[
-        "qtend_check", 
-        "stend_check", 
-        "SOLL", 
-        "SOLS", 
-        "SOLSD", 
-        "SOLLD", 
-        "FSDS"
-    ])
+    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[],
+                        help="additional variables to use as inputs in the previous \
+                        timesteps besides vars in input_vars and output_vars")
     parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
+    parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
+        input variables")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)

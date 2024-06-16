@@ -57,16 +57,16 @@ def test_single_column_multistep1_ex():
     col_names = np.loadtxt("col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS", "UL", "VL", "LWUP"]
     col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
-    col_names_prev = col_names_x + ["FLNS", "FLNT"] + col_names_y
+    col_names_prev = ["FLNS", "FLNT"]
     input_indices = [
         ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
         ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x))
     ]
     output_indices = [("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y))] # index 60 is not used
     prev_input_indices = [
-        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_prev)),
+        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
         ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_prev)),
-        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_prev))
+        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y))
     ]
     data_means = dict(np.load("../consts/all_means.npz"))
     data_stds = dict(np.load("../consts/all_stds.npz"))
