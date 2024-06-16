@@ -237,7 +237,8 @@ class DatasetDisk(data.Dataset):
         sample_rate=1,
         include_filename=False,
         region_mask1d=None,
-        region_mask2d=None):
+        region_mask2d=None,
+        ex_dir="ex_data"):
         """
         Args:
             curr_input_indices (tuple): 
@@ -316,6 +317,8 @@ class DatasetDisk(data.Dataset):
         if region_mask2d:
             self.region_mask2d = region_slice2d(region_mask2d)
 
+        self.ex_dir = ex_dir
+
     def __len__(self):
         'Denotes the total number of samples'
         return self.size
@@ -345,7 +348,7 @@ class DatasetDisk(data.Dataset):
         output_data = []
         for dtype, indices in slice:
             if dtype == "EX":
-                data = np.load(self.ex_dir + "/" + filename.split("/")[-1]) # data shape (channels, lat, lon)
+                data = np.load(self.ex_dir + "/" + filename.split("/")[-1][:-4]+".npy") # data shape (channels, lat, lon)
             elif dtype == "X":
                 data = np.load(filename)["data_x"].squeeze() # data shape (channels, lat, lon)
             elif dtype == "Y":

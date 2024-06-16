@@ -122,6 +122,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             prev_points_x = points_x[:, :309]
             previous_points_y = points_x[:, 309:309+65]
             prev_points_x = (prev_points_x.float()).to(device)
+
+            # predict previous timstep outputs using spcam input
             prev_qtend = all_models["0_29"](prev_points_x)
             prev_stend = all_models["30_59"](prev_points_x)
             prev_rad = all_models["61_65"](prev_points_x)
@@ -131,6 +133,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             prev_gt["0_29"].append(previous_points_y[:, :30].cpu().numpy())
             prev_gt["30_59"].append(previous_points_y[:, 30:60].cpu().numpy())
             prev_gt["61_65"].append(previous_points_y[:, 60:65].cpu().numpy())
+
+            # predict current timestep outputs using spcam input
             curr_points_x = points_x[:, -309:]
             curr_points_x = (curr_points_x.float()).to(device)
             curr_points_y = points_y
@@ -140,6 +144,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_gt["0_29"].append(curr_points_y[:, :30].cpu().numpy())
             curr_gt["30_59"].append(curr_points_y[:, 30:60].cpu().numpy())
             curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
+
+            # predict current timestep outputs using previous timestep outputs and spcam input
             curr_points_x_2step = torch.cat([
                 points_x[:-309:-(309+122)], 
                 prev_qtend, prev_stend, prev_rad,
@@ -148,81 +154,55 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
-            
-
-
-            #points_y = points_y[0]
-            #y1 = y1[0]
-            #print("points_y:", points_y.shape, points_y.mean(), points_y.std())
-            #print("y1:", y1.shape, y1.mean(), y1.std())
-            if True:
-                if iter % 200 == 0:
-                    print(batch[-1])
-                    filename = batch[-1][0][-1].split("/")[-1][:-4]
-                    np.savez(f"offline_test_{filename}", gt=points_y, pred=y1)
-            if get_thickness is not None:
-                y1 = y1* thickness * phys_consts.LATVAP
-                points_y = points_y*thickness*phys_consts.LATVAP
-            y_1.append(y1)
-            y_gt.append(points_y)
-            loss = np.mean((y1 - points_y)**2)
-            if loss < best_loss:
-                best_loss = loss
-                best_filenames = batch[-1]
-            if loss > worst_loss:
-                worst_loss = loss
-                worst_filenames = batch[-1]
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
         print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
-    np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
-    np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
+    # np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
+    # np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
 
-    y_1 = np.concatenate(y_1, axis=0)
+    # y_1 = np.concatenate(y_1, axis=0)
     # y_2 = np.concatenate(y_2, axis=0)
     #y_4 = np.concatenate(y_4, axis=0)
-    y_gt = np.concatenate(y_gt, axis=0)
+    # y_gt = np.concatenate(y_gt, axis=0)
+    for key in ["0_29", "30_59", "61_65"]:
+        prev_preds[key] = np.concatenate(prev_preds[key], axis=0)
+        prev_gt[key] = np.concatenate(prev_gt[key], axis=0)
+        curr_preds[key] = np.concatenate(curr_preds[key], axis=0)
+        curr_gt[key] = np.concatenate(curr_gt[key], axis=0)
+        curr_preds_2step[key] = np.concatenate(curr_preds_2step[key], axis=0)
 
     test_time = time.time() - test_time_begin
 
     # qtend_log = report_qtend(y_gt, y_1)
     # qtend_log_lvl = report_qtend_vert(y_gt, y_1)
-    log = report_metric(y_gt, y_1)
-    log_lvl = report_metric_vert(y_gt, y_1)
-    if False:
-        for quantile in [0.5,0.7,0.9,1]:
-            print(f"Quantile {quantile} results:")
-            qtend_log_lvl = report_qtend_vert_quantile(y_gt, y_1, quantile)
-            print(qtend_log_lvl["r2"])
-        for tail in [0.1,0.2,0.3]:
-            print(f"tail {tail} results:")
-            qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=True)
-            print("Top:", qtend_log_lvl["r2"])
-            qtend_log_lvl = report_qtend_vert_tail(y_gt, y_1, tail, top=False)
-            print("Bottom:", qtend_log_lvl["r2"])
-    if args.region_mask == "all":
-        #qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
-        log_spatial = report_metric_spatial(y_gt, y_1, (y_1.shape[-1], 96, 144))
-    # qtend_log_spatial = report_qtend_spatial(y_gt, y_1)
-    #print(json.dumps(qtend_log_lvl, indent=4))
-    del y_1
-
-    res = {
-        "log": log,
-        # "stend_log": stend_log,
-        #"rad_log": rad_log,
-        #"rad_log_individual": rad_log_individual,
-        "log_lvl": log_lvl,
-        # "qtend_log_spatial": qtend_log_spatial,
-        # "stend_log_lvl": stend_log_lvl,
-        # "stend_log_spatial": stend_log_spatial
+    logs = {
+        "prev": {},
+        "curr": {},
+        "curr_2step": {}
     }
-    if args.region_mask == "all":
-        res["log_spatial"] = log_spatial
-    return res, problem_files
+    preds = {
+        "prev": prev_preds,
+        "curr": curr_preds,
+        "curr_2step": curr_preds_2step
+    }
+
+    gts = {
+        "prev": prev_gt,
+        "curr": curr_gt,
+        "curr_2step": curr_gt
+    }
+    for test_type in ["prev", "curr", "curr_2step"]:
+        for key in ["0_29", "30_59", "61_65"]:
+            logs[test_type][key] = {
+                "total": report_metric(gts[test_type][key], preds[test_type][key]),
+                "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
+                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (96, 144)),
+            }
+
+    return logs
 
 def prep_dataloaders(
     args,
