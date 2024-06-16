@@ -33,6 +33,8 @@ def gen_col_indices(col_names, vars):
         start_idx, end_idx = get_index_from_colnames(col_names, cn)
         if start_idx != -1:
             col_indices.extend(list(range(start_idx, end_idx)))
+        else:
+            print(f"Variable {cn} not found in col_names")
     return col_indices
 
 def gen_multistep_col_indices(col_names, prev_ex_vars, col_names_x, col_names_y, multistep):
