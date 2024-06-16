@@ -91,7 +91,7 @@ def main(args):
         raise NotImplementedError
     elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
-        col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+        col_names_y = ["SOLL","SOLS","SOLSD","SOLLD","FSDS"]
         output_indices = [("Y", np.arange(61, 66))] # index 60 is not used
 #             if args.output_type == '61-65':
     else:
