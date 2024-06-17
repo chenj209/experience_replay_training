@@ -312,7 +312,7 @@ if __name__ == "__main__":
     all_files.sort()
     # testing data starts from 35040
     # all files are formatted in name 00010.npy, find idx where name is 35040
-    test_files = all_files[args.start_ts:]
+    test_files = all_files[args.start_ts+1:]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)

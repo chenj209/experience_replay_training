@@ -121,19 +121,19 @@ def Regression_Metrics_axis(y_true, y_pred, axis):
     bias = np.mean(y_pred-y_true, axis=axis)
     r2   = 1 - mse/var 
     return {
-        "var": var, 
-        "var_pred": var_pred, 
-        "std": std, 
-        "std_pred": std_pred, 
-        "mean": mean, 
-        "mean_pred": mean_pred, 
-        "mse": mse, 
-        "rmse": rmse, 
-        "mae": mae, 
-        "max_ae": max_ae, 
-        "bias": bias, 
-        "r2": r2, 
-        "me": me 
+        "var": var.tolist(), 
+        "var_pred": var_pred.tolist(), 
+        "std": std.tolist(), 
+        "std_pred": std_pred.tolist(), 
+        "mean": mean.tolist(), 
+        "mean_pred": mean_pred.tolist(), 
+        "mse": mse.tolist(), 
+        "rmse": rmse.tolist(), 
+        "mae": mae.tolist(), 
+        "max_ae": max_ae.tolist(), 
+        "bias": bias.tolist(), 
+        "r2": r2.tolist(), 
+        "me": me.tolist() 
     }
 
     
