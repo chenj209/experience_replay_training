@@ -6,7 +6,7 @@ def get_argparser():
     # Datasets
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
-    parser.add_argument('--noise_std', default=0.05, type=float, metavar='M',
+    parser.add_argument('--noise_std', default=0.0, type=float, metavar='M',
                         help='white noise added to the data')
     parser.add_argument('--data_dir', type=str, metavar='PATH',
                         help='path to dataset', default="./training_data")
@@ -14,7 +14,7 @@ def get_argparser():
                         help='0-29,30-59,60,61,62,63,64')
 
     # Optimization options
-    parser.add_argument('--epoch', default=100, type=int, metavar='N',
+    parser.add_argument('--epoch', default=50, type=int, metavar='N',
                         help='number of epochs to run')
     parser.add_argument('--train_batch', default=10, type=int, metavar='N',
                         help='train batchsize')
@@ -31,9 +31,9 @@ def get_argparser():
     # model potions
     parser.add_argument('--network', default='resnet', type=str,
                         help='function for regression')
-    parser.add_argument('--node_size',  default=150,type=int, help='node size')
+    parser.add_argument('--node_size',  default=512,type=int, help='node size')
     parser.add_argument('--layers', default=7, type=int, help='num of layers')
-    parser.add_argument('--num_blocks', default=2, type=int, help='num of blocks of resnet')
+    parser.add_argument('--num_blocks', default=7, type=int, help='num of blocks of resnet')
     parser.add_argument('--activation', default='relu', type=str, help='activation function')
     parser.add_argument('--dropout', default=0, type=float, help='probability of setting element to be zero')
     parser.add_argument('--norm', default='none', type=str)

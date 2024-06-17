@@ -32,7 +32,7 @@ python train_time_model_legacy_format.py  \
     --worker 4
 sampled12_qtend_legacy_training_with_new_vars
 
-#: <<'sampled12_qtend_legacy_training_with_new_vars_CAPE_CLOUD_SPPRECC'
+: <<'sampled12_qtend_legacy_training_with_new_vars_CAPE_CLOUD_SPPRECC'
 python train_time_model_legacy_format.py  \
     --data_dir /data/nncam_data/image_set/ \
     --ex_data_dir /data/chenj209/ex_dataset/ \
@@ -48,4 +48,4 @@ python train_time_model_legacy_format.py  \
     --network resnet_output30 \
     --train_batch 32 \
     --worker 4
-#sampled12_qtend_legacy_training_with_new_vars_CAPE_CLOUD_SPPRECC
+sampled12_qtend_legacy_training_with_new_vars_CAPE_CLOUD_SPPRECC

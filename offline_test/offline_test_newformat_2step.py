@@ -121,12 +121,12 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             prev_points_x = (prev_points_x.float()).to(device)
 
             # predict previous timstep outputs using spcam input
-            prev_qtend = all_models["0_29"](prev_points_x)
-            prev_stend = all_models["30_59"](prev_points_x)
-            prev_rad = all_models["61_65"](prev_points_x)
-            prev_preds["0_29"].append(prev_qtend.detach().cpu().numpy())
-            prev_preds["30_59"].append(prev_stend.detach().cpu().numpy())
-            prev_preds["61_65"].append(prev_rad.detach().cpu().numpy())
+            prev_qtend = all_models["0_29"](prev_points_x).detach().cpu()
+            prev_stend = all_models["30_59"](prev_points_x).detach().cpu()
+            prev_rad = all_models["61_65"](prev_points_x).detach().cpu()
+            prev_preds["0_29"].append(prev_qtend.numpy())
+            prev_preds["30_59"].append(prev_stend.numpy())
+            prev_preds["61_65"].append(prev_rad.numpy())
             prev_gt["0_29"].append(previous_points_y[:, :30].cpu().numpy())
             prev_gt["30_59"].append(previous_points_y[:, 30:60].cpu().numpy())
             prev_gt["61_65"].append(previous_points_y[:, 60:65].cpu().numpy())
@@ -143,11 +143,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
 
             # predict current timestep outputs using previous timestep outputs and spcam input
-            curr_points_x_2step = torch.cat([
+            curr_points_x_2step = (torch.cat([
                 points_x[:,-(309+122):-309], 
                 prev_qtend, prev_stend, prev_rad,
                 points_x[:,-122:]
-                ], dim=1).float()
+                ], dim=1).float()).to(device)
             curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
@@ -185,10 +185,13 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     }
     for test_type in ["prev", "curr", "curr_2step"]:
         for key in ["0_29", "30_59", "61_65"]:
+            data_dim = 30
+            if key == "61_65":
+                data_dim = 5
             logs[test_type][key] = {
                 "total": report_metric(gts[test_type][key], preds[test_type][key], title=f"{test_type}_{key}"),
                 "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
-                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (30, 96, 144)),
+                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (data_dim, 96, 144)),
             }
     return logs
 
@@ -215,7 +218,7 @@ def prep_dataloaders(
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=1,
-                                 num_workers=4,
+                                 num_workers=1,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
 
