@@ -147,13 +147,14 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 points_x[:,-(309+122):-309], 
                 prev_qtend, prev_stend, prev_rad,
                 points_x[:,-122:]
-                ], dim=1)
+                ], dim=1).float()
             curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
-        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
-        print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
+        #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
+        print(f"testing {iter}/{len(testloader)}")
+        # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
@@ -187,7 +188,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             logs[test_type][key] = {
                 "total": report_metric(gts[test_type][key], preds[test_type][key], title=f"{test_type}_{key}"),
                 "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
-                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (96, 144)),
+                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (30, 96, 144)),
             }
     return logs
 
