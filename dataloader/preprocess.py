@@ -221,7 +221,7 @@ class StandardizeTransform:
             start_idx, end_idx = get_index_from_colnames(self.col_names, col)
             target_shape += end_idx - start_idx
         # debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
-        assert x.shape[0] == target_shape, f"Input data shape does not match \
+        assert x.shape[0] == target_shape, f"Input data {x.shape} shape does not match \
             the expected shape {target_shape}"
         # print("before norm x shape: ", x.shape)
         if self.normalize_input:

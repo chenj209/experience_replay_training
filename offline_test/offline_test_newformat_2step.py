@@ -144,7 +144,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
             # predict current timestep outputs using previous timestep outputs and spcam input
             curr_points_x_2step = torch.cat([
-                points_x[:-309:-(309+122)], 
+                points_x[:,-(309+122):-309], 
                 prev_qtend, prev_stend, prev_rad,
                 points_x[:,-122:]
                 ], dim=1)
@@ -189,7 +189,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
                 "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (96, 144)),
             }
-
     return logs
 
 def prep_dataloaders(
@@ -289,7 +288,7 @@ if __name__ == "__main__":
     print("Output indices: ", col_names[output_indices])
 
     multistep_col_names_x = []
-    for i in range(int(args.multistep)):
+    for i in range(int(3)):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(prev_ex_vars)
     multistep_col_names_x.extend(col_names_x)
