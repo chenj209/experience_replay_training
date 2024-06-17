@@ -347,15 +347,16 @@ class DatasetDisk(data.Dataset):
         """
         output_data = []
         for dtype, indices in slice:
-            if dtype == "EX":
-                data = np.load(self.ex_dir + "/" + filename.split("/")[-1][:-4]+".npy") # data shape (channels, lat, lon)
-            elif dtype == "X":
-                data = np.load(filename)["data_x"].squeeze() # data shape (channels, lat, lon)
-            elif dtype == "Y":
-                data = np.load(filename)["data_y"].squeeze() # data shape (channels, lat, lon)
-            else:
-                raise Exception(f"Invalid key {dtype}")
-            output_data.append(data[indices])
+            if len(indices) > 0:
+                if dtype == "EX":
+                    data = np.load(self.ex_dir + "/" + filename.split("/")[-1][:-4]+".npy") # data shape (channels, lat, lon)
+                elif dtype == "X":
+                    data = np.load(filename)["data_x"].squeeze() # data shape (channels, lat, lon)
+                elif dtype == "Y":
+                    data = np.load(filename)["data_y"].squeeze() # data shape (channels, lat, lon)
+                else:
+                    raise Exception(f"Invalid key {dtype}")
+                output_data.append(data[indices])
         output_data = np.concatenate(output_data, axis=0)
         return output_data
 
