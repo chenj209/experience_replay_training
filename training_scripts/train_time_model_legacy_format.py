@@ -173,8 +173,10 @@ def main(args):
         is_train=False,
         transform=transform,
         include_filename=True,
-        region_mask1d=None if args.region_mask=="all"
-                           else np.load(args.region_mask))
+        ex_dir=args.ex_data_dir
+    )
+        # region_mask1d=None if args.region_mask=="all"
+        #                   else np.load(args.region_mask))
 
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=args.train_batch,
