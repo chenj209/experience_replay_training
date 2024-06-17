@@ -1,0 +1,13 @@
+python train_time_model_legacy_format.py  \
+    --data_dir ../dataloader/data \
+    --ex_data_dir ../dataloader/ex_data \
+    --checkpoint ckpts_sampled12/conv_mem/test_legacy_training \
+    --data_means ../consts/all_means.npz \
+    --data_stds ../consts/all_stds.npz \
+    --multistep 1 \
+    --sample_rate 12 \
+    --input_vars QL T_nn_in dqvls_nn_in dTls_nn_in SOLIN SPPS UL VL LWUP \
+    --output_vars qtend_check \
+    --input_vars_prev FLNS FLNT qtend_check stend_check SOLL SOLS SOLSD SOLLD FSDS \
+    --lr_strategy coslr \
+    --network resnet_output30

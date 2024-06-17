@@ -46,28 +46,34 @@ class EarlyStopper:
                 return True
         return False
 
-def cal_input_size(col_names_):
+def cal_input_size(col_names):
+    print(col_names)
     s = 0
-    for i in range(len(col_names_)):
-        s += len(col_names_[i][1])
+    for i in range(len(col_names)):
+        s += len(col_names[i][1])
     return s
 
 COL_NAMES_LEGACY = {
     "X": [
         *[f"QL_lev{i}" for i in range(30)],
         *[f"T_nn_in_lev{i}" for i in range(30)],
-        *[f"dqvls_lev{i}" for i in range(30)],
-        *[f"dTls_lev{i}" for i in range(30)],
+        *[f"dqvls_nn_in_lev{i}" for i in range(30)],
+        *[f"dTls_nn_in_lev{i}" for i in range(30)],
         "SOLIN",
         "SPPS"
     ],
     "Y": [
         *[f"qtend_check_lev{i}" for i in range(30)],
         *[f"stend_check_lev{i}" for i in range(30)],
+        "UNKNOWN",
         "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
     ],
-    "EX": []
+    "EX": [*[f"UL_lev{i}" for i in range(30)],
+           *[f"VL_lev{i}" for i in range(30)],
+           *[f"CLOUD_lev{i}" for i in range(30)], 
+           "CAPE", "FLNS", "FLNT", "SPPRECC", "LWUP"]
 }
+
 
 def main(args):
     data_dir = args.data_dir
@@ -93,66 +99,33 @@ def main(args):
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     #col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
     col_names_x = args.input_vars
-    input_indices = np.concatenate([
+    col_names_y = args.output_vars
+    col_names_prev = args.input_vars_prev
+    input_indices = [
         # input indices can only come from X and EX
         # Y contains output variables which is not available at current step
-        gen_col_indices(col_names_x, COL_NAMES_LEGACY["X"]),
-        gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
-    ])
+        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x))
+    ]
     
-    prev_ex_vars = args.input_vars_prev
-    prev_input_indices = np.concatenate([
+    prev_input_indices = [
         #  prev_input indices can come from X, Y and EX
-        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["X"]),
-        gen_col_indices(prev_ex_vars, COL_NAMES_LEGACY["Y"]),
-        gen_col_indices(col_names_x, COL_NAMES_LEGACY["EX"])
-    ])
-    col_names_y = args.output_vars
-    output_indices = np.concatenate([
+        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x + col_names_prev)),
+        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_prev)),
+    ]
+    output_indices = [
         # output indices can only come from Y and EX
-        gen_col_indices(col_names_y, COL_NAMES_LEGACY["Y"]),
-        gen_col_indices(col_names_y, COL_NAMES_LEGACY["EX"]),
-    ])
+        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_y)),
+    ]
     data_means = dict(np.load(args.data_means))
     data_stds = dict(np.load(args.data_stds))
         
-#     if args.output_type == '0-29':
-#         #batch[1] = batch[1][:, :, :30]
-#         #col_names_y = ["qtend_check"]
-#         output_indices = [("Y", np.arange(30))] # index 60 is not used
-#     elif args.output_type == '30-59':
-#         # batch[1] = batch[1][:, :, 30:60]
-#         col_names_y = ["stend_check"]
-#         output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
-#     elif args.output_type == '60':
-#         #batch[1] = batch[1][:, :, 60:61]
-#         raise NotImplementedError
-#     elif args.output_type == '61-65':
-#         #batch[1] = batch[1][:, :, 61:66]
-#         col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
-#         output_indices = [("Y", np.arange(61, 66))] # index 60 is not used
-# #             if args.output_type == '61-65':
-#     else:
-#         col_names_y = [args.output_type]
-    #col_names_y = ["qtend_check"]
-
-    # input_indices = [("X", np.arange(122))]
-    #output_indices = [("Y", np.concatenate([np.arange(60), np.arange(61,66)]))] # index 60 is not used
-    # output_indices = [("Y", np.arange(30, 60))] # index 60 is not used
-    # prev_input_indices = [("X", np.arange(122)), ("Y", np.concatenate([np.arange(60), np.arange(61,66)]))]
-    # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep))
-    # print("input_indices:", col_names[input_indices])
-    # print("prev_input_indices:", col_names[prev_input_indices])
-    # print("output_indices:", col_names[output_indices])
-    # if args.region_mask == "all":
-        # region_mask = np.ones((96,144))
-    # else:
-        # region_mask = np.load(args.region_mask)
-
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
-        multistep_col_names_x.extend(prev_ex_vars)
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(col_names_prev)
     multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
         #RegionMaskTransform(region_mask),
@@ -178,7 +151,8 @@ def main(args):
         sample_rate=int(args.sample_rate),
         is_train=True,
         transform=transform,
-        include_filename=True
+        include_filename=True,
+        ex_dir=args.ex_data_dir
     )
         # region_mask1d=None if args.region_mask=="all"
                         #    else np.load(args.region_mask))
@@ -217,20 +191,20 @@ def main(args):
     elif args.network == 'resnet_output30':
         #model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
         #model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
-        input_size = cal_input_size(training_set.input_indices)\
-                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
+        input_size = cal_input_size(input_indices)\
+                    +int(args.multistep)*(cal_input_size(prev_input_indices))
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output5':
         #model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
-        input_size = cal_input_size(training_set.input_indices)\
-                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
+        input_size = cal_input_size(input_indices)\
+                    +int(args.multistep)*(cal_input_size(prev_input_indices))
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'resnet_output1':
         #model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
-        input_size = len(training_set.input_indices)\
-                    +int(args.multistep)*(len(training_set.prev_input_indices))
+        input_size = cal_input_size(training_set.input_indices)\
+                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
         print(f"Model input size: {input_size}")
         model = models.ResMLP(input_size, 1, args.node_size, args.activation, args.num_blocks)
     elif args.network == 'mlp_output30':
@@ -244,7 +218,8 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
     model = model.float()
-    model = torch.nn.DataParallel(model).cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = torch.nn.DataParallel(model).to(device)
     #model = model.cuda()
     #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
@@ -307,8 +282,8 @@ def main(args):
 
     # Train and test
     best_loss = 999
-    current_iters = 0
-    for epoch in range(args.epoch):
+    current_iters = 0+args.start_epoch
+    for epoch in range(args.start_epoch,args.epoch):
         print("here_start", epoch, args.epoch)
         """
         training
@@ -402,16 +377,12 @@ if __name__ == '__main__':
         "SOLIN", 
         "SPPS"
     ])
-    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[
-        "qtend_check", 
-        "stend_check", 
-        "SOLL", 
-        "SOLS", 
-        "SOLSD", 
-        "SOLLD", 
-        "FSDS"
-    ])
+    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[],
+                        help="additional variables to use as inputs in the previous \
+                        timesteps besides vars in input_vars and output_vars")
     parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
+    parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
+        input variables")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
