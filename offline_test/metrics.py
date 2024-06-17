@@ -271,7 +271,7 @@ def report_qtend_vert(y_gt, qtend):
     #print(qtend.shape)
     return Regression_Metrics_axis(y_gt, qtend, axis=0)
 
-def report_metric(y_gt, y_pred, mask=None):
+def report_metric(y_gt, y_pred, mask=None, title=""):
     if mask is not None:
         out = Regression_Metrics(y_gt[mask], y_pred[mask])
     else:
@@ -280,7 +280,7 @@ def report_metric(y_gt, y_pred, mask=None):
     \t{:.4}({:.4%})\t'.format(
         50, out["r2"], out["mse"], out["rmse"], out["rmse"]/out["std"], 
         out["mae"], out["max_ae"], out["bias"], out["bias"]/out["std"])
-    log = ""
+    log = title + "\n"
     log += "metrics:\n"
     log += "epoch\tr2\tmse\trmse\t\tmae\tmax_ae\tbias\n"
     log += metrics

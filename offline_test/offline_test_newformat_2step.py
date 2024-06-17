@@ -32,10 +32,7 @@ FlattenSpatialTransform, get_min_max_coords
 from normalization import get_inverse_newformat, inverse_data_var_names
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
-from metrics import Regression_Metrics, Regression_Metrics_axis, reverse_operations, \
-    report_qtend, report_stend, report_rad_prog, report_rad_prog_individual, \
-    report_qtend_vert, report_stend_vert, report_qtend_spatial, report_stend_spatial, \
-    get_thickness_from_ps_1d, report_qtend_vert_quantile, report_qtend_vert_tail, \
+from metrics import get_thickness_from_ps_1d, \
     report_metric, report_metric_vert, report_metric_spatial
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
@@ -160,13 +157,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
-    # np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy", np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0))
-    # np.save(f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy", np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0))
-
-    # y_1 = np.concatenate(y_1, axis=0)
-    # y_2 = np.concatenate(y_2, axis=0)
-    #y_4 = np.concatenate(y_4, axis=0)
-    # y_gt = np.concatenate(y_gt, axis=0)
     for key in ["0_29", "30_59", "61_65"]:
         prev_preds[key] = np.concatenate(prev_preds[key], axis=0)
         prev_gt[key] = np.concatenate(prev_gt[key], axis=0)
@@ -176,8 +166,6 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
     test_time = time.time() - test_time_begin
 
-    # qtend_log = report_qtend(y_gt, y_1)
-    # qtend_log_lvl = report_qtend_vert(y_gt, y_1)
     logs = {
         "prev": {},
         "curr": {},
@@ -197,7 +185,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     for test_type in ["prev", "curr", "curr_2step"]:
         for key in ["0_29", "30_59", "61_65"]:
             logs[test_type][key] = {
-                "total": report_metric(gts[test_type][key], preds[test_type][key]),
+                "total": report_metric(gts[test_type][key], preds[test_type][key], title=f"{test_type}_{key}"),
                 "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
                 "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (96, 144)),
             }
@@ -242,9 +230,9 @@ if __name__ == "__main__":
     random.seed(0)
     np.random.seed(0)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65, or other single output")
-    #parser.add_argument("--resume", "-re", help="path to selected model")
-    parser.add_argument("resume", help="path to configuration file")
+    parser.add_argument("--model029", help="path to configuration file")
+    parser.add_argument("--model3059", help="path to configuration file")
+    parser.add_argument("--model6165", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
     parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
     parser.add_argument("--thick", action="store_true")
@@ -262,7 +250,6 @@ if __name__ == "__main__":
                         all previous arguments if conflicts")
     args = parser.parse_args()
     print(args)
-    # prioritize args from train_configs
     if args.train_configs is not None:
         with open(args.train_configs, "r") as f:
             train_configs = yaml.safe_load(f)
@@ -273,27 +260,7 @@ if __name__ == "__main__":
                     setattr(args, key, train_configs[key])
         print("After train_configs overwrite:", args)
 
-    #print(args.config)
-    # with open(args.config, "r") as f:
-        # config = json.load(f)
-    # model_ckpt_path = config["0-29"]["ckpt_path"]
-    model_ckpt_path = args.resume
-    # all_models = load_models(
-    #     config["0-29"]["ckpt_path"],
-    #     # config["30-59"]["ckpt_path"],
-    #     None,
-    #     None,
-    #     #config["61-65"]["ckpt_path"]
-    #     None,
-    #     model_type="resmlp_122_30"
-    # )
     np.random.seed(0)
-    #data_dir = "/home/users/data/nncam_data/image_testset/"
-    #if not os.path.isdir(data_dir):
-    #    data_dir = "/data/nncam_data/image_testset/"
-    #if not os.path.isdir(data_dir):
-    #    #data_dir = "/global/cfs/cdirs/m4359/zhangtao/nncam/image_testset/"
-    #    data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data_32/"
     data_dir = DATA_DIR
     print("Test set path: ", data_dir)
 
@@ -302,24 +269,9 @@ if __name__ == "__main__":
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     # col_names_y = ["qtend_check"]
-    if args.output_type == '0-29':
-        #batch[1] = batch[1][:, :, :30]
-        col_names_y = ["qtend_check"]
-        output_size = 30
-    elif args.output_type == '30-59':
-        # batch[1] = batch[1][:, :, 30:60]
-        col_names_y = ["stend_check"]
-        output_size = 30
-    elif args.output_type == '61-65':
-        #batch[1] = batch[1][:, :, 61:66]
-        #col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
-        col_names_y = ["SOLL","SOLS","SOLSD","SOLLD","FSDS"]
-        output_size = 5
-#             if args.output_type == '61-65':
-    else:
-        col_names_y = [args.output_type]
-        output_size = 1
-    output_name = '_'.join(col_names_y)
+    col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+    output_size = 65
+    # output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
     #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
 
@@ -353,14 +305,6 @@ if __name__ == "__main__":
     print("Region window coordinates: ", lon[min_y], lon[max_y-1], lat[min_x], lat[max_x-1])
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
-    if args.thick:
-        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
-        hyai = pconsts["hyai"]
-        hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
-    else:
-        get_thickness = None
-
     if args.norm_type == "std":
         data_means = dict(np.load(args.data_means))
         data_stds = dict(np.load(args.data_stds))
@@ -391,48 +335,18 @@ if __name__ == "__main__":
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
 
-    if args.thick:
-        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
-        hyai = pconsts["hyai"]
-        hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
-    else:
-        get_thickness = None
     input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
-    # all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
-    all_models = {'model': load_resmlp_newformat2(model_ckpt_path, input_size, output_size)}
+    all_models = {
+        '0_29': load_resmlp_newformat2(args.model029, input_size, 30),
+        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30),
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5)
+    }
 
 
-    logs, problem_files = offline_test(args, all_models, testloader, get_thickness)
-    if len(problem_files) > 0:
-        with open(f"{args.out_json.rstrip('.json')}_problem_files.txt", "w") as f:
-            f.write(str(problem_files))
+    logs = offline_test(args, all_models, testloader, None)
 
     with open(args.out_json, "w") as f:
-        json.dump({
-            # "dq/dt": logs["qtend_log"],
-            args.output_type: logs["log"],
-            #"dT/dt": logs["stend_log"],
-            #"radiation": rad_log,
-            #"dqdt_lvl": qtend_log_lvl,
-            #"dTdt_lvl": stend_log_lvl,
-            #**logs["rad_log_individual"]
-            }, f, indent=4)
-    # with open("ex_"+args.out_json, "w") as f:
-    #     json.dump({
-    #         #"dq/dt": qtend_log,
-    #         #"dT/dt": stend_log,
-    #         "radiation": logs["rad_log"],
-    #         "dqdt_lvl": logs["qtend_log_lvl"],
-    #         "dTdt_lvl": logs["stend_log_lvl"],
-    #         #**rad_log_individual
-    #         }, f, indent=4)
-
-    if args.region_mask == "all":
-        np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_spatial.npz", **logs["log_spatial"])
-    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_spatial.npz", **logs["stend_log_spatial"])
-    np.savez(f"ex_{output_name}_{args.out_json.rstrip('.json')}_vert.npz", **logs["log_lvl"])
-    #np.savez(f"ex_stend_{args.out_json.rstrip('.json')}_vert.npz", **logs["stend_log_lvl"])
+        json.dump(logs, f, indent=4)
 
 
 
