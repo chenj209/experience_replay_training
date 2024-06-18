@@ -286,6 +286,7 @@ class DatasetDisk(data.Dataset):
         else:
             self.file_names = self.all_files[::sample_rate]
         print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
+        print(f"first files: {self.file_names[:10]}")
         self.noise_std = noise_std
         self.is_train = is_train
         self.include_filename = include_filename

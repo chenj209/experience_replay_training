@@ -112,7 +112,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch[:4]
             # points_x is of 3 timestep (122+65+122+65+122)
-            filename = batch[-1][0][0].split("/")[-1]
+            filenames = [batch[-1][i][0].split("/")[-1] for i in range(len(batch[-1]))]
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
 
@@ -130,7 +130,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
         print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
-        print(f"testing {iter}/{len(testloader)}, filename: {filename}")
+        print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
