@@ -185,7 +185,7 @@ def prep_dataloaders(
         output_indices,
         is_train=False,
         transform=transform,
-        multistep=2,
+        multistep=int(args.multistep),
         sample_rate=int(args.sample_rate),
         include_filename=True,
         region_mask1d=region_mask
@@ -262,14 +262,14 @@ if __name__ == "__main__":
     print(test_files[:10])
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, multistep=2
+        col_names, prev_ex_vars, col_names_x, col_names_y, multistep=args.multistep
     )
     print("Input indices: ", col_names[input_indices])
     print("Prev input indices: ", col_names[prev_input_indices])
     print("Output indices: ", col_names[output_indices])
 
     multistep_col_names_x = []
-    for i in range(int(2)):
+    for i in range(int(args.multistep)):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(prev_ex_vars)
     multistep_col_names_x.extend(col_names_x)
@@ -315,7 +315,7 @@ if __name__ == "__main__":
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
 
-    input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
+    input_size = len(input_indices)+len(prev_input_indices)
     all_models = {
         '0_29': load_resmlp_newformat2(args.model029, input_size, 30),
         '30_59': load_resmlp_newformat2(args.model3059, input_size, 30),
