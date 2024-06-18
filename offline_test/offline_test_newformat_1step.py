@@ -130,7 +130,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
         print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
-        print(filename)
+        print(f"testing {iter}/{len(testloader)}, filename: {filename}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
@@ -259,6 +259,7 @@ if __name__ == "__main__":
     # testing data starts from 35040
     # all files are formatted in name 00010.npy, find idx where name is 35040
     test_files = all_files[args.start_ts:]
+    print(test_files[:10])
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         col_names, prev_ex_vars, col_names_x, col_names_y, multistep=2
@@ -297,7 +298,7 @@ if __name__ == "__main__":
                 normalize_input=True,
                 normalize_output=True,
                 include_raw=True,
-                threshold=1e10
+                threshold=3
                 ),
             FlattenSpatialTransform(),
             ])
