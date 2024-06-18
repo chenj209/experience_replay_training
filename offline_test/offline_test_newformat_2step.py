@@ -192,8 +192,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             logs[test_type][key] = {
                 "total": report_metric(gts[test_type][key], preds[test_type][key], title=f"{test_type}_{key}"),
                 "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
-                "spatial": report_metric_spatial(gts[test_type][key], preds[test_type][key], (data_dim, 96, 144)),
             }
+            np.save(f"spatial_{args.out_json}", report_metric_spatial(gts[test_type][key], preds[test_type][key], (data_dim, 96, 144)))
+
     return logs
 
 def prep_dataloaders(
@@ -219,7 +220,7 @@ def prep_dataloaders(
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
                                  batch_size=1,
-                                 num_workers=1,
+                                 num_workers=2,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
 
@@ -260,9 +261,9 @@ if __name__ == "__main__":
             for key in train_configs:
                 if train_configs[key] is not None \
                     and key != "resume" \
-                    and key != "sample_rate": # resume is always chosen from args.resume args
+                    and key != "sample_rate" \
+                    and key != "multistep": # resume is always chosen from args.resume args
                     setattr(args, key, train_configs[key])
-        args.multistep = 2
         print("After train_configs overwrite:", args)
 
     np.random.seed(0)

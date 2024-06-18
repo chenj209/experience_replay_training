@@ -84,7 +84,7 @@ class PairDatasetDisk(data.Dataset):
             for file_name in self.all_files[::sample_rate]:
                 cur_idx = filename_to_idx(file_name)
                 missing_flag = False
-                for p in range(1, self.multistep+1):
+                for p in range(self.multistep, 0, -1):
                     prev_idx = cur_idx - p
                     tokens = file_name.split("/")
                     prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
@@ -150,7 +150,7 @@ class PairDatasetDisk(data.Dataset):
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
         prev_inputs = []
-        for p in range(1,self.multistep+1):
+        for p in range(self.multistep, 0, -1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
             tx_prev = self.load_slice(prev_file, self.prev_input_indices1)
             prev_inputs.append(tx_prev)
@@ -179,7 +179,7 @@ class PairDatasetDisk(data.Dataset):
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
         prev_inputs = []
-        for p in range(1,self.multistep+1):
+        for p in range(self.multistep, 0, -1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
             tx_prev = self.load_slice(prev_file, self.prev_input_indices2)
             prev_inputs.append(tx_prev)
@@ -273,7 +273,7 @@ class DatasetDisk(data.Dataset):
             for file_name in self.all_files[::sample_rate]:
                 cur_idx = filename_to_idx(file_name)
                 missing_flag = False
-                for p in range(1, self.multistep+1):
+                for p in range(self.multistep, 0, -1):
                     prev_idx = cur_idx - p
                     tokens = file_name.split("/")
                     prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
@@ -344,7 +344,7 @@ class DatasetDisk(data.Dataset):
         tokens = target_file.split("/")
         target_fileidx = filename_to_idx(tokens[-1])
         prev_inputs = []
-        for p in range(1,self.multistep+1):
+        for p in range(self.multistep, 0, -1):
             prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
             tx_prev = self.load_slice(prev_file, self.prev_input_indices)
             prev_inputs.append(tx_prev)

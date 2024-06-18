@@ -15,6 +15,7 @@ python offline_test_newformat_2step.py \
     --model6165 /share3/chenj209/ckpts_sampled12/conv_mem/baseline_model6165_sampled12_multistep1_EX__EXPREV__region_all/checkpoint_epoch35.pth.tar \
     --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/baseline_model029_sampled12_multistep1_EX__EXPREV__region_all/configs.txt \
     --start_ts 35040 \
-    --sample_rate 144 \
-    test_out.json
+    --sample_rate 12 \
+    --multistep 2 \
+    conv_offline_2step.json
 #ai002_test
