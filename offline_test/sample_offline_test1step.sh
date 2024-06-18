@@ -16,5 +16,6 @@ python offline_test_newformat_1step.py \
     --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/baseline_model029_sampled12_multistep1_EX__EXPREV__region_all/configs.txt \
     --start_ts 35040 \
     --sample_rate 144 \
+    --multistep 2 \
     test_out.json
 #ai002_test
