@@ -184,7 +184,7 @@ def prep_dataloaders(
         output_indices,
         is_train=False,
         transform=transform,
-        multistep=1,
+        multistep=2,
         sample_rate=int(args.sample_rate),
         include_filename=True,
         region_mask1d=region_mask
@@ -260,14 +260,14 @@ if __name__ == "__main__":
     test_files = all_files[args.start_ts:]
 
     input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, multistep=1
+        col_names, prev_ex_vars, col_names_x, col_names_y, multistep=2
     )
     print("Input indices: ", col_names[input_indices])
     print("Prev input indices: ", col_names[prev_input_indices])
     print("Output indices: ", col_names[output_indices])
 
     multistep_col_names_x = []
-    for i in range(int(1)):
+    for i in range(int(2)):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(prev_ex_vars)
     multistep_col_names_x.extend(col_names_x)
