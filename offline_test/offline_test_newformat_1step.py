@@ -233,7 +233,8 @@ if __name__ == "__main__":
             for key in train_configs:
                 if train_configs[key] is not None \
                     and key != "resume" \
-                    and key != "sample_rate": # resume is always chosen from args.resume args
+                    and key != "sample_rate" \
+                    and key != "multistep": # resume is always chosen from args.resume args
                     setattr(args, key, train_configs[key])
         print("After train_configs overwrite:", args)
 
