@@ -25,202 +25,6 @@ def region_slice2d(region_mask2d):
     # max_y = np.max(np.where(mask)[1])
     # return min_x-pad, max_x+1+pad, min_y-pad, max_y+1+pad
 
-
-class PairDatasetDisk(data.Dataset):
-    'Characterizes a dataset for PyTorch'
-    def __init__(
-        self,
-        file_names,
-        curr_input_indices1,
-        prev_input_indices1,
-        output_indices1,
-        curr_input_indices2,
-        prev_input_indices2,
-        output_indices2,
-        is_train,
-        noise_std = 0,
-        transform1=None,
-        transform2=None,
-        silent=True,
-        multistep=0,
-        sample_rate=1,
-        include_filename=False,
-        region_mask1d=None,
-        region_mask2d=None):
-        # TODO: modify paired dataset to use legacy format too
-        raise NotImplementedError
-        ### load the data ###
-        all_files = file_names[:]
-        # self.data_std = data_std
-        # self.data_mean = data_mean
-        # if is_train:
-        for i in range(17507,17530):
-            for file_name in all_files:
-                if str(i) in file_name:
-                    all_files.remove(file_name)
-
-        #print('after file num:', len(all_files))
-
-        #for i in ['00001', '08690', '17522', '26210', '09242']:
-        for i in ['00001', '08690', '17522', '26210']:
-            for file_name in all_files:
-                if i in file_name:
-                    all_files.remove(file_name)
-        for i in ['35042', '43730', '52562']:
-            for file_name in all_files:
-                if i in file_name:
-                    all_files.remove(file_name)
-        for i in range(55015,55056):
-            for file_name in all_files:
-                if str(i) in file_name:
-                    all_files.remove(file_name)
-
-
-        self.silent = silent
-        self.multistep = multistep
-        self.all_files = all_files[:]
-        self.all_files.sort(key=filename_to_idx)
-        self.file_names = []
-        if self.multistep > 0:
-            for file_name in self.all_files[::sample_rate]:
-                cur_idx = filename_to_idx(file_name)
-                missing_flag = False
-                for p in range(self.multistep, 0, -1):
-                    prev_idx = cur_idx - p
-                    tokens = file_name.split("/")
-                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx)])
-                    if prev_file_name not in self.all_files:
-                        print(f"Missing {prev_file_name} for {file_name}")
-                        missing_flag = True
-                        break
-                if not missing_flag:
-                    self.file_names.append(file_name)
-        else:
-            self.file_names = self.all_files[::sample_rate]
-        print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
-        self.noise_std = noise_std
-        self.is_train = is_train
-        self.include_filename = include_filename
-        self.size = len(self.file_names)
-        pconsts = np.load(os.path.join(os.path.dirname(__file__), "..", "consts", "phys_consts.npz"))
-        self.hyam = pconsts["hyam"]
-        self.hybm = pconsts["hybm"]
-        self.input_indices1 = curr_input_indices1
-        self.input_indices2 = curr_input_indices2
-        self.prev_input_indices1 = prev_input_indices1
-        self.prev_input_indices2 = prev_input_indices2
-        self.output_indices1 = output_indices1
-        self.output_indices2 = output_indices2
-        self.transform1 = transform1
-        self.transform2 = transform2
-        self.region_mask1d = region_mask1d
-        self.region_mask2d = None
-        if region_mask2d:
-            self.region_mask2d = region_slice2d(region_mask2d)
-
-    def __len__(self):
-        'Denotes the total number of samples'
-        return self.size
-
-    def inverse_y(self):
-        inverse = {}
-        for yname in self.col_names_y:
-            print(f"gen {yname} inverse")
-            inverse[yname] = lambda y: inverse_data_var_names(y, [yname], \
-                self.col_names, self.data_mean, self.data_std)
-        return inverse
-
-
-    def load_slice(self, filename, slice):
-        data = np.load(filename, mmap_mode="r")
-        if self.region_mask1d is not None:
-            return np.array([data[i, self.region_mask1d.astype(bool)] for i in slice])
-        if self.region_mask2d is not None:
-            min_x, max_x, min_y, max_y = self.region_mask2d
-            return data[slice, min_x:max_x, min_y:max_y]
-        return data[slice]
-
-    def load_data1(self, index):
-        target_file = self.file_names[index]
-        file_names = [target_file]
-        if not os.path.exists(target_file):
-            raise ValueError(f"File {target_file} does not exist")
-        tx = self.load_slice(target_file, self.input_indices1)
-        y = self.load_slice(target_file, self.output_indices1)
-
-        tokens = target_file.split("/")
-        target_fileidx = filename_to_idx(tokens[-1])
-        prev_inputs = []
-        for p in range(self.multistep, 0, -1):
-            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            tx_prev = self.load_slice(prev_file, self.prev_input_indices1)
-            prev_inputs.append(tx_prev)
-            # prev_raws.append(tx_raw_prev)
-            file_names.append(prev_file)
-
-        x = np.concatenate([*prev_inputs, tx], axis=0)
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y, file_names[::-1]
-
-    def load_data2(self, index):
-        target_file = self.file_names[index]
-        file_names = [target_file]
-        if not os.path.exists(target_file):
-            raise ValueError(f"File {target_file} does not exist")
-        tx = self.load_slice(target_file, self.input_indices2)
-        y = self.load_slice(target_file, self.output_indices2)
-
-        tokens = target_file.split("/")
-        target_fileidx = filename_to_idx(tokens[-1])
-        prev_inputs = []
-        for p in range(self.multistep, 0, -1):
-            prev_file = "/".join(tokens[:-1]+[idx_to_filename(target_fileidx-p)])
-            tx_prev = self.load_slice(prev_file, self.prev_input_indices2)
-            prev_inputs.append(tx_prev)
-            # prev_raws.append(tx_raw_prev)
-            file_names.append(prev_file)
-
-        x = np.concatenate([*prev_inputs, tx], axis=0)
-
-        if self.is_train and self.noise_std>0:
-            # print(self.noise_std)
-            noise_x = np.random.randn(x.shape[0]) * self.noise_std
-            noise_y = np.random.randn(y.shape[0]) * self.noise_std
-            x = x + noise_x
-            y = y + noise_y
-
-        return x, y, file_names[::-1]
-
-
-    def __getitem__(self, index):
-        'Generates one sample of data'
-        x1, y1, file_names1 = self.load_data1(index)
-        x2, y2, file_names2 = self.load_data2(index)
-        assert(file_names1 == file_names2)
-        file_names = file_names1
-        sample1 = [x1, y1]
-        sample2 = [x2, y2]
-        if self.include_filename:
-            sample1.append(file_names)
-            sample2.append(file_names)
-        if self.transform1 and self.transform2:
-            sample1 = self.transform1(sample1)
-            sample2 = self.transform2(sample2)
-        if sample1 is None or sample2 is None:
-            return None
-        # remove filenames from sample1
-        sample = [*sample1[:-1], *sample2]
-        return sample
-
-
-
 class DatasetDisk(data.Dataset):
     'Characterizes a dataset for PyTorch'
     def __init__(
@@ -234,7 +38,7 @@ class DatasetDisk(data.Dataset):
         transform=None,
         silent=True,
         multistep=0,
-        sample_rate=1,
+        sample_stride=1,
         include_filename=False,
         include_idx=False,
         region_mask1d=None,
@@ -282,11 +86,12 @@ class DatasetDisk(data.Dataset):
 
         self.silent = silent
         self.multistep = multistep
+        self.sample_stride = sample_stride
         self.all_files = all_files[:]
         self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npz"))
         self.file_names = []
         if self.multistep > 0:
-            for file_name in self.all_files[::sample_rate]:
+            for file_name in self.all_files:
                 cur_idx = filename_to_idx(file_name, suffix="\.npz")
                 missing_flag = False
                 for p in range(self.multistep, 0, -1):
@@ -300,7 +105,7 @@ class DatasetDisk(data.Dataset):
                 if not missing_flag:
                     self.file_names.append(file_name)
         else:
-            self.file_names = self.all_files[::sample_rate]
+            self.file_names = self.all_files
         print(f"is_train: {is_train}, dataset size: {len(self.file_names)}")
         self.noise_std = noise_std
         self.is_train = is_train
@@ -323,7 +128,8 @@ class DatasetDisk(data.Dataset):
 
     def __len__(self):
         'Denotes the total number of samples'
-        return self.size
+        # return self.size
+        return (len(self.file_names) + self.sample_stride - 1) // self.sample_stride
 
     def inverse_y(self):
         inverse = {}
@@ -441,13 +247,14 @@ class DatasetDisk(data.Dataset):
         return x, y, file_names[::-1]
 
 
-    def __getitem__(self, index):
+    def __getitem__(self, raw_index):
         'Generates one sample of data'
         #x, y, file_names = self.load_data(index)
-        x, y, file_names = self.load_data_ex(index)
+        strided_index = raw_index * self.sample_stride
+        x, y, file_names = self.load_data_ex(strided_index)
         sample = [x, y]
         if self.include_idx:
-            sample.append(np.array([index]))
+            sample.append(np.array([strided_index]))
         if self.include_filename:
             sample.append(file_names)
         if self.transform:
