@@ -11,7 +11,7 @@ from torch.utils import data
 
 from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
-from dataloader_legacy_format import DatasetDisk, filter_collate
+from dataloader_stride import DatasetDisk, filter_collate
 from debug_utils import print_mean_std_by_var, print_min_max_by_var
 # import torch transforms
 
@@ -92,7 +92,7 @@ def test_single_column_multistep1_ex():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -127,10 +127,10 @@ def test_single_column_multistep1_ex():
     np.save("debug_raw_y", raw_data_y)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("Mean Std by var")
-    print_mean_std_by_var(norm_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(norm_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(norm_data_y, col_names_y, col_names)
     print("Raw Mean Std by var")
-    print_mean_std_by_var(raw_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(raw_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(raw_data_y, col_names_y, col_names)
 
 def test_single_column_multistep0_ex():
@@ -172,7 +172,7 @@ def test_single_column_multistep0_ex():
         prev_input_indices,
         output_indices,
         multistep=0,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -267,7 +267,7 @@ def test_single_column_multistep0():
         prev_input_indices,
         output_indices,
         multistep=0,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -371,7 +371,7 @@ def test_single_column_multistep1():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -459,7 +459,7 @@ def test_image_multistep0():
         prev_input_indices,
         output_indices,
         multistep=0,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -532,7 +532,7 @@ def test_image_multistep1():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True

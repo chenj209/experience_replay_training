@@ -127,10 +127,10 @@ def test_single_column_multistep1_ex():
     np.save("debug_raw_y", raw_data_y)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("Mean Std by var")
-    print_mean_std_by_var(norm_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(norm_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(norm_data_y, col_names_y, col_names)
     print("Raw Mean Std by var")
-    print_mean_std_by_var(raw_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(raw_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(raw_data_y, col_names_y, col_names)
 
 def test_single_column_multistep0_ex():
