@@ -12,7 +12,7 @@ from torch.utils import data
 
 from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
-from dataloader_legacy_format import DatasetDisk, filter_collate
+from dataloader_stride import DatasetDisk, filter_collate
 from debug_utils import print_mean_std_by_var, print_min_max_by_var
 from replay_buffer import ReplayBuffer
 # import torch transforms
@@ -95,7 +95,7 @@ def test_single_column_multistep1_ex():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=12,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True,

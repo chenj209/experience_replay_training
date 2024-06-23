@@ -246,6 +246,19 @@ class DatasetDisk(data.Dataset):
 
         return x, y, file_names[::-1]
 
+    def get_index(self, index):
+        'Generates one sample of data'
+        #x, y, file_names = self.load_data(index)
+        x, y, file_names = self.load_data_ex(index)
+        sample = [x, y]
+        if self.include_idx:
+            sample.append(np.array([index]))
+        if self.include_filename:
+            sample.append(file_names)
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
+
 
     def __getitem__(self, raw_index):
         'Generates one sample of data'
