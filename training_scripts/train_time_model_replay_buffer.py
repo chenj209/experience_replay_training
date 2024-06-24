@@ -204,7 +204,8 @@ def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for model_type in MODEL_TYPES:
         all_models[model_type] = all_models[model_type].float()
-        all_models[model_type] = torch.nn.DataParallel(all_models[model_type]).to(device)
+        # all_models[model_type] = torch.nn.DataParallel(all_models[model_type]).to(device)
+        all_models[model_type] = all_models[model_type].to(device)
     #model = model.cuda()
     #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
