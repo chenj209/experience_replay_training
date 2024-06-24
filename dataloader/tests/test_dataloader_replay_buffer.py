@@ -236,6 +236,7 @@ def test_single_column_multistep1_ex_model_pred(args):
         x, y = batch[:2]
         data_idx = batch[-2]
         test_data_idx = []
+        sampled_files = batch[-1][-1]
         batch_size = x.shape[0]
         points_x = x.reshape(-1, x.shape[-1]).float().to(device)
         pred029 = all_models["0_29"](points_x).detach().cpu().numpy().reshape(batch_size,96*144,30)
@@ -244,6 +245,8 @@ def test_single_column_multistep1_ex_model_pred(args):
         model_preds = np.concatenate([pred029, pred3059, pred6165], axis=2)
         print(model_preds.shape)
         # sampled_files = batch[-1][-1]
+        for sf in sampled_files:
+            test_data_idx.append(training_set.file_names.index(sf))
         print(f"Saving pred_data: {model_preds.shape}, data_idx: {data_idx}, \
             filenames: {batch[-1]}, index in files: {test_data_idx}")
         replay_buffer.store(model_preds, data_idx)
