@@ -13,7 +13,7 @@ class ReplayBuffer():
         self.weighted = weighted
         self.data_loader = data_loader
         self.sample_stride = 1
-        self.dataset_max_idx = data_loader.size
+        self.dataset_max_idx = data_loader.size-1
         self.buffer = {}
         self.buffer['inp'] = np.zeros((max_size, *inp_shape), dtype=np.float32)
         # inp_buf = np.zeros((max_size, *inp_shape), dtype=np.float32)
