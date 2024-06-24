@@ -1,6 +1,7 @@
 import math
 import torch
 import os
+from sklearn.metrics import r2_score
 
 def cosine_lr(opt, base_lr, e, epochs):
     lr = 0.5 * base_lr * (math.cos(math.pi * e / epochs) + 1)
@@ -145,14 +146,17 @@ def test_de(batch, model, criterion):
     # switch to eval mode
     model.eval()
     with torch.no_grad():
-        points_x, points_y = batch[:2]
-        points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+        points_x, points_y_raw = batch[:2]
+        points_x, points_y = (points_x.float()).cuda(), (points_y_raw.float()).cuda()
 
         # compute output
         outputs_y = model(points_x)
         loss = criterion(outputs_y, points_y)
 
-    return loss.item(), loss.item()
+    return loss.item(), r2_score(
+        outputs_y.detach().cpu().numpy().flatten(), 
+        points_y_raw.numpy().flatten()
+        )
 
 def test_de_61_64(batch, model, criterion):
     ####################################################### Xin Wang's code ############################################
