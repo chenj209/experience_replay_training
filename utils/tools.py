@@ -147,7 +147,8 @@ def test_de(batch, model, criterion):
     model.eval()
     with torch.no_grad():
         points_x, points_y = batch[:2]
-        points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        points_x, points_y = (points_x.float()).to(device), (points_y.float()).to(device)
 
         # compute output
         outputs_y = model(points_x)

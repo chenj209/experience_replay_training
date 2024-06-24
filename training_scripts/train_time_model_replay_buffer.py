@@ -274,7 +274,7 @@ def main(args):
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=300, weighted=False)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=32, weighted=False)
     for epoch in range(args.start_epoch,args.epoch):
         print("here_start", epoch, args.epoch)
         """
@@ -294,15 +294,15 @@ def main(args):
                                                     current_iters, len(trainloader) * args.epoch)
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
-            if replay_buffer.ptr > trainloader.batch_size:
+            if replay_buffer.ptr >= trainloader.batch_size:
                 sampled_replay = replay_buffer.sample(trainloader.batch_size)
                 sr_input, sr_target = sampled_replay[:2]
 
-                batch_input = np.concatenate(batch[0], sr_input, axis=0), 
+                batch_input = torch.from_numpy(np.concatenate([batch[0], sr_input], axis=0)) 
                 batch_targets = {
-                    "0_29": np.concatenate(batch[1][:,:,:30], sr_target[:,:,:30], axis=0),
-                    "30_59": np.concatenate(batch[1][:,:,30:60], sr_target[:,:,30:60], axis=0),
-                    "61_65": np.concatenate(batch[1][:,:,60:65], sr_target[:,:,60:65], axis=0)
+                    "0_29": torch.from_numpy(np.concatenate([batch[1][:,:,:30], sr_target[:,:,:30]], axis=0)),
+                    "30_59": torch.from_numpy(np.concatenate([batch[1][:,:,30:60], sr_target[:,:,30:60]], axis=0)),
+                    "61_65": torch.from_numpy(np.concatenate([batch[1][:,:,60:65], sr_target[:,:,60:65]], axis=0))
                 }
             else:
                 batch_input = batch[0]
@@ -352,7 +352,7 @@ def main(args):
                 model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
                 model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
                 model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
-            ])
+            ],axis=2)
             replay_buffer.store(exp, tar_idx)
 
             current_iters += 1
