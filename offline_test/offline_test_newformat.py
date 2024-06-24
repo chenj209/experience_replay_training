@@ -298,7 +298,8 @@ if __name__ == "__main__":
         output_size = 30
     elif args.output_type == '61-65':
         #batch[1] = batch[1][:, :, 61:66]
-        col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+        #col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+        col_names_y = ["SOLL","SOLS","SOLLD","SOLSD","FSDS"]
         output_size = 5
 #             if args.output_type == '61-65':
     else:

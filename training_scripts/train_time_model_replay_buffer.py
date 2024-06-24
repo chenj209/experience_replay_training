@@ -83,7 +83,7 @@ def main(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
         data_dir = "../dataloader/data/"
-        # data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
+        #data_dir = "/pscratch/sd/c/chenjd21/spcam_new_data/"
     if not os.path.isdir(data_dir):
         data_dir = "/data/nncam_data/image_set/"
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
@@ -199,7 +199,7 @@ def main(args):
     all_models['30_59'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     all_models['61_65'] = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
 
-    print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
+    print('Total params: %.2f' % (sum(p.numel() for p in all_models["0_29"].parameters())))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     for model_type in MODEL_TYPES:
         all_models[model_type] = all_models[model_type].float()
