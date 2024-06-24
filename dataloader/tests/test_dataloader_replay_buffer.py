@@ -12,6 +12,7 @@ import torchvision.transforms as transforms
 from torch.utils import data
 from tqdm.autonotebook import tqdm
 import torch
+from sklearn.metrics import r2_score
 
 from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
@@ -184,8 +185,8 @@ def test_single_column_multistep1_ex_model_pred(args):
     print(f"file_names in {data_dir}:", file_names[:10])
     col_names = np.loadtxt("col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
-    col_names_prev = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
+    col_names_prev = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]
     input_indices = [
         ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
         ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x))
@@ -243,6 +244,11 @@ def test_single_column_multistep1_ex_model_pred(args):
         pred3059 = all_models["30_59"](points_x).detach().cpu().numpy().reshape(batch_size,96*144,30)
         pred6165 = all_models["61_65"](points_x).detach().cpu().numpy().reshape(batch_size,96*144,5)
         model_preds = np.concatenate([pred029, pred3059, pred6165], axis=2)
+        print("029 r2: ", r2_score(pred029.flatten(), y[:,:,:30].flatten()))
+        print("3059 r2: ", r2_score(pred3059.flatten(), y[:,:,30:60].flatten()))
+        print("6165 r2: ", r2_score(pred6165.flatten(), y[:,:,60:65].flatten()))
+        for r in range(5):
+            print(f"6165 r2 {r}: ", r2_score(pred6165[:,:,r].flatten(), y[:,:,60+r].flatten()))
         print(model_preds.shape)
         # sampled_files = batch[-1][-1]
         for sf in sampled_files:
@@ -276,6 +282,9 @@ def test_single_column_multistep1_ex_model_pred(args):
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     sample_data_x = np.concatenate(replay_sample_x, axis=0)
     sample_data_y = np.concatenate(replay_sample_y, axis=0)
+    print("029_all r2:", r2_score(norm_data_x[:,122:122+30].flatten(), sample_data_x[:,122:122+30].flatten()))
+    print("3059_all r2:", r2_score(norm_data_x[:,122+30:122+60].flatten(), sample_data_x[:,122+30:122+60].flatten()))
+    print("6165_all r2:", r2_score(norm_data_x[:,122+60:122+65].flatten(), sample_data_x[:,122+60:122+65].flatten()))
     print("norm_data_x shape: ", norm_data_x.shape)
     print("Mean Std by var")
     print_mean_std_by_var(norm_data_x, col_names_x + col_names_prev + col_names_x, col_names)
