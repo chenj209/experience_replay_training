@@ -370,7 +370,7 @@ def main(args):
         test_losses = {}
         for model_type in MODEL_TYPES:
             test_losses[model_type] = AverageMeter()
-            loss_names = {model_type:  model_type + '_mse: {:.5f}'}
+        loss_names = {model_type:  model_type + '_mse: {:.5f} | ' for model_type in MODEL_TYPES}
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
             if batch is None:
@@ -386,8 +386,8 @@ def main(args):
                 test_mse, _  = tools.test_de(batches[model_type], all_models[model_type], criterion)
                 test_losses[model_type].update(test_mse, batch[0].size(0))
                     # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
-                suffix = suffix + loss_names[i].format(test_losses[model_type].avg)
-                print(suffix)
+                suffix = suffix + loss_names[model_type].format(test_losses[model_type].avg)
+            print(suffix)
 
 
         test_time = time.time() - test_time_begin
