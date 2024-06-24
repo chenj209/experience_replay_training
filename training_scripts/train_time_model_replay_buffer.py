@@ -156,6 +156,7 @@ def main(args):
         is_train=True,
         transform=transform,
         include_filename=True,
+        include_idx=True,
         ex_dir=args.ex_data_dir
     )
         # region_mask1d=None if args.region_mask=="all"
@@ -272,6 +273,7 @@ def main(args):
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=300, weighted=False)
     for epoch in range(args.start_epoch,args.epoch):
         print("here_start", epoch, args.epoch)
         """
@@ -291,21 +293,67 @@ def main(args):
                                                     current_iters, len(trainloader) * args.epoch)
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
-            bp_time = time.time()
-            batches = {
-                "0_29": [batch[0], batch[1][:,:,:30]],
-                "30_59": [batch[0], batch[1][:,:,30:60]],
-                "61_65": [batch[0], batch[1][:,:,60:65]]
-            }
+            if replay_buffer.ptr > trainloader.batch_size:
+                sampled_replay = replay_buffer.sample(trainloader.batch_size)
+                sr_input, sr_target = sampled_replay[:2]
+
+                batch_input = np.concatenate(batch[0], sr_input, axis=0), 
+                batch_targets = {
+                    "0_29": np.concatenate(batch[1][:,:,:30], sr_target[:,:,:30], axis=0),
+                    "30_59": np.concatenate(batch[1][:,:,30:60], sr_target[:,:,30:60], axis=0),
+                    "61_65": np.concatenate(batch[1][:,:,60:65], sr_target[:,:,60:65], axis=0)
+                }
+            else:
+                batch_input = batch[0]
+                batch_targets = {
+                    "0_29": batch[1][:,:,:30],
+                    "30_59": batch[1][:,:,30:60],
+                    "61_65": batch[1][:,:,60:65]
+                }
             train_mses = {}
+            model_preds = {}
             for model_type in MODEL_TYPES:
-                train_mses[model_type] = tools.train(
-                    batches[model_type], 
-                    all_models[model_type], 
-                    criterion, 
-                    all_optimizers[model_type]
-                )
+                # train_mses[model_type] = tools.train(
+                #     batches[model_type], 
+                #     all_models[model_type], 
+                #     criterion, 
+                #     all_optimizers[model_type]
+                # )
+                model = all_models[model_type]
+                optimizer = all_optimizers[model_type]
+                model.train()
+
+                points_x, points_y = batch_input, batch_targets[model_type]
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                points_x, points_y = (points_x.float()).to(device), (points_y.float()).to(device)
+                
+                
+            #     print('!!!!!!!!!!!!!!!!!batch',points_x.size())  #1024 122???
+
+                # compute output
+                model_preds[model_type] = model(points_x)
+                # print(outputs_y.size(), points_y.size())
+                loss = criterion(model_preds[model_type], points_y)
+
+                # print(points_y)
+                # print(torch.min(points_y))
+                # compute gradient and do SGD step
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
+
+                train_mses[model_type] = loss.item()
                 all_train_losses[model_type].update(train_mses[model_type], batch[0].size(0))
+            # ready to save experience
+            tar_idx = batch[-2]
+            exp = np.concatenate([
+                model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
+                model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
+                model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
+            ])
+            replay_buffer.store(exp, tar_idx)
+
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
                 train mse: 0_29({:.6f}) 30_59({:.6f}) 61_65({:.6f}'.format(
