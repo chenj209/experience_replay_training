@@ -268,7 +268,7 @@ def main(args):
     total_train_time = time.time()
 
     # Train and test
-    best_loss = 999
+    best_losses = {model_type: 999 for model_type in MODEL_TYPES}
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
@@ -319,46 +319,49 @@ def main(args):
         #### define the loss seperately ## we have 7 mse accordingly
 
         test_losses = {}
-        for i in range(1):
-            test_losses[i] = AverageMeter()
-        loss_name = [args.output_type + '_mse: {:.5f}']
-        print_na
+        for model_type in MODEL_TYPES:
+            test_losses[model_type] = AverageMeter()
+            loss_names = {model_type:  model_type + '_mse: {:.5f}'}
         test_time_begin = time.time()
         for iter, batch in enumerate(testloader):
             if batch is None:
                 # skip empty batch due to missing data
                 continue
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+            batches = {
+                "0_29": [batch[0], batch[1][:,:,:30]],
+                "30_59": [batch[0], batch[1][:,:,30:60]],
+                "61_65": [batch[0], batch[1][:,:,60:65]]
+            }
             for model_type in MODEL_TYPES:
-                test_mse, test_r2 = tools.test_de(batch, all_models, criterion)
-                test_losses[i].update(test_mse, batch[0].size(0))
+                test_mse, _  = tools.test_de(batches[model_type], all_models[model_type], criterion)
+                test_losses[model_type].update(test_mse, batch[0].size(0))
                     # suffix = suffix + loss_name[i].format(1 - test_losses[i].avg/test_variance[args.output_type])
-                suffix = suffix + loss_name[i].format(test_losses[i].avg)
+                suffix = suffix + loss_names[i].format(test_losses[model_type].avg)
                 print(suffix)
 
 
         test_time = time.time() - test_time_begin
         #### save the log and ckpt ###################################
-        save_log = [epoch, lr, train_losses.avg]
-        curr_test_loss = test_losses[i].avg
-        for i in range(1):
-            # save_log.append(1 - test_losses[i].avg/test_variance[args.output_type])
-            save_log.append(test_losses[i].avg)
+        for model_type in MODEL_TYPES:
+            save_log = [epoch, all_lrs[model_type], all_train_losses[model_type].avg]
+            curr_test_loss = test_losses[model_type].avg
+            save_log.append(test_losses[model_type].avg)
 
-        save_log.append(train_time)
-        save_log.append(test_time)
-        logger.append(save_log)
-        # if False and early_stopper.early_stop(test_losses[i].avg):
-            # tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
-            # break
+            save_log.append(train_time)
+            save_log.append(test_time)
+            all_loggers[model_type].append(save_log)
+            # if False and early_stopper.early_stop(test_losses[i].avg):
+                # tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
+                # break
 
-        if (epoch)%5 == 0:
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_epoch'+str(epoch)+'.pth.tar')
-        if curr_test_loss < best_loss:
-            best_loss = curr_test_loss
-            tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint, filename='checkpoint_best_loss.pth.tar')
+            if (epoch)%5 == 0:
+                tools.save_checkpoint({'state_dict': all_models[model_type].state_dict(), 'optimizer': all_optimizers[model_type].state_dict()}, checkpoint=args.checkpoint, filename=model_type+'_checkpoint_epoch'+str(epoch)+'.pth.tar')
+            if curr_test_loss < best_losses[model_type]:
+                best_losses[model_type] = curr_test_loss
+                tools.save_checkpoint({'state_dict': all_models[model_type].state_dict(), 'optimizer': all_optimizers[model_type].state_dict()}, checkpoint=args.checkpoint, filename=model_type+'_checkpoint_best_loss.pth.tar')
 
-        tools.save_checkpoint({'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}, checkpoint=args.checkpoint)
+            tools.save_checkpoint({'state_dict': all_models[model_type].state_dict(), 'optimizer': all_optimizers[model_type].state_dict()}, checkpoint=args.checkpoint, filename=model_type+'_checkpoint.pth.tar')
 
 
 
@@ -366,7 +369,8 @@ def main(args):
         print("here", epoch, args.epoch)
 
 
-    logger.close()
+    for model_type in MODEL_TYPES:
+        all_loggers[model_type].close()
 
 if __name__ == '__main__':
     parser = argsparser.get_argparser()

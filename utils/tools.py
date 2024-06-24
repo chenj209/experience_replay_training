@@ -146,17 +146,14 @@ def test_de(batch, model, criterion):
     # switch to eval mode
     model.eval()
     with torch.no_grad():
-        points_x, points_y_raw = batch[:2]
-        points_x, points_y = (points_x.float()).cuda(), (points_y_raw.float()).cuda()
+        points_x, points_y = batch[:2]
+        points_x, points_y = (points_x.float()).cuda(), (points_y.float()).cuda()
 
         # compute output
         outputs_y = model(points_x)
         loss = criterion(outputs_y, points_y)
 
-    return loss.item(), r2_score(
-        outputs_y.detach().cpu().numpy().flatten(), 
-        points_y_raw.numpy().flatten()
-        )
+    return loss.item(), loss.item()
 
 def test_de_61_64(batch, model, criterion):
     ####################################################### Xin Wang's code ############################################
