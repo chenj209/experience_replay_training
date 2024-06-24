@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 import torchvision.transforms as transforms
 from torch.utils import data
+from tqdm.autonotebook import tqdm
 
 from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, StandardizeTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
@@ -105,9 +106,8 @@ def test_single_column_multistep1_ex():
 
     trainloader = data.DataLoader(training_set, shuffle=True, batch_size=2, num_workers=1, collate_fn=filter_collate)
     replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=300, weighted=False)
-    for _ in range(2):
+    for batch in trainloader:
         # get next item in trainloader
-        batch = next(iter(trainloader))
         x, y = batch[:2]
         data_idx = batch[-2]
         pred_data = y*(-1)
@@ -118,20 +118,32 @@ def test_single_column_multistep1_ex():
         print(f"Saving pred_data: {pred_data.shape}, data_idx: {data_idx}, \
             filenames: {batch[-1]}, index in files: {test_data_idx}")
         replay_buffer.store(pred_data, data_idx)
-    replay_sample = replay_buffer.sample(2)
+    # replay_sample = replay_buffer.sample(2)
+    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=2, num_workers=1, collate_fn=filter_collate)
+    for _ in tqdm(range(20), desc="Verify replay buffer sample"):
+        input_data, target_data, tar_idx = replay_buffer.sample(2)
+        for i in range(2):
+            id = input_data[i]
+            td = target_data[i]
+            ti = tar_idx[i][0]
+            data_to_compare = training_set.get_index(ti)
+            dx, dy = data_to_compare[:2]
+            id[:,185:185+65] *= -1
+            assert np.allclose(dx, id), "Input data not equal"
+            assert np.allclose(dy, td), "Target data not equal"
+
     norm_data_x = []
     norm_data_y = []
     raw_data_x = []
     raw_data_y = []
     
-    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=2, num_workers=1, collate_fn=filter_collate)
     for idx, batch in enumerate(trainloader):
         if batch is None:
             continue
         print("batch items: ", len(batch))
         x, y = batch[:2] # x: (batch, n_samples, n_features)
         x_raw, y_raw = batch[2:4]
-        print("x shape: ", x.shape)
+        print("x shape: ", x.shape, ", filenames: ", batch[-1])
         print("x_raw shape: ", x_raw.shape)
         print("y_raw shape: ", y_raw.shape)
         x = x.reshape(-1, x.shape[-1]) # x: (batch * n_samples, n_features)
@@ -151,10 +163,10 @@ def test_single_column_multistep1_ex():
     np.save("debug_raw_y", raw_data_y)
     print("norm_data_x shape: ", norm_data_x.shape)
     print("Mean Std by var")
-    print_mean_std_by_var(norm_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(norm_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(norm_data_y, col_names_y, col_names)
     print("Raw Mean Std by var")
-    print_mean_std_by_var(raw_data_x, col_names_prev + col_names_x, col_names)
+    print_mean_std_by_var(raw_data_x, col_names_x + col_names_prev + col_names_x, col_names)
     print_mean_std_by_var(raw_data_y, col_names_y, col_names)
 
 

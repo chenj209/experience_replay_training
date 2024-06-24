@@ -62,7 +62,7 @@ class ReplayBuffer():
             # target_data_list.append(self.data_loader.dataset.get_target(tar_idx[i][0]))
             sample = self.data_loader.get_index(tar_idx[i][0]) # shape (13824, 309), (13824, 65)
             input_data, target_data = sample[:2]
-            input_data[:,122:122+65] = inp[i]
+            input_data[:,185:185+65] = inp[i]
             input_data_list.append(input_data)
             target_data_list.append(target_data)
 
