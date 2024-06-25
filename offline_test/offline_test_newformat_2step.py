@@ -154,6 +154,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
         print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 2step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds_2step['0_29'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
@@ -274,10 +275,11 @@ if __name__ == "__main__":
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]+args.ex_input_prev
     # col_names_y = ["qtend_check"]
-    #col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+    col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+    #col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
     output_size = 65
     # output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
@@ -346,9 +348,9 @@ if __name__ == "__main__":
 
     input_size = len(input_indices)+len(prev_input_indices)
     all_models = {
-        '0_29': load_resmlp_newformat2(args.model029, input_size, 30),
-        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30),
-        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5)
+        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=False),
+        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=False),
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=False)
     }
 
 

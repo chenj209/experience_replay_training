@@ -274,7 +274,7 @@ def main(args):
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=32, weighted=False)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=256, weighted=False)
     for epoch in range(args.start_epoch,args.epoch):
         print("here_start", epoch, args.epoch)
         """

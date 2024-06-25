@@ -19,3 +19,15 @@ python offline_test_newformat_2step.py \
     --multistep 2 \
     conv_offline_2step.json
 #ai002_test
+
+#:<<'ai002_test_replay_buffer'
+python offline_test_newformat_2step.py \
+    --model029 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309/0_29_checkpoint_best_loss.pth.tar \
+    --model3059 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309/30_59_checkpoint_best_loss.pth.tar \
+    --model6165 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309/61_65_checkpoint_best_loss.pth.tar \
+    --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309/configs.txt \
+    --start_ts 35040 \
+    --sample_rate 12 \
+    --multistep 2 \
+    replay_buffer_2step.json
+#ai002_test_replay_buffer

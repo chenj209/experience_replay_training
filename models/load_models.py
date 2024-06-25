@@ -3,6 +3,7 @@ import time
 import sys
 import numpy as np
 import re
+from collections import OrderedDict
 #from tqdm.notebook import tqdm
 
 #from dataloader_subset_files import Dataset
@@ -51,7 +52,7 @@ def get_inverse():
 
   return inverse
 
-def load_resmlp_newformat2(ckpt_path, input_size, output_size, gpu_index=0):
+def load_resmlp_newformat2(ckpt_path, input_size, output_size, gpu_index=0, parallel=True):
 
     """
     Load four models from given ckpt path
@@ -81,7 +82,15 @@ def load_resmlp_newformat2(ckpt_path, input_size, output_size, gpu_index=0):
     print('Total number of params: {}'.format(sum(p.numel() for p in model.parameters())))
 
     checkpoint = torch.load(resume,map_location=device)['state_dict']
-    model.load_state_dict(checkpoint)
+    if not parallel:
+        new_state_dict = OrderedDict()
+        for k, v in checkpoint.items():
+            #name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
+            name = "module."+k  # adding `module.` prefix
+            new_state_dict[name] = v
+        model.load_state_dict(new_state_dict)
+    else:
+        model.load_state_dict(checkpoint)
 
     return model
 
