@@ -143,18 +143,21 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
 
             # predict current timestep outputs using previous timestep outputs and spcam input
-            curr_points_x_2step = (torch.cat([
-                points_x[:,-(309+122):-309], 
-                prev_qtend, prev_stend, prev_rad,
-                points_x[:,-122:]
-                ], dim=1).float()).to(device)
+            curr_points_x_2step = curr_points_x.clone()
+            model_preds = torch.cat([prev_qtend, prev_stend, prev_rad], dim=1)
+            curr_points_x_2step[:,122:122+65] = model_preds
+            # curr_points_x_2step = (torch.cat([
+            #     points_x[:,-(309+122):-309], 
+            #     prev_qtend, prev_stend, prev_rad,
+            #     points_x[:,-122:]
+            #     ], dim=1).float()).to(device)
             curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
-        print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
-        print(f"testing {iter}/{len(testloader)}, 029 r2 2step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds_2step['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 1 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 2 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds_2step['0_29'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
