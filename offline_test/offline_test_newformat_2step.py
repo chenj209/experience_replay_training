@@ -257,6 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_configs", type=str, nargs="?",
                         help="path to training configuration file, this overwrites \
                         all previous arguments if conflicts")
+    parser.add_argument("--legacy_order", action="store_true")
     args = parser.parse_args()
     print(args)
     if args.train_configs is not None:
@@ -278,11 +279,13 @@ if __name__ == "__main__":
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]+args.ex_input_prev
-    # col_names_y = ["qtend_check"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
-    #col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+    if args.legacy_order:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]+args.ex_input_prev
+        # col_names_y = ["qtend_check"]
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+    else:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
     output_size = 65
     # output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
@@ -351,9 +354,9 @@ if __name__ == "__main__":
 
     input_size = len(input_indices)+len(prev_input_indices)
     all_models = {
-        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=False),
-        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=False),
-        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=False)
+        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=not args.legacy_order),
+        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=not args.legacy_order),
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=not args.legacy_order)
     }
 
 
