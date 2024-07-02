@@ -49,3 +49,14 @@ python train_time_model_legacy_format.py  \
     --train_batch 32 \
     --worker 4
 sampled12_qtend_legacy_training_with_new_vars_CAPE_CLOUD_SPPRECC
+python train_time_model_legacy_format.py  \
+    --data_dir ../dataloader/data \
+    --ex_data_dir ../dataloader/ex_data \
+    --checkpoint ckpts_sampled12/no_conv_mem/test_legacy_training \
+    --multistep 0 \
+    --sample_rate 12 \
+    --input_vars QL T_nn_in dqvls_nn_in dTls_nn_in SOLIN SPPS \
+    --output_vars qtend_check \
+    --lr_strategy coslr \
+    --network resnet_output30 \
+    --minmax_norm
