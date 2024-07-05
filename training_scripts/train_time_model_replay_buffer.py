@@ -202,10 +202,14 @@ def main(args):
 
     print('Total params: %.2f' % (sum(p.numel() for p in all_models["0_29"].parameters())))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    num_cuda_devices = torch.cuda.device_count()
+    print(f"Number of visible CUDA devices: {num_cuda_devices}")
     for model_type in MODEL_TYPES:
+        #all_models[model_type] = all_models[model_type].float()
+        #model = model.float()
         all_models[model_type] = all_models[model_type].float()
-        # all_models[model_type] = torch.nn.DataParallel(all_models[model_type]).to(device)
-        all_models[model_type] = all_models[model_type].to(device)
+        all_models[model_type] = torch.nn.DataParallel(all_models[model_type]).to(device)
+        #all_models[model_type] = all_models[model_type].to(device)
     #model = model.cuda()
     #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
@@ -274,9 +278,9 @@ def main(args):
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=256, weighted=False)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=256, weighted=False, workers=1)
     for epoch in range(args.start_epoch,args.epoch):
-        print("here_start", epoch, args.epoch)
+        print(f"here_start {epoch}, {args.epoch}")
         """
         training
         """
@@ -284,11 +288,13 @@ def main(args):
         for model_type in MODEL_TYPES:
             all_train_losses[model_type] = AverageMeter()
         train_time_begin = time.time()
+        data_load_start = time.time()
         for iter, batch in enumerate(trainloader):
             if batch is None:
                 print("skip empty batch")
                 # skip empty batch due to missing data
                 continue
+            print(f"Dataload time: {time.time() - data_load_start}")
             for model_type in MODEL_TYPES:
                 all_lrs[model_type] = lr_scheduler[args.lr_strategy](all_optimizers[model_type], args.lr,
                                                     current_iters, len(trainloader) * args.epoch)
@@ -365,6 +371,7 @@ def main(args):
                 train mse: 0_29({:.6f}) 30_59({:.6f}) 61_65({:.6f}'.format(
                     epoch, args.epoch, iter+1, len(trainloader), all_lrs["0_29"], 
                     train_mses["0_29"], train_mses["30_59"], train_mses["61_65"]))
+            data_load_start = time.time()
         train_time = time.time() - train_time_begin
 
         """

@@ -374,7 +374,7 @@ if __name__ == '__main__':
         include_filename=True,
         # region_mask1d=region_mask
         )
-    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=1)
+    trainloader = data.DataLoader(training_set, shuffle=False, batch_size=1, num_workers=args.workers)
     # dqvls_norm = []
     # dqvls = []
     # start_idx, end_idx = get_index_from_colnames(col_names, "dqvls_nn_in")

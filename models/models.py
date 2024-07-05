@@ -104,6 +104,7 @@ class ResMLP(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        #print(f'Batch size on device {x.device}: {x.size(0)}')
         s = torch.nn.functional.pad(x,(0,self.node_size-self.input_size))
         y = self.fc1(x)
         y = self.activation(y)
