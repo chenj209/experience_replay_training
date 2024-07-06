@@ -90,15 +90,20 @@ class ReplayBuffer():
     def sample(self, batch_size):
         start = time.time()
         idx = np.random.permutation(self.size)
-        inp = copy.deepcopy(self.buffer['inp'][idx[0:batch_size]])
-        tar = copy.deepcopy(self.buffer['target'][idx[0:batch_size]])
-        tar_idx = copy.deepcopy(self.buffer['target_idx'][idx[0:batch_size]])
+        #inp = copy.deepcopy(self.buffer['inp'][idx[0:batch_size]])
+        #tar = copy.deepcopy(self.buffer['target'][idx[0:batch_size]])
+        #tar_idx = copy.deepcopy(self.buffer['target_idx'][idx[0:batch_size]])
+        inp = self.buffer['inp'][idx[0:batch_size]]
+        tar = self.buffer['target'][idx[0:batch_size]]
+        tar_idx = self.buffer['target_idx'][idx[0:batch_size]]
 
         if self.weighted:
-            tar_counter = copy.deepcopy(self.buffer['counter'][idx[0:batch_size]])
+            #tar_counter = copy.deepcopy(self.buffer['counter'][idx[0:batch_size]])
+            tar_counter = self.buffer['counter'][idx[0:batch_size]]
 
-        target_data_list = tar
-        input_data_list = inp
+        #target_data_list = tar
+        #input_data_list = inp
+        #print(inp.shape)
 
         # for i in range(batch_size):
             # target_data_list.append(self.data_loader.dataset.get_target(tar_idx[i][0]))
@@ -108,11 +113,13 @@ class ReplayBuffer():
             # input_data_list.append(input_data)
             # target_data_list.append(target_data)
 
-        input_data = np.stack(input_data_list, axis=0)
-        target_data = np.stack(target_data_list, axis=0)
-        del target_data_list
-        del input_data_list
-        gc.collect()
+        #input_data = np.stack(input_data_list, axis=0)
+        input_data = inp
+        #target_data = np.stack(target_data_list, axis=0)
+        target_data = tar
+        #del target_data_list
+        #del input_data_list
+        #gc.collect()
         print(f"Sampeld size {batch_size}, time: {time.time() - start}")
 
         if self.weighted:

@@ -303,7 +303,7 @@ def main(args):
                                                     current_iters, len(trainloader) * args.epoch)
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
-            if replay_buffer.ptr >= trainloader.batch_size:
+            if replay_buffer.size >= trainloader.batch_size:
                 sampled_replay = replay_buffer.sample(trainloader.batch_size)
                 sr_input, sr_target = sampled_replay[:2]
 
@@ -357,11 +357,11 @@ def main(args):
                 all_train_losses[model_type].update(train_mses[model_type], batch[0].size(0))
             # ready to save experience
             tar_idx = batch[-2]
-            if replay_buffer.ptr >= trainloader.batch_size:
-                pred_1step = model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy()
-                pred_2step = model_preds["0_29"][batch[0].size(0):].detach().cpu().numpy()
-                print(f"1 step 029 r2: {r2_score(pred_1step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[:batch[0].size(0),:,:30].flatten())}")
-                print(f"2 step 029 r2: {r2_score(pred_2step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[batch[0].size(0):,:,:30].flatten())}")
+            #if replay_buffer.ptr >= trainloader.batch_size:
+                #pred_1step = model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy()
+                #pred_2step = model_preds["0_29"][batch[0].size(0):].detach().cpu().numpy()
+                #print(f"1 step 029 r2: {r2_score(pred_1step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[:batch[0].size(0),:,:30].flatten())}")
+                #print(f"2 step 029 r2: {r2_score(pred_2step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[batch[0].size(0):,:,:30].flatten())}")
             next_x, next_y = batch[2:4]
             next_x = next_x.numpy()
             next_y = next_y.numpy()

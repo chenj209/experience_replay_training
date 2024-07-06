@@ -10,7 +10,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer.py  \
     --input_vars QL T_nn_in dqvls_nn_in dTls_nn_in SOLIN SPPS \
     --output_vars qtend_check stend_check SOLL SOLS SOLSD SOLLD FSDS \
     --input_vars_prev qtend_check stend_check SOLL SOLS SOLSD SOLLD FSDS \
-    --train_batch 16 \
+    --train_batch 32 \
     --epoch 50 \
     --lr_strategy coslr \
     --manualSeed 1 \
