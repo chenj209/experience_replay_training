@@ -239,3 +239,120 @@ class StandardizeTransform:
             res = [x, y]
         res.extend(sample[2:])
         return res
+
+class StandardizeTransformNext:
+    def __init__(
+            self,
+            data_mean,
+            data_std,
+            data_cols_x,
+            data_cols_y,
+            col_names,
+            multistep=0,
+            normalize_input=True,
+            normalize_output=True,
+            include_raw=False,
+            threshold=4
+            ):
+        """
+        Takes a set of input and output from SPCAM data and standardizes it.
+
+        data_mean: dictionary of mean values for each column
+        data_std: dictionary of standard deviation values for each column
+        data_cols_x: list of columns to standardize in order of appearance in the
+        selected data x
+        data_cols_y: list of columns to standardize in order of appearance in the
+        selected data x
+        col_names: raw column names of the data in order of appearance in the raw data
+                    (loaded from col_names.txt)
+        input_normalized: boolean, whether to normalize the input data
+        normalize_input: boolean, whether to normalize the input data
+        normalize_output: boolean, whether to normalize the output data
+        """
+        self.data_mean = data_mean
+        self.data_std = data_std
+        self.data_cols_x = data_cols_x
+        self.data_cols_y = data_cols_y
+        self.col_names = col_names
+        self.multistep = multistep
+        self.normalize_input = normalize_input
+        self.normalize_output = normalize_output
+        self.include_raw = include_raw
+        if self.include_raw:
+            raise NotImplementedError
+        self.threshold = threshold
+
+    def __call__(self, sample):
+        """
+        Takes in data_x and data_y and standardizes it.
+
+        data_x: input data, shape (n_samples, n_features, lat, lon)
+        data_y: output data, shape (n_samples, n_features, lat, lon)
+        """
+        if sample is None:
+            return None
+        # debug_print("StandardizeTransform: sample {}".format(len(sample)), DEBUG)
+        err_header = "StandardizeTransform:"
+        if len(sample) > 2:
+            filenames = sample[-1]
+            # the last element is the filenames
+            # check if the filenames are in the correct format
+            if type(filenames[0]) == str:
+                err_header = f"{err_header} {filenames}: "
+        
+        data_sets = [[*sample[:2]], [*sample[2:4]]] # current inputs and next inputs
+        res = []
+        for data_x, data_y in data_sets:
+            # data_x, data_y = sample[:2]
+            x = data_x.copy()
+            y = data_y.copy()
+            # check multistep shape here
+            target_shape = 0
+            for col in self.data_cols_x:
+                start_idx, end_idx = get_index_from_colnames(self.col_names, col)
+                target_shape += end_idx - start_idx
+            # debug_print("StandardizeTransform: x shape: {}".format(x.shape), DEBUG)
+            assert x.shape[0] == target_shape, f"Input data {x.shape} shape does not match \
+                the expected shape {target_shape}"
+            # print("before norm x shape: ", x.shape)
+            if self.normalize_input:
+                x = normalize_data_var_names2(x, self.data_cols_x, self.col_names,
+                                    self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
+
+            if self.normalize_output:
+                y = normalize_data_var_names2(y, self.data_cols_y, self.col_names,
+                                        self.data_mean, self.data_std, err_header=err_header, threshold=self.threshold)
+            if x is None or y is None:
+                return None
+            res.extend([x, y])
+            # if self.include_raw:
+            #     res.extend([data_x, data_y])
+        # if self.include_raw:
+        #     res = [x, y, data_x, data_y]
+        # else:
+            # res = [x, y]
+        res.extend(sample[4:])
+        return res
+
+class FlattenSpatialTransformNext:
+    def __call__(self, sample):
+        """
+        Takes in data_x and data_y and flattens the spatial dimensions.
+
+        data_x: input data, shape (n_features, lat, lon)
+        data_y: output data, shape (n_features, lat, lon)
+
+        returns:
+            data_x: input data, shape (lat*lon, n_features)
+        """
+        if sample is None:
+            return None
+        data_sets = [[*sample[:2]], [*sample[2:4]]] # current inputs and next inputs
+        res = []
+        for data_x, data_y in data_sets:
+            # data_x, data_y = sample[:2]
+            data_x = data_x.reshape(data_x.shape[0], -1).T
+            data_y = data_y.reshape(data_y.shape[0], -1).T
+            res.extend([data_x, data_y])
+        res.extend(sample[4:])
+        return res

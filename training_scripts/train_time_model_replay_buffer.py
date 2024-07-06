@@ -25,9 +25,10 @@ import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 #from dataloader_newformat import DatasetDisk, filter_collate
-from dataloader_stride import DatasetDisk, filter_collate
+from dataloader_replay_buffer import DatasetDisk, filter_collate
+from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
-from preprocess import FlattenSpatialTransform, StandardizeTransform, RegionMaskTransform
+from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 
@@ -133,7 +134,7 @@ def main(args):
     multistep_col_names_x.extend(col_names_x)
     transform = transforms.Compose([
         #RegionMaskTransform(region_mask),
-        StandardizeTransform(
+        StandardizeTransformNext(
             data_means,
             data_stds,
             multistep_col_names_x,
@@ -142,7 +143,7 @@ def main(args):
             normalize_input=True,
             normalize_output=True
             ),
-        FlattenSpatialTransform()
+        FlattenSpatialTransformNext()
         ])
 
 
@@ -168,7 +169,7 @@ def main(args):
                                   collate_fn=filter_collate,
                                   pin_memory=True)
 
-    testing_set = DatasetDisk(
+    testing_set = TestDatasetDisk(
         test_files,
         input_indices,
         prev_input_indices,
@@ -239,29 +240,31 @@ def main(args):
             all_optimizers[model_type] = None
 
     # Resume
-    # if args.resume:
-    #     # Load checkpoint.
-    #     print('==> Resuming from checkpoint..')
-    #     assert os.path.isfile(args.resume), 'Error: no checkpoint directory found!'
-    #     checkpoint = torch.load(args.resume)
-    #     try:
-    #         model.load_state_dict(checkpoint['state_dict'])
-    #     except Exception as e:
-    #         print("Model loading error:", e)
-    #         print("Retrying using by adding module prefix")
-    #         new_state_dict = OrderedDict()
-    #         for k, v in checkpoint['state_dict'].items():
-    #             #name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
-    #             name = "module."+k  # adding `module.` prefix
-    #             new_state_dict[name] = v
-    #         model.load_state_dict(new_state_dict)
-    #     optimizer.load_state_dict(checkpoint['optimizer'])
-    #     logger = Logger(os.path.join(args.checkpoint, 'log.txt'), title=title, resume=True)
-    # else:
     all_loggers = {}
-    for model_type in MODEL_TYPES:
-        all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type)
-        all_loggers[model_type].set_names(['Epoch', 'LR', 'train mse', model_type +'_r2',  'train time', 'val time'])
+    if args.resume:
+        # Load checkpoint.
+        print('==> Resuming from checkpoint..')
+        assert os.path.isdir(args.resume), 'Error: no checkpoint directory found!'
+        for model_type in MODEL_TYPES:
+            checkpoint = torch.load(args.resume+f"/{model_type}_checkpoint.pth.tar")
+            try:
+                all_models[model_type].load_state_dict(checkpoint['state_dict'])
+                all_optimizers[model_type].load_state_dict(checkpoint['optimizer'])
+            except Exception as e:
+                print("Model loading error:", e)
+                print("Retrying using by adding module prefix")
+                new_state_dict = OrderedDict()
+                for k, v in checkpoint['state_dict'].items():
+                    #name = k[7:] if k.startswith('module.') else k  # remove `module.` prefix
+                    name = "module."+k  # adding `module.` prefix
+                    new_state_dict[name] = v
+                all_models[model_type].load_state_dict(new_state_dict)
+                all_optimizers[model_type].load_state_dict(checkpoint['optimizer'])
+                all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type, resume=True)
+    else:
+        for model_type in MODEL_TYPES:
+            all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type)
+            all_loggers[model_type].set_names(['Epoch', 'LR', 'train mse', model_type +'_r2',  'train time', 'val time'])
 
     lr_scheduler = {'coslr': tools.cosine_lr,
                     'constant': tools.constant}
@@ -278,7 +281,7 @@ def main(args):
     current_iters = 0+args.start_epoch
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 65], max_size=256, weighted=False, workers=1)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=8, weighted=False, workers=1)
     for epoch in range(args.start_epoch,args.epoch):
         print(f"here_start {epoch}, {args.epoch}")
         """
@@ -359,12 +362,16 @@ def main(args):
                 pred_2step = model_preds["0_29"][batch[0].size(0):].detach().cpu().numpy()
                 print(f"1 step 029 r2: {r2_score(pred_1step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[:batch[0].size(0),:,:30].flatten())}")
                 print(f"2 step 029 r2: {r2_score(pred_2step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[batch[0].size(0):,:,:30].flatten())}")
+            next_x, next_y = batch[2:4]
+            next_x = next_x.numpy()
+            next_y = next_y.numpy()
             exp = np.concatenate([
                 model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
                 model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
                 model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
             ],axis=2)
-            replay_buffer.store(exp, tar_idx)
+            next_x[:,:,122:122+65] = exp
+            replay_buffer.store(next_x, next_y, tar_idx)
 
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \

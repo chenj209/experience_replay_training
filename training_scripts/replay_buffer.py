@@ -42,7 +42,7 @@ def process_sample(args):
 
 
 class ReplayBuffer():
-    def __init__(self, data_loader, inp_shape=[96*144, 65], max_size=300, weighted=False, workers=4) -> None:
+    def __init__(self, data_loader, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=300, weighted=False, workers=4) -> None:
         self.ptr = 0
         self.size = 0
         self.input_shape = inp_shape
@@ -54,6 +54,7 @@ class ReplayBuffer():
         self.dataset_max_idx = data_loader.size-1
         self.buffer = {}
         self.buffer['inp'] = np.zeros((max_size, *inp_shape), dtype=np.float32)
+        self.buffer['target'] = np.zeros((max_size, *tar_shape), dtype=np.float32)
         # inp_buf = np.zeros((max_size, *inp_shape), dtype=np.float32)
         # self.shm = shared_memory.SharedMemory(create=True, size=inp_buf.nbytes)
         # self.shm.unlink()
@@ -63,7 +64,7 @@ class ReplayBuffer():
             self.buffer['counter'] = np.zeros((max_size, 1), dtype=np.uint32)
             
 
-    def store(self, inp_data, tar_idx, counter=None):
+    def store(self, inp_data, tar_data, tar_idx, counter=None):
 
         Bs = tar_idx.shape[0]
         # print(tar_idx.shape)
@@ -71,7 +72,8 @@ class ReplayBuffer():
             if tar_idx[i][0] + self.sample_stride > self.dataset_max_idx or (self.weighted and counter[i][0] >= 44):
                 continue
             else:
-                self.buffer['inp'][self.ptr] = inp_data[i] # (96*144,65)
+                self.buffer['inp'][self.ptr] = inp_data[i] # (96*144,309)
+                self.buffer['target'][self.ptr] = tar_data[i] # (96*144,309)
                 #self.buffer['target_idx'][self.ptr][:] = (tar_idx[i] + self.sample_stride)[:]
                 self.buffer['target_idx'][self.ptr][:] = (tar_idx[i]+self.sample_stride)[:] # (1,) get the next data
                 if self.weighted:
@@ -85,25 +87,26 @@ class ReplayBuffer():
                     self.size = self.max_size
 
     
-    def _sample(self, batch_size):
+    def sample(self, batch_size):
         start = time.time()
         idx = np.random.permutation(self.size)
         inp = copy.deepcopy(self.buffer['inp'][idx[0:batch_size]])
+        tar = copy.deepcopy(self.buffer['target'][idx[0:batch_size]])
         tar_idx = copy.deepcopy(self.buffer['target_idx'][idx[0:batch_size]])
 
         if self.weighted:
             tar_counter = copy.deepcopy(self.buffer['counter'][idx[0:batch_size]])
 
-        target_data_list = []
-        input_data_list = []
+        target_data_list = tar
+        input_data_list = inp
 
-        for i in range(batch_size):
+        # for i in range(batch_size):
             # target_data_list.append(self.data_loader.dataset.get_target(tar_idx[i][0]))
-            sample = self.data_loader.get_index(tar_idx[i][0]) # shape (13824, 309), (13824, 65)
-            input_data, target_data = sample[:2]
-            input_data[:,122:122+65] = inp[i]
-            input_data_list.append(input_data)
-            target_data_list.append(target_data)
+            # sample = self.data_loader.get_index(tar_idx[i][0]) # shape (13824, 309), (13824, 65)
+            # input_data, target_data = sample[:2]
+            # input_data[:,122:122+65] = inp[i]
+            # input_data_list.append(input_data)
+            # target_data_list.append(target_data)
 
         input_data = np.stack(input_data_list, axis=0)
         target_data = np.stack(target_data_list, axis=0)
@@ -117,63 +120,63 @@ class ReplayBuffer():
         else:
             return input_data, target_data, tar_idx
 
-    def sample(self, batch_size):
-        start = time.time()
-        idx = np.random.permutation(self.size)
-        inp = self.buffer['inp'][idx[0:batch_size]]
-        tar_idx = self.buffer['target_idx'][idx[0:batch_size]]
-        weighted = self.weighted
-        num_workers = self.workers
+    # def sample(self, batch_size):
+    #     start = time.time()
+    #     idx = np.random.permutation(self.size)
+    #     inp = self.buffer['inp'][idx[0:batch_size]]
+    #     tar_idx = self.buffer['target_idx'][idx[0:batch_size]]
+    #     weighted = self.weighted
+    #     num_workers = self.workers
 
-        if num_workers == 1:
-            # Sequential version
-            input_data_list = []
-            target_data_list = []
-            for i in range(batch_size):
-                sample = self.data_loader.get_index(tar_idx[i][0])  # shape (13824, 309), (13824, 65)
-                input_data, target_data = sample[:2]
-                input_data[:, 122:122+65] = inp[i]
-                input_data_list.append(input_data)
-                target_data_list.append(target_data)
+    #     if num_workers == 1:
+    #         # Sequential version
+    #         input_data_list = []
+    #         target_data_list = []
+    #         for i in range(batch_size):
+    #             sample = self.data_loader.get_index(tar_idx[i][0])  # shape (13824, 309), (13824, 65)
+    #             input_data, target_data = sample[:2]
+    #             input_data[:, 122:122+65] = inp[i]
+    #             input_data_list.append(input_data)
+    #             target_data_list.append(target_data)
 
-            input_data = np.stack(input_data_list, axis=0)
-            target_data = np.stack(target_data_list, axis=0)
+    #         input_data = np.stack(input_data_list, axis=0)
+    #         target_data = np.stack(target_data_list, axis=0)
             
-            if weighted:
-                tar_counter = self.buffer['counter'][idx[0:batch_size]]
-                gc.collect()
-                print(f"Sampled size {batch_size}, time: {time.time() - start}")
-                return input_data, target_data, tar_idx, tar_counter
-            else:
-                gc.collect()
-                print(f"Sampled size {batch_size}, time: {time.time() - start}")
-                return input_data, target_data, tar_idx
-        else:
-            # Parallel version
-            chunk_size = batch_size // num_workers
+    #         if weighted:
+    #             tar_counter = self.buffer['counter'][idx[0:batch_size]]
+    #             gc.collect()
+    #             print(f"Sampled size {batch_size}, time: {time.time() - start}")
+    #             return input_data, target_data, tar_idx, tar_counter
+    #         else:
+    #             gc.collect()
+    #             print(f"Sampled size {batch_size}, time: {time.time() - start}")
+    #             return input_data, target_data, tar_idx
+    #     else:
+    #         # Parallel version
+    #         chunk_size = batch_size // num_workers
 
-            buffer_inp = Array(ctypes.c_float, inp.flatten(), lock=False)
-            buffer_tar_idx = Array(ctypes.c_int, tar_idx.flatten(), lock=False)
-            buffer_counter = None
-            if weighted:
-                buffer_counter = Array(ctypes.c_float, self.buffer['counter'][idx[0:batch_size]].flatten(), lock=False)
+    #         buffer_inp = Array(ctypes.c_float, inp.flatten(), lock=False)
+    #         buffer_tar_idx = Array(ctypes.c_int, tar_idx.flatten(), lock=False)
+    #         buffer_counter = None
+    #         if weighted:
+    #             buffer_counter = Array(ctypes.c_float, self.buffer['counter'][idx[0:batch_size]].flatten(), lock=False)
 
-            chunks = [(tar_idx[i:i+chunk_size], list(range(i, i+chunk_size)), batch_size, inp.shape) 
-                      for i in range(0, batch_size, chunk_size)]
+    #         chunks = [(tar_idx[i:i+chunk_size], list(range(i, i+chunk_size)), batch_size, inp.shape) 
+    #                   for i in range(0, batch_size, chunk_size)]
 
-            with Pool(processes=num_workers, initializer=init_worker, initargs=(self.data_loader, buffer_inp, buffer_tar_idx, weighted, buffer_counter)) as pool:
-                results = pool.map(process_sample, chunks)
+    #         with Pool(processes=num_workers, initializer=init_worker, initargs=(self.data_loader, buffer_inp, buffer_tar_idx, weighted, buffer_counter)) as pool:
+    #             results = pool.map(process_sample, chunks)
 
-            input_data = np.vstack([result[0] for result in results])
-            target_data = np.vstack([result[1] for result in results])
-            tar_idx_combined = np.vstack([result[2] for result in results])
+    #         input_data = np.vstack([result[0] for result in results])
+    #         target_data = np.vstack([result[1] for result in results])
+    #         tar_idx_combined = np.vstack([result[2] for result in results])
 
-            if weighted:
-                tar_counter_combined = np.vstack([result[3] for result in results])
-                gc.collect()
-                print(f"Sampled size {batch_size}, time: {time.time() - start}")
-                return input_data, target_data, tar_idx_combined, tar_counter_combined
-            else:
-                gc.collect()
-                print(f"Sampled size {batch_size}, time: {time.time() - start}")
-                return input_data, target_data, tar_idx_combined
+    #         if weighted:
+    #             tar_counter_combined = np.vstack([result[3] for result in results])
+    #             gc.collect()
+    #             print(f"Sampled size {batch_size}, time: {time.time() - start}")
+    #             return input_data, target_data, tar_idx_combined, tar_counter_combined
+    #         else:
+    #             gc.collect()
+    #             print(f"Sampled size {batch_size}, time: {time.time() - start}")
+    #             return input_data, target_data, tar_idx_combined
