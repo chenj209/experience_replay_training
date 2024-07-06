@@ -67,9 +67,10 @@ class ReplayBuffer():
     def store(self, inp_data, tar_data, tar_idx, counter=None):
 
         Bs = tar_idx.shape[0]
-        # print(tar_idx.shape)
+        #print(tar_idx.shape)
         for i in range(Bs):
             if tar_idx[i][0] + self.sample_stride > self.dataset_max_idx or (self.weighted and counter[i][0] >= 44):
+                print("here skip:", tar_idx[i][0], self.dataset_max_idx)
                 continue
             else:
                 self.buffer['inp'][self.ptr] = inp_data[i] # (96*144,309)
@@ -85,7 +86,6 @@ class ReplayBuffer():
                 self.size = self.size + 1
                 if self.size > self.max_size:
                     self.size = self.max_size
-
     
     def sample(self, batch_size):
         start = time.time()

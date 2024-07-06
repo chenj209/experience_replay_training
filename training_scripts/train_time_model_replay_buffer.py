@@ -278,10 +278,10 @@ def main(args):
 
     # Train and test
     best_losses = {model_type: 999 for model_type in MODEL_TYPES}
-    current_iters = 0+args.start_epoch
+    current_iters = 0+args.start_epoch*len(trainloader)
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=8, weighted=False, workers=1)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=256, weighted=False, workers=1)
     for epoch in range(args.start_epoch,args.epoch):
         print(f"here_start {epoch}, {args.epoch}")
         """

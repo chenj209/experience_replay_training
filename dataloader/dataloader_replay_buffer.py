@@ -103,14 +103,12 @@ class DatasetDisk(data.Dataset):
                         missing_flag = True
                         break
                 if i != len(self.all_files):
-                    p = (-1) # check next step
-                    prev_idx = cur_idx - p
+                    next_idx = cur_idx + 1
                     tokens = file_name.split("/")
-                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npz")])
-                    if prev_file_name not in self.all_files:
-                        print(f"Missing {prev_file_name} for {file_name}")
+                    next_file_name = "/".join(tokens[:-1]+[idx_to_filename(next_idx, suffix=".npz")])
+                    if next_file_name not in self.all_files:
+                        print(f"Missing next {next_file_name} for {file_name}")
                         missing_flag = True
-                        break
                 if not missing_flag:
                     self.file_names.append(file_name)
         else:
