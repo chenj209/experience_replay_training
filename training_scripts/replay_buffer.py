@@ -65,27 +65,63 @@ class ReplayBuffer():
             
 
     def store(self, inp_data, tar_data, tar_idx, counter=None):
+        start = time.time()
+        Bs = tar_data.shape[0]
 
-        Bs = tar_idx.shape[0]
+        end_ptr = self.ptr + Bs
+        if end_ptr > self.max_size:
+            overflow = end_ptr - self.max_size
+            indices1 = slice(self.ptr, self.max_size)
+            indices2 = slice(0, overflow)
+            self.buffer['inp'][indices1] = inp_data[:self.max_size-self.ptr]
+            self.buffer['inp'][indices2] = inp_data[self.max_size-self.ptr:]
+            self.buffer['target'][indices1] = tar_data[:self.max_size-self.ptr]
+            self.buffer['target'][indices2] = tar_data[self.max_size-self.ptr:]
+            self.buffer['target_idx'][indices1] = tar_idx[:self.max_size-self.ptr]
+            self.buffer['target_idx'][indices2] = tar_idx[self.max_size-self.ptr:]
+        else:
+            indices = slice(self.ptr, end_ptr)
+            self.buffer['inp'][indices] = inp_data
+            self.buffer['target'][indices] = tar_data
+            self.buffer['target_idx'][indices] = tar_idx
+
+        self.ptr = end_ptr % self.max_size
+        self.size = min(self.size + Bs, self.max_size)
+
+        print(f"Store time: {time.time() - start}")
+        #start = time.time()
+        #Bs = tar_idx.shape[0]
+        #self.buffer['inp'][self.ptr:self.ptr+Bs] = inp_data # (96*144,309)
+        #self.buffer['target'][self.ptr:self.ptr+Bs] = tar_data # (96*144,309)
+        ##self.buffer['target_idx'][self.ptr][:] = (tar_idx[i] + self.sample_stride)[:]
+        #self.buffer['target_idx'][self.ptr:self.ptr+Bs] = (tar_idx+self.sample_stride) # (1,) get the next data
+#
+#        self.ptr = self.ptr + Bs
+#        if self.ptr >= self.max_size:
+#            self.ptr = 0
+#        self.size = self.size + Bs
+#        if self.size > self.max_size:
+#            self.size = self.max_size
+#        print(f"store time: {time.time() - start}")
         #print(tar_idx.shape)
-        for i in range(Bs):
-            if tar_idx[i][0] + self.sample_stride > self.dataset_max_idx or (self.weighted and counter[i][0] >= 44):
-                print("here skip:", tar_idx[i][0], self.dataset_max_idx)
-                continue
-            else:
-                self.buffer['inp'][self.ptr] = inp_data[i] # (96*144,309)
-                self.buffer['target'][self.ptr] = tar_data[i] # (96*144,309)
-                #self.buffer['target_idx'][self.ptr][:] = (tar_idx[i] + self.sample_stride)[:]
-                self.buffer['target_idx'][self.ptr][:] = (tar_idx[i]+self.sample_stride)[:] # (1,) get the next data
-                if self.weighted:
-                    self.buffer['counter'][self.ptr][:] = (counter[i] + 1)[:]
-
-                self.ptr = self.ptr + 1
-                if self.ptr >= self.max_size:
-                    self.ptr = 0
-                self.size = self.size + 1
-                if self.size > self.max_size:
-                    self.size = self.max_size
+        #for i in range(Bs):
+        #    if tar_idx[i][0] + self.sample_stride > self.dataset_max_idx or (self.weighted and counter[i][0] >= 44):
+        #        print("here skip:", tar_idx[i][0], self.dataset_max_idx)
+        #        continue
+        #    else:
+        #        self.buffer['inp'][self.ptr] = inp_data[i] # (96*144,309)
+        #        self.buffer['target'][self.ptr] = tar_data[i] # (96*144,309)
+        #        #self.buffer['target_idx'][self.ptr][:] = (tar_idx[i] + self.sample_stride)[:]
+        #        self.buffer['target_idx'][self.ptr][:] = (tar_idx[i]+self.sample_stride)[:] # (1,) get the next data
+                #if self.weighted:
+        #            self.buffer['counter'][self.ptr][:] = (counter[i] + 1)[:]
+#
+#                self.ptr = self.ptr + 1
+#                if self.ptr >= self.max_size:
+                #    self.ptr = 0
+                #self.size = self.size + 1
+                #if self.size > self.max_size:
+                #    self.size = self.max_size
     
     def sample(self, batch_size):
         start = time.time()

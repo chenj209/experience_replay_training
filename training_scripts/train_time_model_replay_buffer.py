@@ -29,6 +29,7 @@ from dataloader_replay_buffer import DatasetDisk, filter_collate
 from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
+from preprocess import FlattenSpatialTransform, StandardizeTransform 
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 
@@ -132,7 +133,7 @@ def main(args):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(col_names_prev)
     multistep_col_names_x.extend(col_names_x)
-    transform = transforms.Compose([
+    traintransform = transforms.Compose([
         #RegionMaskTransform(region_mask),
         StandardizeTransformNext(
             data_means,
@@ -145,6 +146,19 @@ def main(args):
             ),
         FlattenSpatialTransformNext()
         ])
+    testtransform = transforms.Compose([
+        #RegionMaskTransform(region_mask),
+        StandardizeTransform(
+            data_means,
+            data_stds,
+            multistep_col_names_x,
+            col_names_y,
+            col_names,
+            normalize_input=True,
+            normalize_output=True
+            ),
+        FlattenSpatialTransform()
+        ])
 
 
     training_set = DatasetDisk(
@@ -155,7 +169,7 @@ def main(args):
         multistep=int(args.multistep),
         sample_stride=int(args.sample_stride),
         is_train=True,
-        transform=transform,
+        transform=traintransform,
         include_filename=True,
         include_idx=True,
         ex_dir=args.ex_data_dir
@@ -177,7 +191,7 @@ def main(args):
         multistep=int(args.multistep),
         sample_stride=int(args.sample_stride),
         is_train=False,
-        transform=transform,
+        transform=testtransform,
         include_filename=True,
         ex_dir=args.ex_data_dir
     )
@@ -249,7 +263,6 @@ def main(args):
             checkpoint = torch.load(args.resume+f"/{model_type}_checkpoint.pth.tar")
             try:
                 all_models[model_type].load_state_dict(checkpoint['state_dict'])
-                all_optimizers[model_type].load_state_dict(checkpoint['optimizer'])
             except Exception as e:
                 print("Model loading error:", e)
                 print("Retrying using by adding module prefix")
@@ -259,8 +272,8 @@ def main(args):
                     name = "module."+k  # adding `module.` prefix
                     new_state_dict[name] = v
                 all_models[model_type].load_state_dict(new_state_dict)
-                all_optimizers[model_type].load_state_dict(checkpoint['optimizer'])
-                all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type, resume=True)
+            all_optimizers[model_type].load_state_dict(checkpoint['optimizer'])
+            all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type, resume=True)
     else:
         for model_type in MODEL_TYPES:
             all_loggers[model_type] = Logger(os.path.join(args.checkpoint, model_type+'_log.txt'), title=model_type)
@@ -281,7 +294,7 @@ def main(args):
     current_iters = 0+args.start_epoch*len(trainloader)
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=256, weighted=False, workers=1)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=288, weighted=False, workers=1)
     for epoch in range(args.start_epoch,args.epoch):
         print(f"here_start {epoch}, {args.epoch}")
         """
@@ -298,6 +311,8 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             print(f"Dataload time: {time.time() - data_load_start}")
+            batch_start = time.time()
+            prep_data_start = time.time()
             for model_type in MODEL_TYPES:
                 all_lrs[model_type] = lr_scheduler[args.lr_strategy](all_optimizers[model_type], args.lr,
                                                     current_iters, len(trainloader) * args.epoch)
@@ -306,12 +321,20 @@ def main(args):
             if replay_buffer.size >= trainloader.batch_size:
                 sampled_replay = replay_buffer.sample(trainloader.batch_size)
                 sr_input, sr_target = sampled_replay[:2]
-
-                batch_input = torch.from_numpy(np.concatenate([batch[0], sr_input], axis=0)) 
+                sr_input = torch.from_numpy(sr_input)
+                sr_target = torch.from_numpy(sr_target)
+                batch_input = torch.cat([batch[0], sr_input], dim=0)
+                #batch_input = torch.from_numpy(np.concatenate([batch[0], sr_input], axis=0)) 
+                #batch_targets = {
+                #    "0_29": torch.from_numpy(np.concatenate([batch[1][:,:,:30], sr_target[:,:,:30]], axis=0)),
+                #    "30_59": torch.from_numpy(np.concatenate([batch[1][:,:,30:60], sr_target[:,:,30:60]], axis=0)),
+                #    "61_65": torch.from_numpy(np.concatenate([batch[1][:,:,60:65], sr_target[:,:,60:65]], axis=0))
+                ##}
+                batch_target = torch.cat([batch[1], sr_target], dim=0)
                 batch_targets = {
-                    "0_29": torch.from_numpy(np.concatenate([batch[1][:,:,:30], sr_target[:,:,:30]], axis=0)),
-                    "30_59": torch.from_numpy(np.concatenate([batch[1][:,:,30:60], sr_target[:,:,30:60]], axis=0)),
-                    "61_65": torch.from_numpy(np.concatenate([batch[1][:,:,60:65], sr_target[:,:,60:65]], axis=0))
+                    "0_29": batch_target[:,:,:30],
+                    "30_59": batch_target[:,:,30:60],
+                    "61_65": batch_target[:,:,60:65]
                 }
             else:
                 batch_input = batch[0]
@@ -320,8 +343,10 @@ def main(args):
                     "30_59": batch[1][:,:,30:60],
                     "61_65": batch[1][:,:,60:65]
                 }
+            print(f"prep data: {time.time() - prep_data_start}")
             train_mses = {}
             model_preds = {}
+            bp_time = time.time()
             for model_type in MODEL_TYPES:
                 # train_mses[model_type] = tools.train(
                 #     batches[model_type], 
@@ -355,6 +380,8 @@ def main(args):
 
                 train_mses[model_type] = loss.item()
                 all_train_losses[model_type].update(train_mses[model_type], batch[0].size(0))
+            print(f"bp time: {time.time() - bp_time}")
+            store_start = time.time()
             # ready to save experience
             tar_idx = batch[-2]
             #if replay_buffer.ptr >= trainloader.batch_size:
@@ -371,6 +398,7 @@ def main(args):
                 model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
             ],axis=2)
             next_x[:,:,122:122+65] = exp
+            print(f"store start: {time.time() - store_start}")
             replay_buffer.store(next_x, next_y, tar_idx)
 
             current_iters += 1
@@ -379,6 +407,7 @@ def main(args):
                     epoch, args.epoch, iter+1, len(trainloader), all_lrs["0_29"], 
                     train_mses["0_29"], train_mses["30_59"], train_mses["61_65"]))
             data_load_start = time.time()
+            print(f"batch time: {time.time() - batch_start}")
         train_time = time.time() - train_time_begin
 
         """
