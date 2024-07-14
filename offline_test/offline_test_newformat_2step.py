@@ -354,9 +354,9 @@ if __name__ == "__main__":
 
     input_size = len(input_indices)+len(prev_input_indices)
     all_models = {
-        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=not args.legacy_order),
-        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=not args.legacy_order),
-        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=not args.legacy_order)
+        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=True),
+        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=True),
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=True)
     }
 
 
