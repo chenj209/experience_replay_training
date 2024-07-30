@@ -294,7 +294,7 @@ def main(args):
     current_iters = 0+args.start_epoch*len(trainloader)
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=288, weighted=False, workers=1)
+    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=args.buffer_size, weighted=False, workers=1)
     for epoch in range(args.start_epoch,args.epoch):
         print(f"here_start {epoch}, {args.epoch}")
         """
@@ -493,6 +493,7 @@ if __name__ == '__main__':
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
+    parser.add_argument("--buffer_size", default=288, type=int)
     args = parser.parse_args()
     print(args)
 

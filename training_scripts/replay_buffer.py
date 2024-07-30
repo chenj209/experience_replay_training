@@ -53,19 +53,22 @@ class ReplayBuffer():
         self.workers = workers
         self.dataset_max_idx = data_loader.size-1
         self.buffer = {}
-        self.buffer['inp'] = np.zeros((max_size, *inp_shape), dtype=np.float32)
-        self.buffer['target'] = np.zeros((max_size, *tar_shape), dtype=np.float32)
+        if max_size > 0:
+            self.buffer['inp'] = np.zeros((max_size, *inp_shape), dtype=np.float32)
+            self.buffer['target'] = np.zeros((max_size, *tar_shape), dtype=np.float32)
         # inp_buf = np.zeros((max_size, *inp_shape), dtype=np.float32)
         # self.shm = shared_memory.SharedMemory(create=True, size=inp_buf.nbytes)
         # self.shm.unlink()
         # self.buffer['inp'] = np.ndarray(inp_buf.shape, dtype=inp_buf.dtype, buffer=self.shm.buf)
-        self.buffer['target_idx'] = np.zeros((max_size, 1), dtype=np.uint32)
-        if weighted:
-            self.buffer['counter'] = np.zeros((max_size, 1), dtype=np.uint32)
+            self.buffer['target_idx'] = np.zeros((max_size, 1), dtype=np.uint32)
+            if weighted:
+                self.buffer['counter'] = np.zeros((max_size, 1), dtype=np.uint32)
             
 
     def store(self, inp_data, tar_data, tar_idx, counter=None):
         start = time.time()
+        if self.max_size == 0:
+            return
         Bs = tar_data.shape[0]
 
         end_ptr = self.ptr + Bs
