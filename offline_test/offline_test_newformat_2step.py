@@ -117,6 +117,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 points_y.reshape(-1, points_y.shape[-1])
 
             prev_points_x = points_x[:, :309]
+            if args.no_prevQT:
+                prev_points_x = prev_points_x[:, 60:]
             previous_points_y = points_x[:, 309:309+65]
             prev_points_x = (prev_points_x.float()).to(device)
 
@@ -133,6 +135,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
             # predict current timestep outputs using spcam input
             curr_points_x = points_x[:, -309:]
+            if args.no_prevQT:
+                curr_points_x = curr_points_x[:, 60:]
             curr_points_x = (curr_points_x.float()).to(device)
             curr_points_y = points_y
             curr_preds["0_29"].append(all_models["0_29"](curr_points_x).detach().cpu().numpy())
@@ -143,9 +147,12 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
 
             # predict current timestep outputs using previous timestep outputs and spcam input
-            curr_points_x_2step = curr_points_x.clone()
+            curr_points_x_2step = points_x[:, -309:].clone()
+            #curr_points_x_2step = curr_points_x.clone()
             model_preds = torch.cat([prev_qtend, prev_stend, prev_rad], dim=1)
             curr_points_x_2step[:,122:122+65] = model_preds
+            if args.no_prevQT:
+                curr_points_x_2step = curr_points_x_2step[:, 60:]
             # curr_points_x_2step = (torch.cat([
             #     points_x[:,-(309+122):-309], 
             #     prev_qtend, prev_stend, prev_rad,
@@ -156,6 +163,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 1 step prev: {r2_score(previous_points_y[:,:30].flatten(), prev_preds['0_29'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, 029 r2 1 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, 029 r2 2 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds_2step['0_29'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
@@ -258,6 +266,7 @@ if __name__ == "__main__":
                         help="path to training configuration file, this overwrites \
                         all previous arguments if conflicts")
     parser.add_argument("--legacy_order", action="store_true")
+    parser.add_argument("--no_prevQT", action="store_true")
     args = parser.parse_args()
     print(args)
     if args.train_configs is not None:
@@ -353,6 +362,8 @@ if __name__ == "__main__":
                                   transform, region_mask)
 
     input_size = len(input_indices)+len(prev_input_indices)
+    if args.no_prevQT:
+        input_size = input_size - 60
     all_models = {
         '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=True),
         '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=True),

@@ -45,7 +45,7 @@ CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step.py \
     --legacy_order \
     replay_buffer_2step_v2_seed1117.json
 ai002_test_replay_buffer
-#:<<'ai002_test_replay_buffer'
+:<<'ai002_test_replay_buffer'
 CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step.py \
     --model029 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1_full/0_29_checkpoint_best_loss.pth.tar \
     --model3059 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1_full//30_59_checkpoint_best_loss.pth.tar \
@@ -56,4 +56,17 @@ CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step.py \
     --multistep 2 \
     --legacy_order \
     replay_buffer_2step_v2_seed1_full.json
-#ai002_test_replay_buffer
+ai002_test_replay_buffer
+#:<<'ai002_test_noreplay_buffer_noprevQT'
+CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step.py \
+    --model029 /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/0_29_checkpoint_best_loss.pth.tar \
+    --model3059 /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/30_59_checkpoint_best_loss.pth.tar \
+    --model6165 /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/61_65_checkpoint_best_loss.pth.tar \
+    --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/configs.txt \
+    --start_ts 35040 \
+    --sample_rate 12 \
+    --multistep 2 \
+    --legacy_order \
+    --no_prevQT \
+    noreplay_buffer_2step_v2_seed1117_full_noprevQT.json
+#ai002_test_noreplay_buffer_noprevQT
