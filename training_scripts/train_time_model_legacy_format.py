@@ -192,42 +192,19 @@ def main(args):
 
     #early_stopper = EarlyStopper(patience=10,min_delta=0)
     model_load_start = time.time()
-
-    # define model
-    if args.network == 'resnet':
-        model = models.ResNet(args.node_size, args.activation)
-    elif args.network == 'resnet_output30':
-        #model = models.ResNet_output30_Time(args.node_size, args.activation, args.num_blocks)
-        #model = models.ResMLP(309, 30, args.node_size, args.activation, args.num_blocks)
+    models_to_train = {}
+    for out_name in col_names_y:
+        models_to_train[out_name] = models.ResNet(args.node_size, args.activation)
         input_size = cal_input_size(input_indices)\
                     +int(args.multistep)*(cal_input_size(prev_input_indices))
         print(f"Model input size: {input_size}")
+        output_size = 
         model = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
-    elif args.network == 'resnet_output5':
-        #model = models.ResNet_output5_Time(args.node_size, args.activation, args.num_blocks)
-        input_size = cal_input_size(input_indices)\
-                    +int(args.multistep)*(cal_input_size(prev_input_indices))
-        print(f"Model input size: {input_size}")
-        model = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
-    elif args.network == 'resnet_output1':
-        #model = models.ResNet_output1(args.node_size, args.activation, args.num_blocks)
-        input_size = cal_input_size(training_set.input_indices)\
-                    +int(args.multistep)*(cal_input_size(training_set.prev_input_indices))
-        print(f"Model input size: {input_size}")
-        model = models.ResMLP(input_size, 1, args.node_size, args.activation, args.num_blocks)
-    elif args.network == 'mlp_output30':
-        model = models.mlp_output30(args.node_size, args.activation, args.num_blocks)
-    elif args.network == 'mlp_output5':
-        model = models.mlp_output5(args.node_size, args.activation, args.num_blocks)
-    elif args.network == 'mlp_output1':
-        model = models.mlp_output1(args.node_size, args.activation, args.num_blocks)
-    else:
-        model = None
 
-    print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
-    model = model.float()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = torch.nn.DataParallel(model).to(device)
+        print('Total params: %.2f' % (sum(p.numel() for p in model.parameters())))
+        model = model.float()
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = torch.nn.DataParallel(model).to(device)
     #model = model.cuda()
     #model = torch.nn.DataParallel(model, device_ids=[0,1]).cuda(0)
     #print("Devices used by DataParallel:", model.device_ids)
@@ -388,6 +365,7 @@ if __name__ == '__main__':
     parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[],
                         help="additional variables to use as inputs in the previous \
                         timesteps besides vars in input_vars and output_vars")
+    parser.add_argument("--singlemodel", action="store_true", help="use single model for all outputs, otherwise use one model per output")
     parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
     parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
         input variables")
