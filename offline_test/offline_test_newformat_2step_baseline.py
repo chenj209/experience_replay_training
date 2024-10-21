@@ -1,0 +1,383 @@
+import sys
+import argparse
+import yaml
+import os
+import random
+import torch
+import torch.nn as nn
+import torch.nn.parallel
+import re
+import torch.backends.cudnn as cudnn
+import torch.optim as optim
+import numpy as np
+import json
+import time
+import glob
+from torch.utils import data
+from torchvision.transforms import Compose
+from sklearn.metrics import r2_score
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from configs import *
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'consts'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'dataloader'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'models'))
+import phys_consts
+from load_models import load_resmlp_newformat, load_resmlp_newformat2
+#from dataloader_refactor import DatasetDisk
+from dataloader_newformat import DatasetDisk, filter_collate
+from dataloader_utils import gen_multistep_col_indices
+from preprocess import MinMaxTransformLegacy, StandardizeTransform, \
+FlattenSpatialTransform, get_min_max_coords
+from normalization import get_inverse_newformat, inverse_data_var_names
+# from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
+from load_models import load_models
+from metrics import get_thickness_from_ps_1d, \
+    report_metric, report_metric_vert, report_metric_spatial
+sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
+from data_shape import to_inference_shape, inverse_to_inference_shape
+
+def inverse_61_65(x):
+    x[:,0] = (x[:,0]) * (1412 - 0)
+    x[:,1] = (x[:,1]) * (1412 - 0)
+    x[:,2] = (x[:,2]) * (1412 - 0)
+    x[:,3] = (x[:,3]) * (1412 - 0)
+    x[:,4] = (x[:,4]) * (1412 - 0)
+    return x
+
+def inverse_61_64(x):
+    x[:,0] = (x[:,0]+1)/2*(332+53)-53       # flns
+    x[:,1] = (x[:,1]+1)/2*(419-83)+83       # flnt
+    x[:,2] = (x[:,2]+1)/2*(1063+2.13)-2.13  # fsns
+    x[:,3] = (x[:,3]+1)/2*(1299)+0          # fsnt
+    return x
+
+inverse = {}
+inverse['0_29']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
+inverse['30_59'] = lambda x: (x+1)/2*(3.63*2)-3.63
+inverse['60']    = lambda x: (x+1)/2*(2.12e-6)
+inverse['61_64'] = lambda x: inverse_61_64(x)
+inverse['61_65'] = lambda x: inverse_61_65(x)
+
+#def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
+def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
+    problem_files = []
+    test_time_begin = time.time()
+    epoch = 1
+    criterion = nn.MSELoss()
+    prev_preds = {
+        '0_29': [],
+        '30_59': [],
+        '61_65': []
+    }
+    prev_gt = {
+        '0_29': [],
+        '30_59': [],
+        '61_65': []
+    }
+    curr_preds = {
+        '0_29': [],
+        '30_59': [],
+        '61_65': []
+    }
+    curr_gt = {
+        '0_29': [],
+        '30_59': [],
+        '61_65': []
+    }
+    curr_preds_2step = {
+        '0_29': [],
+        '30_59': [],
+        '61_65': []
+    }
+    if args.region_mask == "all":
+        region_mask = np.ones((1,1,96,144))
+    else:
+        region_mask = np.load(args.region_mask)[None, None, :, :]
+    region_mask = to_inference_shape(region_mask)
+    #print("region_mask shape: ", region_mask.shape)
+    region_mask = region_mask.squeeze().astype(bool)
+    best_loss = 1e10
+    best_filenames = None
+    worst_loss = 0
+    worst_filenames = None
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    for iter, batch in enumerate(testloader):
+        # allow empty batch
+        if batch[0].shape[0] == 0:
+            continue
+        suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
+        # file_names = batch[-1]
+        #model.eval()
+        with torch.no_grad():
+            points_x, points_y, x_raw, y_raw = batch[:4]
+            # points_x is of 3 timestep (122+65+122+65+122)
+            filenames = [batch[-1][i][0].split("/")[-1] for i in range(len(batch[-1]))]
+            points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
+                points_y.reshape(-1, points_y.shape[-1])
+
+            prev_points_x = points_x[:, :309]
+            if args.no_prevQT:
+                prev_points_x = prev_points_x[:, 60:]
+            previous_points_y = points_x[:, 309:309+65]
+            prev_points_x = (prev_points_x.float()).to(device)
+
+            # predict previous timstep outputs using spcam input
+            prev_qtend = all_models["0_29"](prev_points_x).detach().cpu()
+            prev_stend = all_models["30_59"](prev_points_x).detach().cpu()
+            prev_rad = all_models["61_65"](prev_points_x).detach().cpu()
+            prev_preds["0_29"].append(prev_qtend.numpy())
+            prev_preds["30_59"].append(prev_stend.numpy())
+            prev_preds["61_65"].append(prev_rad.numpy())
+            prev_gt["0_29"].append(previous_points_y[:, :30].cpu().numpy())
+            prev_gt["30_59"].append(previous_points_y[:, 30:60].cpu().numpy())
+            prev_gt["61_65"].append(previous_points_y[:, 60:65].cpu().numpy())
+
+            # predict current timestep outputs using spcam input
+            curr_points_x = points_x[:, -309:]
+            if args.no_prevQT:
+                curr_points_x = curr_points_x[:, 60:]
+            curr_points_x = (curr_points_x.float()).to(device)
+            curr_points_y = points_y
+            curr_preds["0_29"].append(all_models["0_29"](curr_points_x).detach().cpu().numpy())
+            curr_preds["30_59"].append(all_models["30_59"](curr_points_x).detach().cpu().numpy())
+            curr_preds["61_65"].append(all_models["61_65"](curr_points_x).detach().cpu().numpy())
+            curr_gt["0_29"].append(curr_points_y[:, :30].cpu().numpy())
+            curr_gt["30_59"].append(curr_points_y[:, 30:60].cpu().numpy())
+            curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
+
+            # predict current timestep outputs using previous timestep outputs and spcam input
+            curr_points_x_2step = points_x[:, -309:].clone()
+            #curr_points_x_2step = curr_points_x.clone()
+            model_preds = torch.cat([prev_qtend, prev_stend, prev_rad], dim=1)
+            curr_points_x_2step[:,122:122+65] = model_preds
+            if args.no_prevQT:
+                curr_points_x_2step = curr_points_x_2step[:, 60:]
+            # curr_points_x_2step = (torch.cat([
+            #     points_x[:,-(309+122):-309], 
+            #     prev_qtend, prev_stend, prev_rad,
+            #     points_x[:,-122:]
+            #     ], dim=1).float()).to(device)
+            curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
+            curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
+            curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
+        #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
+        #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 1 step prev: {r2_score(previous_points_y[:,:30].flatten(), prev_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 1 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2 2 step: {r2_score(curr_points_y[:,:30].flatten(), curr_preds_2step['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
+        # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
+    print(f"Best loss: {best_loss}, filenames: {best_filenames}")
+    print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
+
+    for key in ["0_29", "30_59", "61_65"]:
+        prev_preds[key] = np.concatenate(prev_preds[key], axis=0)
+        prev_gt[key] = np.concatenate(prev_gt[key], axis=0)
+        curr_preds[key] = np.concatenate(curr_preds[key], axis=0)
+        curr_gt[key] = np.concatenate(curr_gt[key], axis=0)
+        curr_preds_2step[key] = np.concatenate(curr_preds_2step[key], axis=0)
+
+    test_time = time.time() - test_time_begin
+
+    logs = {
+        "prev": {},
+        "curr": {},
+        "curr_2step": {}
+    }
+    preds = {
+        "prev": prev_preds,
+        "curr": curr_preds,
+        "curr_2step": curr_preds_2step
+    }
+
+    gts = {
+        "prev": prev_gt,
+        "curr": curr_gt,
+        "curr_2step": curr_gt
+    }
+    for test_type in ["prev", "curr", "curr_2step"]:
+        for key in ["0_29", "30_59", "61_65"]:
+            data_dim = 30
+            if key == "61_65":
+                data_dim = 5
+            logs[test_type][key] = {
+                "total": report_metric(gts[test_type][key], preds[test_type][key], title=f"{test_type}_{key}"),
+                "level": report_metric_vert(gts[test_type][key], preds[test_type][key]),
+            }
+            np.save(f"spatial_{args.out_json}", report_metric_spatial(gts[test_type][key], preds[test_type][key], (data_dim, 96, 144)))
+
+    return logs
+
+def prep_dataloaders(
+    args,
+    test_files,
+    input_indices,
+    prev_input_indices,
+    output_indices,
+    transform,
+    region_mask):
+
+    testing_set = DatasetDisk(
+        test_files,
+        input_indices,
+        prev_input_indices,
+        output_indices,
+        is_train=False,
+        transform=transform,
+        multistep=int(args.multistep),
+        sample_rate=int(args.sample_rate),
+        include_filename=True,
+        region_mask1d=region_mask
+        )
+    testloader = data.DataLoader(testing_set, shuffle=False,
+                                 batch_size=1,
+                                 num_workers=2,
+                                 collate_fn=filter_collate,
+                                 pin_memory=True)
+
+    return testloader
+
+if __name__ == "__main__":
+    import argparse
+    import random
+    #dh_settings.get_weight()
+    #dh_settings.get_hyai_hybi()
+    torch.multiprocessing.set_sharing_strategy('file_system')
+    random.seed(0)
+    np.random.seed(0)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model029", help="path to configuration file")
+    parser.add_argument("--model3059", help="path to configuration file")
+    parser.add_argument("--model6165", help="path to configuration file")
+    parser.add_argument("out_json", help="path to output json file")
+    parser.add_argument("--sample_rate", type=int, help="sample frequency to use", default=12)
+    parser.add_argument("--thick", action="store_true")
+    #parser.add_argument("--save_path", type=str)
+    parser.add_argument("--region_mask", type=str, default="all")
+    parser.add_argument("--start_ts", type=int, default=35040)
+    parser.add_argument("--multistep", type=int, default=1)
+    parser.add_argument("--ex_input", type=str, nargs="*", default=[])
+    parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
+    parser.add_argument("--norm_type", type=str, help="choose from [std, minmax_legacy], default to std", default="std")
+    parser.add_argument("--data_means", type=str)
+    parser.add_argument("--data_stds", type=str)
+    parser.add_argument("--train_configs", type=str, nargs="?",
+                        help="path to training configuration file, this overwrites \
+                        all previous arguments if conflicts")
+    parser.add_argument("--legacy_order", action="store_true")
+    parser.add_argument("--no_prevQT", action="store_true")
+    args = parser.parse_args()
+    print(args)
+    if args.train_configs is not None:
+        with open(args.train_configs, "r") as f:
+            train_configs = yaml.safe_load(f)
+            for key in train_configs:
+                if train_configs[key] is not None \
+                    and key != "resume" \
+                    and key != "sample_rate" \
+                    and key != "multistep": # resume is always chosen from args.resume args
+                    setattr(args, key, train_configs[key])
+        print("After train_configs overwrite:", args)
+
+    np.random.seed(0)
+    data_dir = DATA_DIR
+    print("Test set path: ", data_dir)
+
+    cudnn.benchmark = True
+    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
+    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    if args.legacy_order:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"]+args.ex_input_prev
+        # col_names_y = ["qtend_check"]
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+    else:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+    output_size = 65
+    # output_name = '_'.join(col_names_y)
+    #data_means = dict(np.load(data_dir + "/data_means.npz"))
+    #data_stds = dict(np.load(data_dir + "/data_stds.npz"))
+
+    all_files = glob.glob(data_dir+'/*.npy')
+    all_files.sort()
+    # testing data starts from 35040
+    # all files are formatted in name 00010.npy, find idx where name is 35040
+    test_files = all_files[args.start_ts:]
+    print(test_files[:10])
+
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, prev_ex_vars, col_names_x, col_names_y, multistep=args.multistep
+    )
+    print("Input indices: ", col_names[input_indices])
+    print("Prev input indices: ", col_names[prev_input_indices])
+    print("Output indices: ", col_names[output_indices])
+
+    multistep_col_names_x = []
+    for i in range(int(args.multistep)):
+        multistep_col_names_x.extend(col_names_x)
+        multistep_col_names_x.extend(prev_ex_vars)
+    multistep_col_names_x.extend(col_names_x)
+
+    region_mask = None
+    if args.region_mask is not None and args.region_mask != "all":
+        region_mask = np.load(args.region_mask)
+    else:
+        region_mask = np.ones((96,144))
+    min_x, max_x, min_y, max_y = get_min_max_coords(region_mask, 2)
+    lon = np.linspace(0,357.5,144)
+    lat = np.linspace(-90,90,96)
+    print("Region window coordinates: ", lon[min_y], lon[max_y-1], lat[min_x], lat[max_x-1])
+    sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
+
+    if args.norm_type == "std":
+        data_means = dict(np.load(args.data_means))
+        data_stds = dict(np.load(args.data_stds))
+        transform = Compose([
+            StandardizeTransform(
+                data_means,
+                data_stds,
+                multistep_col_names_x,
+                col_names_y,
+                col_names,
+                normalize_input=True,
+                normalize_output=True,
+                include_raw=True,
+                threshold=3
+                ),
+            FlattenSpatialTransform(),
+            ])
+    elif args.norm_type == "minmax_legacy":
+        transform = Compose([
+            MinMaxTransformLegacy(include_raw=True),
+            FlattenSpatialTransform(),
+            ])
+    else:
+        raise ValueError("Invalid norm_type")
+            
+
+    testloader = prep_dataloaders(args, test_files, input_indices,
+                                  prev_input_indices, output_indices,
+                                  transform, region_mask)
+
+    input_size = len(input_indices)+len(prev_input_indices)
+    if args.no_prevQT:
+        input_size = input_size - 60
+    input_size = 122
+    all_models = {
+        '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=True),
+        '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=True),
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=True)
+    }
+
+
+    logs = offline_test(args, all_models, testloader, None)
+
+    with open(args.out_json, "w") as f:
+        json.dump(logs, f, indent=4)
+
+
+
+
+
