@@ -84,11 +84,12 @@ CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step.py \
     replay_buffer_2step_v2_seed1117_full_noprevQT.json
 ai002_test_replay_buffer_noprevQT_full
 #:<<'ai002_test_replay_buffer'
+    # --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1215_full/configs.txt \
 CUDA_VISIABLE_DEVICES=2 python offline_test_newformat_2step_baseline.py \
     --model029 /cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar \
     --model3059 /cust_users/x-w19/nncam.ckpts/resmlp.25GB.noise0.0/30_59_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar \
     --model6165 /cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/61_64_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar \
-    --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1215_full/configs.txt \
+    --norm_type minmax_legacy \
     --start_ts 35040 \
     --sample_rate 12 \
     --multistep 2 \

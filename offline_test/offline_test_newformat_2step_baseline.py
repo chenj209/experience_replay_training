@@ -368,7 +368,7 @@ if __name__ == "__main__":
     all_models = {
         '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=True),
         '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=True),
-        '61_65': load_resmlp_newformat2(args.model6165, input_size, 5, parallel=True)
+        '61_65': load_resmlp_newformat2(args.model6165, input_size, 4, parallel=True)
     }
 
 
