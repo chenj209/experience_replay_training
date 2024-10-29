@@ -35,6 +35,7 @@ from load_models import load_models
 from metrics import get_thickness_from_ps_1d, report_metric, report_metric_vert, report_metric_spatial
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
+from precip_analysis import compute_scores, get_precip_hist
 
 def inverse_61_65(x):
     x[:,0] = (x[:,0]) * (1412 - 0)
@@ -61,9 +62,9 @@ legacy_inverse['61_65'] = lambda x: inverse_61_65(x)
 def inverse_output(args, y, data_means=None, data_stds=None):
     if args.norm_type == "std":
         if args.output_type == "0_29":
-            y = y/data_stds["qtend_check"]+data_means["qtend_check"]
+            y = y*data_stds["qtend_check"]+data_means["qtend_check"]
         elif args.output_type == "30_59":
-            y = y/data_stds["stend_check"]+data_means["stend_check"]
+            y = y*data_stds["stend_check"]+data_means["stend_check"]
         elif args.output_type == "61_65":
             # TODO: need to deal with 61_65 have different ordering
             raise NotImplementedError("61_65 is not implemented")
@@ -94,6 +95,12 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     worst_loss = 0
     worst_filenames = None
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.precip_analysis:
+        ets_scores = []
+        far_scores = []
+        mar_scores = []
+        hist_pred = []
+        hist_gt = []
     for iter, batch in enumerate(testloader):
         # allow empty batch
         if batch[0].shape[0] == 0:
@@ -112,6 +119,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             points_x = (points_x.float()).to(device)
             pred = all_models['model'](points_x).detach().cpu().numpy()
             points_y = points_y.cpu().numpy()
+
+            if args.inverse_output:
+                pred = inverse_output(args, pred)
+                points_y = inverse_output(args, points_y)
+
             if get_thickness is not None:
                 pred = pred*thickness*phys_consts.LATVAP
                 points_y = points_y*thickness*phys_consts.LATVAP
@@ -124,8 +136,15 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             if loss > worst_loss:
                 worst_loss = loss
                 worst_filenames = batch[-1]
+            if args.precip_analysis:
+                ets, far, mar = compute_scores(pred, points_y)
+                ets_scores.append(ets)
+                far_scores.append(far)
+                mar_scores.append(mar)
+                hist_pred.append(get_precip_hist(pred))
+                hist_gt.append(get_precip_hist(points_y))
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
-        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y_pred.flatten())}")
+        print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), pred.flatten())}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")
     print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
@@ -178,7 +197,7 @@ def prep_dataloaders(
         region_mask1d=region_mask
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
-                                 batch_size=1,
+                                 batch_size=4,
                                  num_workers=4,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
