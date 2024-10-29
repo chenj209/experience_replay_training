@@ -62,6 +62,23 @@ inverse['60']    = lambda x: (x+1)/2*(2.12e-6)
 inverse['61_64'] = lambda x: inverse_61_64(x)
 inverse['61_65'] = lambda x: inverse_61_65(x)
 
+def inverse_output(args, y, data_means=None, data_stds=None):
+    if args.norm_type == "std":
+        if args.output_type == "0_29":
+            y = y/data_stds["qtend_check"]+data_means["qtend_check"]
+        elif args.output_type == "30_59":
+            y = y/data_stds["stend_check"]+data_means["stend_check"]
+        elif args.output_type == "61_65":
+            raise NotImplementedError("61_65 is not implemented")
+    elif args.norm_type == "minmax_legacy":
+        if args.output_type == "0_29":
+            y = inverse['0_29'](y)
+        elif args.output_type == "30_59":
+            y = inverse['30_59'](y)
+        elif args.output_type == "61_65":
+            raise NotImplementedError("61_65 is not implemented")
+    return y
+
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
 def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
     problem_files = []
@@ -241,11 +258,13 @@ if __name__ == "__main__":
     parser.add_argument("--ex_input", type=str, nargs="*", default=[])
     parser.add_argument("--ex_input_prev", type=str, nargs="*", default=[])
     parser.add_argument("--norm_type", type=str, help="choose from [std, minmax_legacy], default to std", default="std")
+    parser.add_argument("--inverse_output", action="store_true", help="inverse the output to original scale")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--train_configs", type=str, nargs="?",
                         help="path to training configuration file, this overwrites \
                         all previous arguments if conflicts")
+    parser.add_argument("--precip_analysis", action="store_true")    
     args = parser.parse_args()
     print(args)
     # prioritize args from train_configs
