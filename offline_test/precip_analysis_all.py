@@ -50,16 +50,19 @@ def compute_scores(precip_pred, precip_gt, threshold=[0.1,10,25,50,100]):
 
     return ets_scores, far_scores, mar_scores
 
-def precip_analysis(qtend_pred, qtend_gt, thickness):
+def qtend_to_precip(qtend, thickness):
+    return np.sum(qtend*thickness, axis=1) / 1000.0 * 24 * 3600 *1000 * (-1)
+
+def precip_analysis(precip_pred, precip_gt, thickness):
     """
     qtend_pred: (N, 30 ,96, 144)
     qtend_gt: (N, 30, 96, 144)
     qtend unit: kg/kg/s
     """
-    print(qtend_pred.shape, qtend_gt.shape)
-    print(thickness.shape)
-    precip_pred = np.sum(qtend_pred*thickness, axis=1) / 1000.0 * 24 * 3600 *1000 * (-1)
-    precip_gt = np.sum(qtend_gt*thickness, axis=1) / 1000.0 * 24 * 3600  * 1000*(-1)
+    # print(qtend_pred.shape, qtend_gt.shape)
+    # print(thickness.shape)
+    # precip_pred = np.sum(qtend_pred*thickness, axis=1) / 1000.0 * 24 * 3600 *1000 * (-1)
+    # precip_gt = np.sum(qtend_gt*thickness, axis=1) / 1000.0 * 24 * 3600  * 1000*(-1)
     print("precip shape:", precip_pred.shape, precip_gt.shape)
     print(precip_pred.mean(), precip_gt.mean())
     print(precip_pred.max(), precip_gt.max())
@@ -242,7 +245,7 @@ if __name__ == "__main__":
         prev_input_indices,
         output_indices,
         multistep=int(multistep),
-        sample_rate=int(12),
+        sample_rate=int(144),
         is_train=True,
         transform=transform,
         include_filename=True,
@@ -265,7 +268,7 @@ if __name__ == "__main__":
     model_ckpt_path = "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
     models["No PM+No ER"] = load_resmlp_newformat2(model_ckpt_path, 122, 30)
     models["No PM+No ER"].eval()
-    gt_list = []
+    # gt_list = []
     raw_list = []
     pred_list = { model_name: [] for model_name in models.keys() }
     thickness_list = []
@@ -284,16 +287,19 @@ if __name__ == "__main__":
                     inputs_legacy = to_inference_shape(inputs_legacy[None,])
                     preds = model(torch.from_numpy(inputs_legacy)).cpu().numpy()
                     preds = inverse_to_inference_shape(legacy_inverse['0_29'](preds))
+                    preds = qtend_to_precip(preds, thickness)
                 else:
                     preds = model(inputs).cpu().numpy()
                     preds = inverse_to_inference_shape((preds)*data_stds["qtend_check"]+data_means["qtend_check"])
+                    preds = qtend_to_precip(preds, thickness)
                 pred_list[model_name].append(preds)
             gt = points_y.cpu().numpy()
             raw = y_raw.cpu().numpy()
             gt = inverse_to_inference_shape((gt)*data_stds["qtend_check"]+data_means["qtend_check"])
-            gt_list.append(gt)
-            raw_list.append(raw)
-    gt_list = np.concatenate(gt_list, axis=0)
+            gt = qtend_to_precip(gt, thickness)
+            # gt_list.append(gt)
+            raw_list.append(gt)
+    # gt_list = np.concatenate(gt_list, axis=0)
     for model_name in models.keys():
         pred_list[model_name] = np.concatenate(pred_list[model_name], axis=0)
     raw_list = np.concatenate(raw_list, axis=0)
