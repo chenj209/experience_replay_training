@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
+import torch.utils.data as data
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'consts'))
 import phys_consts
 def get_precip_hist(precip):
@@ -74,15 +75,14 @@ def precip_analysis(qtend_pred, qtend_gt, thickness):
     hist_gt = get_precip_hist(precip_gt)
     return ets_scores, far_scores, mar_scores, hist_pred, hist_gt
 
-def plot_precip_hist(hist_pred1, hist_pred2, model1, model2):
+def plot_precip_hist(hist_preds, model_names):
     # Set up the plot
     plt.figure(figsize=(10, 6))
     
     # Create x-axis values (precipitation bins)
-    bins = np.arange(len(hist_pred1))
-    plt.semilogy(bins, hist_pred1, label=model1, linewidth=2)
-    plt.semilogy(bins, hist_pred2, label=model2, linewidth=2)
-    # plt.semilogy(bins, hist_gt, label="SPCAM", color='red', linewidth=2)
+    bins = np.arange(len(hist_preds[0]))
+    for hist_pred, model_name in zip(hist_preds, model_names):
+        plt.semilogy(bins, hist_pred, label=model_name, linewidth=2)
 
     # Set y-axis limits and ticks
     plt.ylim(1e-5, 100)
@@ -100,6 +100,21 @@ def plot_precip_hist(hist_pred1, hist_pred2, model1, model2):
     
     plt.tight_layout()
     return plt.gcf()
+
+class PrecipDataset(data.Dataset):
+    def __init__(self, ep_path, no_ep_path, start_idx=3, end_idx=1460):
+        self.ep_path = ep_path
+        self.no_ep_path = no_ep_path
+        self.indices = list(range(start_idx, end_idx))
+        
+    def __len__(self):
+        return len(self.indices)
+    
+    def __getitem__(self, idx):
+        i = self.indices[idx]
+        ep_data = np.load(self.ep_path + f"coupled_{i}.npz")['x']
+        no_ep_data = np.load(self.no_ep_path + f"coupled_{i}.npz")['x']
+        return ep_data, no_ep_data
 
 if __name__ == "__main__":
     # test plot_precip_hist
@@ -234,45 +249,77 @@ if __name__ == "__main__":
     for v,d in zip(variables, dims):
         idx_range.append([cur_idx, cur_idx+d])
         cur_idx = cur_idx+d
-    ep_vars = ["dqls_prev", "dTls_prev", "solin_prev", "ps_prev", "qtend_prev", "stend_prev", "rad_prev", "Q", "T", "dqls", "dTls", "solin", "ps"]
+    # no_ep_vars = ["dqls_prev", "qtend_prev", "Q", "dqls" ]
+    vars_source = {
+        "dqls_prev": "noep",
+        "dTls_prev": "ep",
+        "solin_prev": "ep",
+        "ps_prev": "ep",
+        "qtend_prev": "ep",
+        "stend_prev": "ep",
+        "rad_prev": "ep",
+        "Q": "ep",
+        "T": "ep",
+        "dqls": "ep",
+        "dTls": "ep",
+        "solin": "ep",
+        "ps": "ep",
+    }
+    # ep_vars = ["dqls_prev", "dTls_prev", "solin_prev", "ps_prev", "qtend_prev", "stend_prev", "rad_prev", "Q", "T", "dqls", "dTls", "solin", "ps"]
     # ep_vars = ["dqls_prev", "dTls_prev", "qtend_prev", "stend_prev", "rad_prev", "Q", "T", "dqls", "dTls", "solin", "ps"]
     # ep_vars = ["dqls_prev", "solin_prev", "ps_prev", "qtend_prev", "rad_prev", "Q", "T", "dqls", "dTls", "solin", "ps"]
     # no_ep_vars = ["dqls_prev", "dTls_prev", "solin_prev", "ps_prev", "qtend_prev", "stend_prev", "rad_prev", "Q", "T", "dqls", "dTls", "solin", "ps"]
     # no_ep_vars = ["solin_prev", "ps_prev"]
-    no_ep_vars = []
+    # no_ep_vars = []
+    ep_base_list = []
+    noep_base_list = []
     ep_list = []
     noep_list = []
+    dataset = PrecipDataset(ep_path, no_ep_path)
+    dataloader = data.DataLoader(dataset, batch_size=32, num_workers=4, shuffle=False)
     with torch.no_grad():
-        for i in tqdm(range(3,6000,1)):
-        # for i, batch in tqdm(enumerate(testloader), total=len(testloader)):
-            ep_data = np.load(ep_path + f"coupled_{i}.npz")['x']
-            no_ep_data = np.load(no_ep_path + f"coupled_{i}.npz")['x']
+        for ep_data, no_ep_data in tqdm(dataloader):
+            # Reshape batch dimension
+            ep_data = ep_data.reshape(-1, ep_data.shape[-1])
+            no_ep_data = no_ep_data.reshape(-1, no_ep_data.shape[-1])
+            
             recon_data = []
-            for v,d in zip(variables, idx_range):
-                if v in ep_vars:
+            for v, d in zip(variables, idx_range):
+                if vars_source[v] == "ep":
                     recon_data.append(ep_data[:,d[0]:d[1]])
-                else:
+                elif vars_source[v] == "noep":
                     recon_data.append(no_ep_data[:,d[0]:d[1]])
-            recon_data = np.concatenate(recon_data, axis=1)[:,60:]
-            # print("recon_data shape:", recon_data.shape)
-            inputs = torch.from_numpy(recon_data).float().cuda()
-            ep_preds = ep_model(inputs).cpu().numpy()
-            noep_preds = noep_model(inputs).cpu().numpy()
-            if "ps" in ep_vars:
+            recon_data = torch.cat(recon_data, dim=1)[:,60:]
+            
+            inputs = recon_data.float().cuda()
+            ep_preds = ep_model(inputs).cpu()
+            noep_preds = noep_model(inputs).cpu()
+            ep_base_preds = ep_model((ep_data.float().cuda())[:,60:]).cpu()
+            noep_base_preds = noep_model((no_ep_data.float().cuda())[:,60:]).cpu()
+            if vars_source["ps"] == "ep":
                 ps = ep_data[:,-1]
             else:
                 ps = no_ep_data[:,-1]
             ps = ps * 9495.39130101 + 96529.54020537
-            thickness = get_thickness(ps)
+            thickness = get_thickness(ps.numpy())
             thickness_list.append(thickness)
-            ep_preds = ep_preds * data_stds["qtend_check"]+data_means["qtend_check"]
-            noep_preds = noep_preds * data_stds["qtend_check"]+data_means["qtend_check"]
-            ep_list.append(np.sum(ep_preds*thickness, axis=1)*24*3600*(-1))
-            noep_list.append(np.sum(noep_preds*thickness, axis=1)*24*3600*(-1))
+            
+            ep_preds = ep_preds * data_stds["qtend_check"] + data_means["qtend_check"]
+            noep_preds = noep_preds * data_stds["qtend_check"] + data_means["qtend_check"]
+            ep_base_preds = ep_base_preds * data_stds["qtend_check"] + data_means["qtend_check"]
+            noep_base_preds = noep_base_preds * data_stds["qtend_check"] + data_means["qtend_check"]
+            ep_list.append(np.sum(ep_preds.numpy() * thickness, axis=1) * 24 * 3600 * (-1))
+            noep_list.append(np.sum(noep_preds.numpy() * thickness, axis=1) * 24 * 3600 * (-1))
+            ep_base_list.append(np.sum(ep_base_preds.numpy() * thickness, axis=1) * 24 * 3600 * (-1))
+            noep_base_list.append(np.sum(noep_base_preds.numpy() * thickness, axis=1) * 24 * 3600 * (-1))
     ep_list = np.concatenate(ep_list, axis=0)
     noep_list = np.concatenate(noep_list, axis=0)
+    ep_base_list = np.concatenate(ep_base_list, axis=0)
+    noep_base_list = np.concatenate(noep_base_list, axis=0)
     ep_hist = get_precip_hist(ep_list)
     noep_hist = get_precip_hist(noep_list)
-    plot_precip_hist(ep_hist*100, noep_hist*100, "ep", "noep")
-    plt.savefig("precip_ep_input.png")
+    ep_base_hist = get_precip_hist(ep_base_list)
+    noep_base_hist = get_precip_hist(noep_base_list)
+    plot_precip_hist([noep_base_hist*100, ep_base_hist*100, noep_hist*100, ep_hist*100], ["noep_base", "ep_base", "noep", "ep"])
+    plt.savefig("precip_no_ep_input_dqls_prev.png")
     plt.show()
