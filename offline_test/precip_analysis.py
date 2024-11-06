@@ -56,11 +56,16 @@ def precip_analysis(qtend_pred, qtend_gt, thickness):
     qtend_gt: (N, 30, 96, 144)
     qtend unit: kg/kg/s
     """
+    print("qtend pred:", qtend_pred.mean(), qtend_pred.min(), qtend_pred.max())
+    print(qtend_pred[0,:,0,0])
     print(qtend_pred.shape, qtend_gt.shape)
+    print("thickenss:", thickness.mean(), thickness.min(), thickness.max())
+    print(thickness[0,:,0,0])
     print(thickness.shape)
     precip_pred = np.sum(qtend_pred*thickness, axis=1) / 1000.0 * 24 * 3600 *1000 * (-1)
     precip_gt = np.sum(qtend_gt*thickness, axis=1) / 1000.0 * 24 * 3600  * 1000*(-1)
     print("precip shape:", precip_pred.shape, precip_gt.shape)
+    print(precip_pred[0].mean(), precip_gt[0].mean())
     print(precip_pred.mean(), precip_gt.mean())
     print(precip_pred.max(), precip_gt.max())
     print(precip_pred.min(), precip_gt.min())
