@@ -240,12 +240,12 @@ if __name__ == "__main__":
         FlattenSpatialTransform(),
         ])
     testing_set = DatasetDisk(
-        glob("/data/nncam_data/image_testset/" + "*.npz")[2:17520],
+        glob("/data/nncam_data/image_testset/" + "*.npz")[2:1460],
         input_indices,
         prev_input_indices,
         output_indices,
         multistep=int(multistep),
-        sample_rate=int(144),
+        sample_rate=int(1),
         is_train=True,
         transform=transform,
         include_filename=True,
@@ -259,11 +259,11 @@ if __name__ == "__main__":
     # model_ckpt_path = "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
     #model_ckpt_path = "/share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full/0_29_checkpoint_best_loss.pth.tar"
     models = {}
-    model_ckpt_path = "/share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full/0_29_checkpoint_best_loss.pth.tar"
-    models["PM+No ER"] = load_resmlp_newformat2(model_ckpt_path, 309, 30)
+    model_ckpt_path = "/share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/0_29_checkpoint_best_loss.pth.tar"
+    models["PM+No ER"] = load_resmlp_newformat2(model_ckpt_path, 249, 30)
     models["PM+No ER"].eval()
-    model_ckpt_path = "/share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full/0_29_checkpoint_best_loss.pth.tar"
-    models["PM+ER"] = load_resmlp_newformat2(model_ckpt_path, 309, 30)
+    model_ckpt_path = "/share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQT/0_29_checkpoint_best_loss.pth.tar"
+    models["PM+ER"] = load_resmlp_newformat2(model_ckpt_path, 249, 30)
     models["PM+ER"].eval()
     model_ckpt_path = "/cust_users/x-w19/nncam.ckpts/resmlp.2years.50epochs/0_29_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar"
     models["No PM+No ER"] = load_resmlp_newformat2(model_ckpt_path, 122, 30)
@@ -289,7 +289,8 @@ if __name__ == "__main__":
                     preds = inverse_to_inference_shape(legacy_inverse['0_29'](preds))
                     preds = qtend_to_precip(preds, thickness)
                 else:
-                    preds = model(inputs).cpu().numpy()
+                    # print("inputs shape:", inputs.shape)
+                    preds = model(inputs[:,:,60:]).cpu().numpy()
                     preds = inverse_to_inference_shape((preds)*data_stds["qtend_check"]+data_means["qtend_check"])
                     preds = qtend_to_precip(preds, thickness)
                 pred_list[model_name].append(preds)
@@ -323,10 +324,10 @@ if __name__ == "__main__":
     
     # Plot and save verification scores
     fig_scores = plot_verification_scores(ets_dict, far_dict, mar_dict, thresholds)
-    fig_scores.savefig("verification_scores.png")
+    fig_scores.savefig("verification_scores_noprevQT.png")
     plt.close(fig_scores)
     
     # Original histogram plotting
     plot_precip_hist(hist_preds, hist_gt*100)
-    plt.savefig("precip_hist_all.png")
+    plt.savefig("precip_hist_all_noprevQT_1998Jan.png")
     plt.show()
