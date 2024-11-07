@@ -251,14 +251,14 @@ if __name__ == "__main__":
         cur_idx = cur_idx+d
     # no_ep_vars = ["dqls_prev", "qtend_prev", "Q", "dqls" ]
     vars_source = {
-        "dqls_prev": "noep",
+        "dqls_prev": "ep",
         "dTls_prev": "ep",
         "solin_prev": "ep",
         "ps_prev": "ep",
         "qtend_prev": "ep",
         "stend_prev": "ep",
         "rad_prev": "ep",
-        "Q": "ep",
+        "Q": "noep",
         "T": "ep",
         "dqls": "ep",
         "dTls": "ep",
@@ -321,5 +321,5 @@ if __name__ == "__main__":
     ep_base_hist = get_precip_hist(ep_base_list)
     noep_base_hist = get_precip_hist(noep_base_list)
     plot_precip_hist([noep_base_hist*100, ep_base_hist*100, noep_hist*100, ep_hist*100], ["noep_base", "ep_base", "noep", "ep"])
-    plt.savefig("precip_no_ep_input_dqls_prev.png")
+    plt.savefig("precip_no_ep_input_Q.png")
     plt.show()
