@@ -258,10 +258,10 @@ if __name__ == "__main__":
         "qtend_prev": "ep",
         "stend_prev": "ep",
         "rad_prev": "ep",
-        "Q": "noep",
+        "Q": "ep",
         "T": "ep",
         "dqls": "ep",
-        "dTls": "ep",
+        "dTls": "noep",
         "solin": "ep",
         "ps": "ep",
     }
@@ -321,5 +321,5 @@ if __name__ == "__main__":
     ep_base_hist = get_precip_hist(ep_base_list)
     noep_base_hist = get_precip_hist(noep_base_list)
     plot_precip_hist([noep_base_hist*100, ep_base_hist*100, noep_hist*100, ep_hist*100], ["noep_base", "ep_base", "noep", "ep"])
-    plt.savefig("precip_no_ep_input_Q.png")
+    plt.savefig("precip_no_ep_input_dTls.png")
     plt.show()
