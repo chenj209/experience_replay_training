@@ -318,8 +318,9 @@ def main(args):
                                                     current_iters, len(trainloader) * args.epoch)
 #                 train_mse = tools.train_penalty(batch, model, criterion, optimizer)
 #             else:
-            if replay_buffer.size >= trainloader.batch_size:
-                sampled_replay = replay_buffer.sample(trainloader.batch_size)
+            buffer_sample_size = int(trainloader.batch_size*args.mixing_ratio)
+            if replay_buffer.size >= buffer_sample_size:
+                sampled_replay = replay_buffer.sample(buffer_sample_size)
                 sr_input, sr_target = sampled_replay[:2]
                 sr_input = torch.from_numpy(sr_input)
                 sr_target = torch.from_numpy(sr_target)
@@ -496,6 +497,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--buffer_size", default=288, type=int)
+    parser.add_argument("--mixing_ratio", default=1.0, type=float)
     args = parser.parse_args()
     print(args)
 
