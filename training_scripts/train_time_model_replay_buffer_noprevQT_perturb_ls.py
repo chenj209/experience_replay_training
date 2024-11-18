@@ -82,7 +82,7 @@ COL_NAMES_LEGACY = {
 
 VAR_DIMS = {
     "QL": 30,
-    "TL": 30,
+    "T_nn_in": 30,
     "dqvls_nn_in": 30,
     "dTls_nn_in": 30,
     "SOLIN": 1,
@@ -150,10 +150,18 @@ def main(args):
     multistep_col_names_x.extend(col_names_x)
 
     # compute the actual indices for variables in each batch input
+    def assign_bidx(bidx, var_name, idx):
+        if var_name not in batch_indices:
+            bidx[var_name] = idx
+        else:
+            prev_idx = bidx[var_name]
+            bidx[var_name] = idx
+            assign_bidx(bidx, var_name + "_prev", prev_idx)
+
     batch_indices = {}
     cur_idx = 0
     for var_name in multistep_col_names_x:
-        batch_indices[var_name] = (cur_idx, cur_idx+VAR_DIMS[var_name])
+        assign_bidx(batch_indices, var_name, (cur_idx, cur_idx+VAR_DIMS[var_name]))
         cur_idx = cur_idx + VAR_DIMS[var_name]
     print("batch indices:", batch_indices)
 
@@ -428,10 +436,10 @@ def main(args):
             # compute dqls_prev and dqls_prev 
             # dqls = Q - Q_prev - qtend_prev*24*3600
             # dTls = T - T_prev - stend_prev*24*3600
-            Q_prev =     next_x[:,:,  :30]
-            T_prev =     next_x[:,:,30:30+30]
-            qtend_prev = next_x[:,:,122:122+30]
-            stend_prev = next_x[:,:,122+30:122+30+30]
+            Q_prev =     next_x[:,:,  batch_indices["QL"][0]:batch_indices["QL"][1]]
+            T_prev =     next_x[:,:,  batch_indices["TL"][0]:batch_indices["TL"][1]]
+            qtend_prev = next_x[:,:,  batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
+            stend_prev = next_x[:,:,  batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
             Q =      next_x[:,:,122+65:122+65+30]
             T =      next_x[:,:,122+65+30:122+65+30+30]
             dqls =   next_x[:,:,122+65+30+30:122+65+30+30+30] 
@@ -523,15 +531,15 @@ if __name__ == '__main__':
         "SOLIN", 
         "SPPS"
     ])
-    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[],
+    parser.add_argument("--input_vars_prev", type=str, nargs="*", default=["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"],
                         help="additional variables to use as inputs in the previous \
                         timesteps besides vars in input_vars and output_vars")
-    parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
+    parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check", "stend_check", "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"])
     parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
         input variables")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
-    parser.add_argument("--data_means", type=str)
-    parser.add_argument("--data_stds", type=str)
+    parser.add_argument("--data_means", type=str, default="../consts/all_means.npz")
+    parser.add_argument("--data_stds", type=str, default="../consts/all_stds.npz")
     parser.add_argument("--buffer_size", default=288, type=int)
     parser.add_argument("--mixing_ratio", default=1.0, type=float)
     args = parser.parse_args()
