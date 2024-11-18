@@ -2,7 +2,7 @@
 CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQT.py  \
     --data_dir /data/nncam_data/image_set/ \
     --ex_data_dir /data/chenj209/ex_dataset/ \
-    --checkpoint /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQT/ \
+    --checkpoint /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQT_mix0.5/ \
     --data_means ../consts/all_means.npz \
     --data_stds ../consts/all_stds.npz \
     --multistep 1 \
