@@ -80,6 +80,21 @@ COL_NAMES_LEGACY = {
            "CAPE", "FLNS", "FLNT", "SPPRECC", "LWUP"]
 }
 
+VAR_DIMS = {
+    "QL": 30,
+    "TL": 30,
+    "dqvls_nn_in": 30,
+    "dTls_nn_in": 30,
+    "SOLIN": 1,
+    "SPPS": 1,
+    "qtend_check": 30,
+    "stend_check": 30,
+    "SOLL": 1,
+    "SOLS": 1,
+    "SOLSD": 1,
+    "SOLLD": 1,
+    "FSDS": 1
+}
 
 def main(args):
     data_dir = args.data_dir
@@ -133,6 +148,15 @@ def main(args):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(col_names_prev)
     multistep_col_names_x.extend(col_names_x)
+
+    # compute the actual indices for variables in each batch input
+    batch_indices = {}
+    cur_idx = 0
+    for var_name in multistep_col_names_x:
+        batch_indices[var_name] = (cur_idx, cur_idx+VAR_DIMS[var_name])
+        cur_idx = cur_idx + VAR_DIMS[var_name]
+    print("batch indices:", batch_indices)
+
     traintransform = transforms.Compose([
         #RegionMaskTransform(region_mask),
         StandardizeTransformNext(
@@ -402,8 +426,16 @@ def main(args):
             # replace qtend_prev and stend_prev with exp value
             next_x[:,:,122:122+65] = exp
             # compute dqls_prev and dqls_prev 
-            # dqls_prev = Q - Q_prev - qtend_prev*24*3600
-            # dTls_prev = T - T_prev - stend_prev*24*3600
+            # dqls = Q - Q_prev - qtend_prev*24*3600
+            # dTls = T - T_prev - stend_prev*24*3600
+            Q_prev =     next_x[:,:,  :30]
+            T_prev =     next_x[:,:,30:30+30]
+            qtend_prev = next_x[:,:,122:122+30]
+            stend_prev = next_x[:,:,122+30:122+30+30]
+            Q =      next_x[:,:,122+65:122+65+30]
+            T =      next_x[:,:,122+65+30:122+65+30+30]
+            dqls =   next_x[:,:,122+65+30+30:122+65+30+30+30] 
+            dTls =   next_x[:,:,122+65+30+30+30:122+65+30+30+30+30]
             print(f"store start: {time.time() - store_start}")
             replay_buffer.store(next_x, next_y, tar_idx)
 
