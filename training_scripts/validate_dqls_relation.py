@@ -22,6 +22,6 @@ if __name__ == "__main__":
     print("dqls_prev mean: ", dqls_prev.mean())
     print("qtend_prev mean: ", qtend_prev.mean())
     print("Q_prev mean: ", Q_prev.mean())
-    print("Q_prev+dqls_prev+qtend_prev=Q:", np.allclose(Q, Q_prev+(dqls+qtend_prev)*1800))
-    print("Q_prev+dqls_prev+qtend_prev=Q:", Q.mean(), (Q_prev+(dqls+qtend_prev)*1800).mean())
+    print("Q_prev+(dqls+qtend_prev)*1800=Q:", np.allclose(Q, Q_prev+(dqls+qtend_prev)*1800))
+    #print("Q_prev+dqls+qtend_prev=Q:", Q.mean(), (Q_prev+(dqls+qtend_prev)*1800).mean())
 
