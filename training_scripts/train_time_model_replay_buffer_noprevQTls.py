@@ -435,11 +435,18 @@ def main(args):
             # compute dqls_prev and dqls_prev 
             # dqls = Q - Q_prev - qtend_prev*24*3600
             # dTls = T - T_prev - stend_prev*24*3600
+            print(f"next x shape: {next_x.shape}")
+            print(f"Loading Q_prev idx: {batch_indices['QL_prev']}")
             Q_prev =     next_x[:,:,  batch_indices["QL_prev"][0]:batch_indices["QL_prev"][1]]
+            print(f"Loading T_prev idx: {batch_indices['T_nn_in_prev']}")
             T_prev =     next_x[:,:,  batch_indices["T_nn_in_prev"][0]:batch_indices["T_nn_in_prev"][1]]
+            print(f"Loading qtend_prev idx: {batch_indices['qtend_check']}")
             qtend_prev = next_x[:,:,  batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
+            print(f"Loading stend_prev idx: {batch_indices['stend_check']}")
             stend_prev = next_x[:,:,  batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
+            print(f"Loading Q idx: {batch_indices['QL']}")
             Q =      next_x[:,:,batch_indices["QL"][0]:batch_indices["QL"][1]]
+            print(f"Loading T idx: {batch_indices['T_nn_in']}")
             T =      next_x[:,:,batch_indices["T_nn_in"][0]:batch_indices["T_nn_in"][1]]
             dqls =   next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] 
             dTls =   next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]]
