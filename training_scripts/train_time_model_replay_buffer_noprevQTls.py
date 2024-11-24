@@ -427,29 +427,31 @@ def main(args):
             next_x, next_y = batch[2:4]
             next_x = next_x.numpy()
             next_y = next_y.numpy()
-            exp = np.concatenate([
-                model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
-                model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
-                model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
-            ],axis=2)
             # compute dqls_prev and dqls_prev 
             # dqls = Q - Q_prev - qtend_prev*24*3600
             # dTls = T - T_prev - stend_prev*24*3600
             print(f"next x shape: {next_x.shape}")
             print(f"Loading Q_prev idx: {batch_indices['QL_prev']}")
             Q_prev =     next_x[:,:,  batch_indices["QL_prev"][0]:batch_indices["QL_prev"][1]]
+            Q_prev = Q_prev * data_stds["QL"] + data_means["QL"]
             print(f"Loading T_prev idx: {batch_indices['T_nn_in_prev']}")
             T_prev =     next_x[:,:,  batch_indices["T_nn_in_prev"][0]:batch_indices["T_nn_in_prev"][1]]
+            T_prev = T_prev * data_stds["T_nn_in"] + data_means["T_nn_in"]
             print(f"Loading qtend_prev idx: {batch_indices['qtend_check']}")
             qtend_prev = next_x[:,:,  batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
+            qtend_prev = qtend_prev * data_stds["qtend_check"] + data_means["qtend_check"]
             print(f"Loading stend_prev idx: {batch_indices['stend_check']}")
             stend_prev = next_x[:,:,  batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
+            stend_prev = stend_prev * data_stds["stend_check"] + data_means["stend_check"]
             print(f"Loading Q idx: {batch_indices['QL']}")
             Q =      next_x[:,:,batch_indices["QL"][0]:batch_indices["QL"][1]]
-            print(f"Loading T idx: {batch_indices['T_nn_in']}")
+            Q = Q * data_stds["QL"] + data_means["QL"]
             T =      next_x[:,:,batch_indices["T_nn_in"][0]:batch_indices["T_nn_in"][1]]
+            T = T * data_stds["T_nn_in"] + data_means["T_nn_in"]
             dqls =   next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] 
+            dqls = dqls * data_stds["dqvls_nn_in"] + data_means["dqvls_nn_in"]
             dTls =   next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]]
+            dTls = dTls * data_stds["dTls_nn_in"] + data_means["dTls_nn_in"]
             # Q_prev + (qtend_prev+dqls)*1800 = Q
             # T_prev + (stend_prev+dTls)*1800 = T
             print("Q mean: ", Q.mean(), "Q_prev mean: ", Q_prev.mean())
@@ -457,12 +459,21 @@ def main(args):
             assert(np.allclose(Q, Q_prev + (qtend_prev+dqls)*1800))
             assert(np.allclose(T, T_prev + (stend_prev+dTls)*1800))
             # replace qtend_prev and stend_prev with exp value
+            exp = np.concatenate([
+                model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
+                model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
+                model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
+            ],axis=2)
             print(f"exp shape: {exp.shape}")
             next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"]+65] = exp
             qtend_prev_exp = next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
+            qtend_prev_exp = qtend_prev_exp * data_stds["qtend_check"] + data_means["qtend_check"]
             stend_prev_exp = next_x[:,:,batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
+            stend_prev_exp = stend_prev_exp * data_stds["stend_check"] + data_means["stend_check"]
             dqls_exp = (Q - Q_prev)/1800 - qtend_prev_exp
             dTls_exp = (T - T_prev)/1800 - stend_prev_exp
+            dqls_exp = (dqls_exp - data_means["dqvls_nn_in"])/data_stds["dqvls_nn_in"]
+            dTls_exp = (dTls_exp - data_means["dTls_nn_in"])/data_stds["dTls_nn_in"]
             # assert(torch.allclose(dqls, (Q - Q_prev)/1800 - qtend_prev_exp))
             # assert(torch.allclose(dTls, (T - T_prev)/1800 - stend_prev_exp))
             next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] = dqls_exp
