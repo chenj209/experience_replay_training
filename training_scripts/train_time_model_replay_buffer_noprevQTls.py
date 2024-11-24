@@ -445,8 +445,8 @@ def main(args):
             dTls =   next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]]
             # Q_prev + (qtend_prev+dqls)*1800 = Q
             # T_prev + (stend_prev+dTls)*1800 = T
-            assert(torch.allclose(Q_prev + (qtend_prev+dqls)*1800, Q))
-            assert(torch.allclose(T_prev + (stend_prev+dTls)*1800, T))
+            assert(np.allclose(Q_prev + (qtend_prev+dqls)*1800, Q))
+            assert(np.allclose(T_prev + (stend_prev+dTls)*1800, T))
             # replace qtend_prev and stend_prev with exp value
             print(f"exp shape: {exp.shape}")
             next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"]+65] = exp
