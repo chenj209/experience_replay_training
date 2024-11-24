@@ -511,7 +511,9 @@ def main(args):
                 # skip empty batch due to missing data
                 continue
             suffix = 'testing- epoch:{}| iters:{}/{} |'.format(epoch, iter+1, len(testloader))
-            batch[0] = batch[0][:,:,60:] # remove prevQT
+            #batch[0] = batch[0][:,:,60:] # remove prevQT
+            # batch[0] = batch[0][:,:,60:] # remove prevQT
+            batch[0] = batch[0][:,:,120:] # remove prevQT
             batches = {
                 "0_29": [batch[0], batch[1][:,:,:30]],
                 "30_59": [batch[0], batch[1][:,:,30:60]],
