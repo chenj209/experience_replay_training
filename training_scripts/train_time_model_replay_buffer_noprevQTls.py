@@ -242,7 +242,7 @@ def main(args):
     # define model
     all_models = {}
     input_size = cal_input_size(input_indices)\
-                +int(args.multistep)*(cal_input_size(prev_input_indices)) - 60 # remove QT
+                +int(args.multistep)*(cal_input_size(prev_input_indices)) - 60 - 60 # remove QT and prevls
     all_models['0_29'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     all_models['30_59'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     all_models['61_65'] = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
@@ -376,7 +376,8 @@ def main(args):
                     "30_59": batch[1][:,:,30:60],
                     "61_65": batch[1][:,:,60:65]
                 }
-            batch_input = batch_input[:,:,60:] # remove prevQT
+            #batch_input = batch_input[:,:,60:] # remove prevQT
+            batch_input = batch_input[:,:,120:] # remove prevQT and prevls
             print(f"prep data: {time.time() - prep_data_start}")
             train_mses = {}
             model_preds = {}
@@ -431,19 +432,33 @@ def main(args):
                 model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
                 model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
             ],axis=2)
-            # replace qtend_prev and stend_prev with exp value
-            next_x[:,:,122:122+65] = exp
             # compute dqls_prev and dqls_prev 
             # dqls = Q - Q_prev - qtend_prev*24*3600
             # dTls = T - T_prev - stend_prev*24*3600
-            Q_prev =     next_x[:,:,  batch_indices["QL"][0]:batch_indices["QL"][1]]
-            T_prev =     next_x[:,:,  batch_indices["TL"][0]:batch_indices["TL"][1]]
+            Q_prev =     next_x[:,:,  batch_indices["QL_prev"][0]:batch_indices["QL_prev"][1]]
+            T_prev =     next_x[:,:,  batch_indices["T_nn_in_prev"][0]:batch_indices["T_nn_in_prev"][1]]
             qtend_prev = next_x[:,:,  batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
             stend_prev = next_x[:,:,  batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
-            Q =      next_x[:,:,122+65:122+65+30]
-            T =      next_x[:,:,122+65+30:122+65+30+30]
-            dqls =   next_x[:,:,122+65+30+30:122+65+30+30+30] 
-            dTls =   next_x[:,:,122+65+30+30+30:122+65+30+30+30+30]
+            Q =      next_x[:,:,batch_indices["QL"][0]:batch_indices["QL"][1]]
+            T =      next_x[:,:,batch_indices["T_nn_in"][0]:batch_indices["T_nn_in"][1]]
+            dqls =   next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] 
+            dTls =   next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]]
+            # Q_prev + (qtend_prev+dqls)*1800 = Q
+            # T_prev + (stend_prev+dTls)*1800 = T
+            assert(torch.allclose(Q_prev + (qtend_prev+dqls)*1800, Q))
+            assert(torch.allclose(T_prev + (stend_prev+dTls)*1800, T))
+            # replace qtend_prev and stend_prev with exp value
+            print(f"exp shape: {exp.shape}")
+            next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"]+65] = exp
+            qtend_prev_exp = next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
+            stend_prev_exp = next_x[:,:,batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
+            dqls_exp = (Q - Q_prev)/1800 - qtend_prev_exp
+            dTls_exp = (T - T_prev)/1800 - stend_prev_exp
+            # assert(torch.allclose(dqls, (Q - Q_prev)/1800 - qtend_prev_exp))
+            # assert(torch.allclose(dTls, (T - T_prev)/1800 - stend_prev_exp))
+            next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] = dqls_exp
+            next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]] = dTls_exp
+
             print(f"store start: {time.time() - store_start}")
             replay_buffer.store(next_x, next_y, tar_idx)
 
