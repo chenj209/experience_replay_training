@@ -36,6 +36,6 @@ if __name__ == "__main__":
     print("dTls_prev mean: ", dTls_prev.mean())
     print("stend_prev mean: ", stend_prev.mean())
     print("T_prev mean: ", T_prev.mean())
-    print("T_prev+(dTls+stend_prev)*1800=T:", np.allclose(T, T_prev+(dTls+stend_prev/1004)*1800))
+    print("T_prev+(dTls+stend_prev)*1800=T:", np.allclose(T, T_prev+(dTls+stend_prev/1004.64)*1800))
     #print("Q_prev+dqls+qtend_prev=Q:", Q.mean(), (Q_prev+(dqls+qtend_prev)*1800).mean())
 
