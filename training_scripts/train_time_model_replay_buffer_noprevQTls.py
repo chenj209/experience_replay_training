@@ -354,9 +354,9 @@ def main(args):
             if replay_buffer.size >= buffer_sample_size:
                 sampled_replay = replay_buffer.sample(buffer_sample_size)
                 sr_input, sr_target = sampled_replay[:2]
-                sr_input = torch.from_numpy(sr_input)
+                sr_input = torch.from_numpy(sr_input[:,:,120:])
                 sr_target = torch.from_numpy(sr_target)
-                batch_input = torch.cat([batch[0], sr_input], dim=0)
+                batch_input = torch.cat([batch[0][:,:,120:], sr_input], dim=0)
                 #batch_input = torch.from_numpy(np.concatenate([batch[0], sr_input], axis=0)) 
                 #batch_targets = {
                 #    "0_29": torch.from_numpy(np.concatenate([batch[1][:,:,:30], sr_target[:,:,:30]], axis=0)),
@@ -370,14 +370,14 @@ def main(args):
                     "61_65": batch_target[:,:,60:65]
                 }
             else:
-                batch_input = batch[0]
+                batch_input = batch[0][:,:,120:]
                 batch_targets = {
                     "0_29": batch[1][:,:,:30],
                     "30_59": batch[1][:,:,30:60],
                     "61_65": batch[1][:,:,60:65]
                 }
             #batch_input = batch_input[:,:,60:] # remove prevQT
-            batch_input = batch_input[:,:,120:] # remove prevQT and prevls
+            # batch_input = batch_input[:,:,120:] # remove prevQT and prevls
             print(f"prep data: {time.time() - prep_data_start}")
             train_mses = {}
             model_preds = {}
