@@ -139,6 +139,8 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_points_x = points_x[:, -309:]
             if args.no_prevQT:
                 curr_points_x = curr_points_x[:, 60:]
+            elif args.no_prevQTLS:
+                curr_points_x = curr_points_x[:, 120:]
             curr_points_x = (curr_points_x.float()).to(device)
             curr_points_y = points_y
             curr_preds["0_29"].append(all_models["0_29"](curr_points_x).detach().cpu().numpy())
@@ -155,11 +157,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
             curr_points_x_2step[:,122:122+65] = model_preds
             if args.no_prevQT:
                 curr_points_x_2step = curr_points_x_2step[:, 60:]
-            # curr_points_x_2step = (torch.cat([
-            #     points_x[:,-(309+122):-309], 
-            #     prev_qtend, prev_stend, prev_rad,
-            #     points_x[:,-122:]
-            #     ], dim=1).float()).to(device)
+            elif args.no_prevQTLS:
+                curr_points_x_2step = curr_points_x_2step[:, 120:]
+            curr_points_x_2step = (curr_points_x_2step.float()).to(device)
             curr_preds_2step["0_29"].append(all_models["0_29"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["30_59"].append(all_models["30_59"](curr_points_x_2step).detach().cpu().numpy())
             curr_preds_2step["61_65"].append(all_models["61_65"](curr_points_x_2step).detach().cpu().numpy())
