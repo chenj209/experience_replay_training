@@ -117,7 +117,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 points_y.reshape(-1, points_y.shape[-1])
 
             prev_points_x = points_x[:, :309]
-            if args.no_prevQT:
+            if args.no_prevQTLS:
+                prev_points_x = prev_points_x[:, 120:]
+            elif args.no_prevQT:
                 prev_points_x = prev_points_x[:, 60:]
             previous_points_y = points_x[:, 309:309+65]
             prev_points_x = (prev_points_x.float()).to(device)
@@ -267,6 +269,7 @@ if __name__ == "__main__":
                         all previous arguments if conflicts")
     parser.add_argument("--legacy_order", action="store_true")
     parser.add_argument("--no_prevQT", action="store_true")
+    parser.add_argument("--no_prevQTLS", action="store_true")
     args = parser.parse_args()
     print(args)
     if args.train_configs is not None:
@@ -362,8 +365,12 @@ if __name__ == "__main__":
                                   transform, region_mask)
 
     input_size = len(input_indices)+len(prev_input_indices)
+    if args.no_prevQTLS and args.no_prevQT:
+        raise ValueError("no_prevQTLS and no_prevQT cannot be both True")
     if args.no_prevQT:
         input_size = input_size - 60
+    if args.no_prevQTLS:
+        input_size = input_size - 120
     all_models = {
         '0_29': load_resmlp_newformat2(args.model029, input_size, 30, parallel=True),
         '30_59': load_resmlp_newformat2(args.model3059, input_size, 30, parallel=True),
