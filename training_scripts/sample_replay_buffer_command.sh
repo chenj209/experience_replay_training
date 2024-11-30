@@ -2,7 +2,7 @@
 CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQTls.py \
     --data_dir /data/nncam_data/image_set/ \
     --ex_data_dir /data/chenj209/ex_dataset/ \
-    --checkpoint /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQTls_perturbls/ \
+    --checkpoint /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQTls_perturbls_mix0.5/ \
     --data_means ../consts/all_means.npz \
     --data_stds ../consts/all_stds.npz \
     --multistep 1 \
@@ -15,7 +15,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQTls.py
     --lr_strategy coslr \
     --manualSeed 1117 \
     --buffer_size 288 \
-    --workers 24 
+    --workers 24 \
+    --mixing_ratio 0.5
 #sample_train_test
 : <<'sample_train_test'
 CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQT.py  \
