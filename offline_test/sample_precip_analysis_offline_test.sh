@@ -24,7 +24,7 @@ ai002_test_EP1117_precip_analysis
 
 #:<<'ai002_test_EP1117_precip_analysis'
 CUDA_VISIABLE_DEVICES=2 python offline_test_precip.py \
-    --output_type 0-29 \
+    --output_type 0_29 \
     --norm_type std \
     --start_ts 35040 \
     --sample_rate 1 \

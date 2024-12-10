@@ -25,6 +25,7 @@ class FlattenSpatialTransform:
         if sample is None:
             return None
         data_x, data_y = sample[:2]
+        # print("DEBUG1210: data_x.shape", data_x.shape)
         data_x = data_x.reshape(data_x.shape[0], -1).T
         data_y = data_y.reshape(data_y.shape[0], -1).T
         res = [data_x, data_y]

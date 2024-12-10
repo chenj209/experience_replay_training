@@ -17,6 +17,7 @@ from torch.utils import data
 from torchvision.transforms import Compose
 from sklearn.metrics import r2_score
 import datetime
+import pandas as pd
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from configs import *
@@ -33,10 +34,10 @@ FlattenSpatialTransform, get_min_max_coords
 from normalization import get_inverse_newformat, inverse_data_var_names
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
-from metrics import get_thickness_from_ps_1d, report_metric, report_metric_vert, report_metric_spatial
+from metrics import get_thickness_from_ps_2d, report_metric, report_metric_vert, report_metric_spatial
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
-from precip_analysis import compute_scores, get_precip_hist
+from precip_analysis_all import compute_scores, get_precip_hist
 
 def inverse_61_65(x):
     x[:,0] = (x[:,0]) * (1412 - 0)
@@ -76,12 +77,21 @@ def inverse_output(args, y, data_means=None, data_stds=None):
             y = legacy_inverse['30_59'](y)
         elif args.output_type == "61_65":
             raise NotImplementedError("61_65 is not implemented")
+    else:
+        raise ValueError(f"Invalid output_type: {args.output_type}")
     return y
 
 def filename_to_datetime(filename):
     ts = int(filename.split(".")[0])
     start_date = datetime.datetime(1998, 1, 1, 0, 0, 0)
     return start_date + datetime.timedelta(hours=(ts-1)*0.5)
+
+def qtend_to_precip(qtend, thickness):
+    """
+    qtend: (N, 96*144, 30)
+    thickness: (N, 96*144, 30)
+    """
+    return np.sum(qtend*thickness, axis=2) / 1000.0 * 24 * 3600 *1000 * (-1)
 
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
 def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
@@ -96,17 +106,22 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
     region_mask = to_inference_shape(region_mask)
     #print("region_mask shape: ", region_mask.shape)
     region_mask = region_mask.squeeze().astype(bool)
-    best_loss = 1e10
-    best_filenames = None
-    worst_loss = 0
-    worst_filenames = None
+    # best_loss = 1e10
+    # best_filenames = None
+    # worst_loss = 0
+    # worst_filenames = None
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if args.precip_analysis:
-        ets_scores = []
-        far_scores = []
-        mar_scores = []
-        hist_pred = []
-        hist_gt = []
+    # ets_scores = []
+    # far_scores = []
+    # mar_scores = []
+    # hist_pred = []
+    # hist_gt = []
+    # datetimes_pred = {}
+    # datetimes_gt = {}
+    # datetimes_pred_daily_avg = []
+    # datetimes_gt_daily_avg = []
+    datetime_precip_pred_df = pd.DataFrame(columns=range(96*144))
+    datetime_precip_gt_df = pd.DataFrame(columns=range(96*144))
     for iter, batch in enumerate(testloader):
         # allow empty batch
         if batch[0].shape[0] == 0:
@@ -115,63 +130,102 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         all_models['model'].eval()
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch[:4]
-            print("DEBUG1210: batch[-1]", batch[-1])
+            # print("DEBUG1210: batch[-1]", batch[-1])
             filenames = [batch[-1][-1][i].split("/")[-1] for i in range(len(batch[-1][-1]))]
-            print("DEBUG1210: filenames", filenames)
+            # print("DEBUG1210: filenames", filenames)
             datetimes = [filename_to_datetime(filename) for filename in filenames]
-            print("DEBUG1210: datetimes", datetimes)
-            points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
-                points_y.reshape(-1, points_y.shape[-1])
+            # print("DEBUG1210: datetimes", datetimes)
+            # points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
+            #     points_y.reshape(-1, points_y.shape[-1])
+            # print("DEBUG1210: points_x.shape", points_x.shape)
+            # print("DEBUG1210: points_y.shape", points_y.shape)
             if args.no_prevQT:
-                points_x = points_x[:, 60:]
+                points_x = points_x[:, :, 60:]
             elif args.no_prevQTLS:
-                points_x = points_x[:, 120:]
+                points_x = points_x[:, :, 120:]
+            # print("DEBUG1210: points_x.shape", points_x.shape)
+            # print("DEBUG1210: points_y.shape", points_y.shape)
             if get_thickness is not None:
-                x_raw = x_raw.permute((0,2,1))
-                x_raw = x_raw.reshape(-1, x_raw.shape[-1])
+                # print("DEBUG1210: x_raw.shape", x_raw.shape)
+                # x_raw = x_raw.permute((0,2,1))
+                # x_raw = x_raw.reshape(-1, x_raw.shape[-1])
                 thickness = get_thickness(x_raw[:,-1].numpy())
+                # print("DEBUG1210: thickness.shape", thickness.shape)
+                thickness = thickness.reshape(thickness.shape[0], thickness.shape[1], -1).transpose(0,2,1)
+                # print("DEBUG1210: thickness.shape", thickness.shape)
+                # thickness = thickness.reshape(-1, thickness.shape[-1])
+                # print("DEBUG1210: thickness.shape", thickness.shape)
             points_x = (points_x.float()).to(device)
             pred = all_models['model'](points_x).detach().cpu().numpy()
             points_y = points_y.cpu().numpy()
+            # print("DEBUG1210: pred.shape", pred.shape)
+            # print("DEBUG1210: points_y.shape", points_y.shape)
 
             if args.inverse_output:
-                pred = inverse_output(args, pred)
-                points_y = inverse_output(args, points_y)
-
-            if get_thickness is not None:
-                pred = pred*thickness*phys_consts.LATVAP
-                points_y = points_y*thickness*phys_consts.LATVAP
-            y_pred.append(pred)
-            y_gt.append(points_y)
-            loss = np.mean((pred - points_y)**2)
-            if loss < best_loss:
-                best_loss = loss
-                best_filenames = batch[-1]
-            if loss > worst_loss:
-                worst_loss = loss
-                worst_filenames = batch[-1]
-            if args.precip_analysis:
-                ets, far, mar = compute_scores(pred, points_y)
-                ets_scores.append(ets)
-                far_scores.append(far)
-                mar_scores.append(mar)
-                hist_pred.append(get_precip_hist(pred))
-                hist_gt.append(get_precip_hist(points_y))
+                # print("DEBUG1210: pred before inverse mean", pred.mean(axis=1))
+                pred = inverse_output(args, pred, data_means, data_stds)
+                # print("DEBUG1210: pred after inverse mean", pred.mean(axis=1))
+                # print("DEBUG1210: points_y before inverse mean", points_y.mean(axis=1))
+                points_y = inverse_output(args, points_y, data_means, data_stds)
+                # print("DEBUG1210: points_y after inverse mean", points_y.mean(axis=1))
+            precip_pred = qtend_to_precip(pred, thickness)
+            # print("DEBUG1210: precip_pred shape", precip_pred.shape)
+            # print("DEBUG1210: precip_pred mean", precip_pred.mean(axis=1))
+            precip_gt = qtend_to_precip(points_y, thickness)
+            # print("DEBUG1210: precip_gt shape", precip_gt.shape)
+            # print("DEBUG1210: precip_gt mean", precip_gt.mean(axis=1))
+            # print("DEBUG1210: precip_pred.shape", precip_pred.shape)
+            # print("DEBUG1210: precip_gt.shape", precip_gt.shape)
+            for i in range(len(datetimes)):
+                datetime_precip_pred_df.loc[pd.to_datetime(datetimes[i])] = precip_pred[i]
+                datetime_precip_gt_df.loc[pd.to_datetime(datetimes[i])] = precip_gt[i]
+            # print("DEBUG1210: datetime_precip_pred_df.head()", datetime_precip_pred_df.head())
+            # print("DEBUG1210: datetime_precip_gt_df.head()", datetime_precip_gt_df.head())
+            # if get_thickness is not None:
+            #     pred = pred*thickness*phys_consts.LATVAP
+            #     points_y = points_y*thickness*phys_consts.LATVAP
+            # y_pred.append(pred)
+            # y_gt.append(points_y)
+            # loss = np.mean((pred - points_y)**2)
+            # if loss < best_loss:
+            #     best_loss = loss
+            #     best_filenames = batch[-1]
+            # if loss > worst_loss:
+            #     worst_loss = loss
+            #     worst_filenames = batch[-1]
+            # ets, far, mar = compute_scores(pred, points_y)
+            # ets_scores.append(ets)
+            # far_scores.append(far)
+            # mar_scores.append(mar)
+            # hist_pred.append(get_precip_hist(precip_pred))
+            # hist_gt.append(get_precip_hist(precip_gt))
+            # for i in range(len(datetimes)):
+            #     if datetimes[i] not in datetimes_pred:
+            #         datetimes_pred[datetimes[i]] = []
+            #         datetimes_gt[datetimes[i]] = []
+            #     datetimes_pred[datetimes[i]].append(precip_pred[i])
+            #     datetimes_gt[datetimes[i]].append(precip_gt[i])
+            #     if len(datetimes_pred[datetimes[i]]) == 48:
+            #         datetimes_pred_daily_avg.append(np.mean(datetimes_pred[datetimes[i]], axis=1).flatten())
+            #         datetimes_gt_daily_avg.append(np.mean(datetimes_gt[datetimes[i]], axis=1).flatten())
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), pred.flatten())}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
-    print(f"Best loss: {best_loss}, filenames: {best_filenames}")
-    print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
+    # print(f"Best loss: {best_loss}, filenames: {best_filenames}")
+    # print(f"Worst loss: {worst_loss}, filenames: {worst_filenames}")
 
-    np.save(
-        f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy",
-        np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0)
-        )
-    np.save(
-        f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy",
-        np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0)
-        )
+    # np.save(
+    #     f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_pred.npy",
+    #     np.mean(np.concatenate([y[None,] for y in y_1], axis=0), axis=0)
+    #     )
+    # np.save(
+    #     f"ex_{output_name}_{args.out_json.rstrip('.json')}_avg_gt.npy",
+    #     np.mean(np.concatenate([y[None,] for y in y_gt], axis=0), axis=0)
+    #     )
 
+    # Save precipitation dataframes to CSV files
+    datetime_precip_pred_df.to_csv(f"precip_pred_{args.out_json.rstrip('.json')}.csv")
+    datetime_precip_gt_df.to_csv(f"precip_gt_{args.out_json.rstrip('.json')}.csv")
     y_pred = np.concatenate(y_pred, axis=0)
     y_gt = np.concatenate(y_gt, axis=0)
 
@@ -227,7 +281,7 @@ if __name__ == "__main__":
     random.seed(0)
     np.random.seed(0)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_type", "-ot", help="choose from 0-29, 30-59, 61-65, or other single output")
+    parser.add_argument("--output_type", "-ot", help="choose from 0_29, 30_59, 61_65, or other single output")
     #parser.add_argument("--resume", "-re", help="path to selected model")
     parser.add_argument("resume", help="path to configuration file")
     parser.add_argument("out_json", help="path to output json file")
@@ -246,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_configs", type=str, nargs="?",
                         help="path to training configuration file, this overwrites \
                         all previous arguments if conflicts")
-    parser.add_argument("--precip_analysis", action="store_true")    
+    # parser.add_argument("--precip_analysis", action="store_true")    
     parser.add_argument("--no_prevQT", action="store_true")
     parser.add_argument("--no_prevQTLS", action="store_true")
     parser.add_argument("--legacy_order", action="store_true")
@@ -276,15 +330,15 @@ if __name__ == "__main__":
     else:
         prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     # col_names_y = ["qtend_check"]
-    if args.output_type == '0-29':
+    if args.output_type == '0_29':
         #batch[1] = batch[1][:, :, :30]
         col_names_y = ["qtend_check"]
         output_size = 30
-    elif args.output_type == '30-59':
+    elif args.output_type == '30_59':
         # batch[1] = batch[1][:, :, 30:60]
         col_names_y = ["stend_check"]
         output_size = 30
-    elif args.output_type == '61-65':
+    elif args.output_type == '61_65':
         if args.legacy_order:
             col_names_y = ["SOLL","SOLS","SOLSD","SOLLD","FSDS"]
         else:
@@ -325,14 +379,6 @@ if __name__ == "__main__":
     print("Region window coordinates: ", lon[min_y], lon[max_y-1], lat[min_x], lat[max_x-1])
     sub_region_mask = region_mask[min_x:max_x, min_y:max_y]
 
-    if args.thick:
-        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
-        hyai = pconsts["hyai"]
-        hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
-    else:
-        get_thickness = None
-
     if args.norm_type == "std":
         data_means = dict(np.load(args.data_means))
         data_stds = dict(np.load(args.data_stds))
@@ -363,13 +409,13 @@ if __name__ == "__main__":
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
 
-    if args.thick:
-        pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
-        hyai = pconsts["hyai"]
-        hybi = pconsts["hybi"]
-        get_thickness = lambda x : get_thickness_from_ps_1d(x,hyai, hybi)
-    else:
-        get_thickness = None
+    # if args.thick:
+    pconsts = np.load(os.path.join(sys.path[0],"..","consts","phys_consts.npz"))
+    hyai = pconsts["hyai"]
+    hybi = pconsts["hybi"]
+    get_thickness = lambda x : get_thickness_from_ps_2d(x,hyai, hybi)
+    # else:
+        # get_thickness = None
     input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
     if args.no_prevQTLS and args.no_prevQT:
         raise ValueError("no_prevQTLS and no_prevQT cannot be both True")
