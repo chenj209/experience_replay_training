@@ -23,7 +23,7 @@ CUDA_VISIABLE_DEVICES=2 python offline_test_newformat.py \
 ai002_test_EP1117_precip_analysis
 
 #:<<'ai002_test_EP1117_precip_analysis'
-CUDA_VISIABLE_DEVICES=2 python offline_test_precip.py \
+CUDA_VISIABLE_DEVICES=0,1,2,3 python offline_test_precip.py \
     --output_type 0_29 \
     --norm_type std \
     --start_ts 35040 \

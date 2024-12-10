@@ -265,8 +265,8 @@ def prep_dataloaders(
         region_mask1d=region_mask
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
-                                 batch_size=4,
-                                 num_workers=4,
+                                 batch_size=16,
+                                 num_workers=16,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
 
