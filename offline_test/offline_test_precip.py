@@ -115,9 +115,15 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         all_models['model'].eval()
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch[:4]
+            print("DEBUG1210: ", batch[-1])
             filenames = batch[-1][0][i].split("/")[-1]
+            print("DEBUG1210: ", filenames)
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
+            if args.no_prevQT:
+                points_x = points_x[:, 60:]
+            elif args.no_prevQTLS:
+                points_x = points_x[:, 120:]
             if get_thickness is not None:
                 x_raw = x_raw.permute((0,2,1))
                 x_raw = x_raw.reshape(-1, x_raw.shape[-1])
@@ -239,6 +245,9 @@ if __name__ == "__main__":
                         help="path to training configuration file, this overwrites \
                         all previous arguments if conflicts")
     parser.add_argument("--precip_analysis", action="store_true")    
+    parser.add_argument("--no_prevQT", action="store_true")
+    parser.add_argument("--no_prevQTLS", action="store_true")
+    parser.add_argument("--legacy_order", action="store_true")
     args = parser.parse_args()
     print(args)
     # prioritize args from train_configs
@@ -260,8 +269,10 @@ if __name__ == "__main__":
     cudnn.benchmark = True
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]\
-        +args.ex_input_prev
+    if args.legacy_order:
+        prev_ex_vars = ["qtend_check", "stend_check", 'SOLL', 'SOLS', 'SOLSD', 'SOLLD', 'FSDS']+args.ex_input_prev
+    else:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     # col_names_y = ["qtend_check"]
     if args.output_type == '0-29':
         #batch[1] = batch[1][:, :, :30]
@@ -272,7 +283,10 @@ if __name__ == "__main__":
         col_names_y = ["stend_check"]
         output_size = 30
     elif args.output_type == '61-65':
-        col_names_y = ["SOLL","SOLS","SOLLD","SOLSD","FSDS"]
+        if args.legacy_order:
+            col_names_y = ["SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+        else:
+            col_names_y = ["SOLL","SOLLD","SOLS","SOLSD","FSDS"]
         output_size = 5
     else:
         col_names_y = [args.output_type]
@@ -355,6 +369,12 @@ if __name__ == "__main__":
     else:
         get_thickness = None
     input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
+    if args.no_prevQTLS and args.no_prevQT:
+        raise ValueError("no_prevQTLS and no_prevQT cannot be both True")
+    if args.no_prevQT:
+        input_size = input_size - 60
+    if args.no_prevQTLS:
+        input_size = input_size - 120
     # all_models = {'0_29': load_resmlp_newformat(model_ckpt_path, input_size)}
     all_models = {'model': load_resmlp_newformat2(model_ckpt_path, input_size, output_size)}
 
