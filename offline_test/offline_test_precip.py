@@ -16,6 +16,7 @@ import glob
 from torch.utils import data
 from torchvision.transforms import Compose
 from sklearn.metrics import r2_score
+import datetime
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from configs import *
@@ -77,6 +78,11 @@ def inverse_output(args, y, data_means=None, data_stds=None):
             raise NotImplementedError("61_65 is not implemented")
     return y
 
+def filename_to_datetime(filename):
+    ts = int(filename.split(".")[0])
+    start_date = datetime.datetime(1998, 1, 1, 0, 0, 0)
+    return start_date + datetime.timedelta(hours=(ts-1)*0.5)
+
 #def offline_test(args, all_models, testloader, get_thickness, inverse_output, silent=False, save=False):
 def offline_test(args, all_models, testloader, get_thickness, silent=False, save=False):
     problem_files = []
@@ -109,7 +115,7 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         all_models['model'].eval()
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch[:4]
-            filename = batch[-1][0][0].split("/")[-1]
+            filenames = batch[-1][0][i].split("/")[-1]
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
             if get_thickness is not None:
