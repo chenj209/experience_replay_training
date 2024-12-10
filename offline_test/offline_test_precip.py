@@ -115,9 +115,11 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
         all_models['model'].eval()
         with torch.no_grad():
             points_x, points_y, x_raw, y_raw = batch[:4]
-            print("DEBUG1210: ", batch[-1])
-            filenames = batch[-1][0][i].split("/")[-1]
-            print("DEBUG1210: ", filenames)
+            print("DEBUG1210: batch[-1]", batch[-1])
+            filenames = [batch[-1][-1][i].split("/")[-1] for i in range(len(batch[-1][-1]))]
+            print("DEBUG1210: filenames", filenames)
+            datetimes = [filename_to_datetime(filename) for filename in filenames]
+            print("DEBUG1210: datetimes", datetimes)
             points_x, points_y = points_x.reshape(-1, points_x.shape[-1]), \
                 points_y.reshape(-1, points_y.shape[-1])
             if args.no_prevQT:
