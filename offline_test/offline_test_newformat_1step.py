@@ -231,6 +231,7 @@ if __name__ == "__main__":
                         all previous arguments if conflicts")
     parser.add_argument("--no_prevQT", action="store_true")
     parser.add_argument("--no_prevQTLS", action="store_true")
+    parser.add_argument("--legacy_order", action="store_true")
     args = parser.parse_args()
     print(args)
     if args.train_configs is not None:
@@ -251,11 +252,15 @@ if __name__ == "__main__":
     cudnn.benchmark = True
     col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
-    #prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
-    prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
+    if args.legacy_order:
+        prev_ex_vars = ["qtend_check", "stend_check", 'SOLL', 'SOLS', 'SOLSD', 'SOLLD', 'FSDS']+args.ex_input_prev
+    else:
+        prev_ex_vars = ["qtend_check", "stend_check", "SOLL", "SOLLD", "SOLS", "SOLSD", "FSDS"]+args.ex_input_prev
     # col_names_y = ["qtend_check"]
-    #col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
-    col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
+    if args.legacy_order:
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLS","SOLSD","SOLLD","FSDS"]
+    else:
+        col_names_y = ["qtend_check", "stend_check", "SOLL","SOLLD","SOLS","SOLSD","FSDS"]
     output_size = 65
     # output_name = '_'.join(col_names_y)
     #data_means = dict(np.load(data_dir + "/data_means.npz"))
@@ -322,7 +327,7 @@ if __name__ == "__main__":
                                   prev_input_indices, output_indices,
                                   transform, region_mask)
 
-    input_size = len(input_indices)+len(prev_input_indices)
+    input_size = len(input_indices)+args.multistep*len(prev_input_indices)
     if args.no_prevQTLS and args.no_prevQT:
         raise ValueError("no_prevQTLS and no_prevQT cannot be both True")
     if args.no_prevQT:
