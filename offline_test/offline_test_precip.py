@@ -27,7 +27,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'models'))
 import phys_consts
 from load_models import load_resmlp_newformat, load_resmlp_newformat2
 #from dataloader_refactor import DatasetDisk
-from dataloader_newformat import DatasetDisk, filter_collate
+#from dataloader_newformat import DatasetDisk, filter_collate
+from dataloader_legacy_format import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
 from preprocess import MinMaxTransformLegacy, StandardizeTransform, \
 FlattenSpatialTransform, get_min_max_coords
@@ -38,6 +39,8 @@ from metrics import get_thickness_from_ps_2d, report_metric, report_metric_vert,
 sys.path.append(os.path.join(sys.path[0], '..', 'utils'))
 from data_shape import to_inference_shape, inverse_to_inference_shape
 from precip_analysis_all import compute_scores, get_precip_hist
+from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
+    gen_col_indices
 
 def inverse_61_65(x):
     x[:,0] = (x[:,0]) * (1412 - 0)
@@ -319,11 +322,35 @@ if __name__ == "__main__":
 
     model_ckpt_path = args.resume
     np.random.seed(0)
-    data_dir = DATA_DIR
+    #data_dir = DATA_DIR
+    data_dir = "/data/nncam_data/image_testset/"
     print("Test set path: ", data_dir)
 
     cudnn.benchmark = True
-    col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    #col_names = np.loadtxt(data_dir + "/col_names.txt", dtype=str)
+    col_names = np.loadtxt("../dataloader/col_names.txt", dtype=str)
+    MODEL_TYPES = ['0_29', '30_59', '61_65']
+
+    COL_NAMES_LEGACY = {
+    "X": [
+        *[f"QL_lev{i}" for i in range(30)],
+        *[f"T_nn_in_lev{i}" for i in range(30)],
+        *[f"dqvls_nn_in_lev{i}" for i in range(30)],
+        *[f"dTls_nn_in_lev{i}" for i in range(30)],
+        "SOLIN",
+        "SPPS"
+    ],
+    "Y": [
+        *[f"qtend_check_lev{i}" for i in range(30)],
+        *[f"stend_check_lev{i}" for i in range(30)],
+        "UNKNOWN",
+        "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
+    ],
+    "EX": [*[f"UL_lev{i}" for i in range(30)],
+           *[f"VL_lev{i}" for i in range(30)],
+           *[f"CLOUD_lev{i}" for i in range(30)], 
+           "CAPE", "FLNS", "FLNT", "SPPRECC", "LWUP"]
+}
     col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]+args.ex_input
     if args.legacy_order:
         prev_ex_vars = ["qtend_check", "stend_check", 'SOLL', 'SOLS', 'SOLSD', 'SOLLD', 'FSDS']+args.ex_input_prev
@@ -349,18 +376,42 @@ if __name__ == "__main__":
         output_size = 1
     output_name = '_'.join(col_names_y)
 
-    all_files = glob.glob(data_dir+'/*.npy')
+    all_files = glob.glob(data_dir+'/*.npz')
     all_files.sort()
     # testing data starts from 35040
     # all files are formatted in name 00010.npy, find idx where name is 35040
-    test_files = all_files[args.start_ts+1:]
+    test_files = all_files[1:]
 
-    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
-        col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
-    )
-    print("Input indices: ", col_names[input_indices])
-    print("Prev input indices: ", col_names[prev_input_indices])
-    print("Output indices: ", col_names[output_indices])
+    # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
+    # )
+    input_indices = [
+        # input indices can only come from X and EX
+        # Y contains output variables which is not available at current step
+        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x))
+    ]
+
+    col_names_prev = prev_ex_vars
+    prev_input_indices = [
+        #  prev_input indices can come from X, Y and EX
+        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x + col_names_prev)),
+        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_prev)),
+    ]
+    output_indices = [
+        # output indices can only come from Y and EX
+        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y)),
+        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_y)),
+    ]
+    data_means = dict(np.load(args.data_means))
+    data_stds = dict(np.load(args.data_stds))
+    # print("Input indices: ", col_names[input_indices])
+    # print("Prev input indices: ", col_names[prev_input_indices])
+    # print("Output indices: ", col_names[output_indices])
+    print("Input indices: ", input_indices)
+    print("Prev input indices: ", prev_input_indices)
+    print("Output indices: ", output_indices)
 
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -416,7 +467,15 @@ if __name__ == "__main__":
     get_thickness = lambda x : get_thickness_from_ps_2d(x,hyai, hybi)
     # else:
         # get_thickness = None
-    input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
+    #input_size = len(input_indices)+int(args.multistep)*len(prev_input_indices)
+    def cal_input_size(col_names):
+        print(col_names)
+        s = 0
+        for i in range(len(col_names)):
+            s += len(col_names[i][1])
+        return s
+    input_size = cal_input_size(input_indices)\
+                +int(args.multistep)*(cal_input_size(prev_input_indices))
     if args.no_prevQTLS and args.no_prevQT:
         raise ValueError("no_prevQTLS and no_prevQT cannot be both True")
     if args.no_prevQT:
