@@ -9,7 +9,7 @@ import numpy as np
 import torchvision.transforms as transforms
 from torch.utils import data
 
-from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy
+from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, MinMaxTransformLegacy2step
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames
 from dataloader_newformat import DatasetDisk, filter_collate
 from debug_utils import print_mean_std_by_var, print_min_max_by_var
@@ -214,15 +214,7 @@ def test_single_column_multistep1():
     print("output_indices:", col_names[output_indices])
 
     transform = transforms.Compose([
-        StandardizeTransform(
-            data_means,
-            data_stds,
-            col_names_x + prev_ex_vars + col_names_x,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True
-            ),
+        MinMaxTransformLegacy2step(include_raw=True),
         FlattenSpatialTransform()
         ])
 
@@ -331,6 +323,7 @@ def test_image_multistep1():
 
 if __name__ == "__main__":
     test_single_column_multistep0()
+    test_single_column_multistep1()
     # test_image_multistep0()
     # test_single_column_multistep1()
     # test_image_multistep1()

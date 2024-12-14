@@ -116,6 +116,63 @@ class RectRegionMaskTransform:
             data_y[:, self.min_x:self.max_x, self.min_y:self.max_y]]
         res.extend(sample[2:])
         return res
+class MinMaxTransformLegacy2step:
+    def __init__(self, include_raw=False):
+        """
+        Takes a mask and applies it to the data.
+
+        mask: mask to apply to the data, shape (lat, lon)
+        include_raw: whether to include the raw input data in the output as the third element
+        """
+        self.include_raw = include_raw
+    
+    def __call__(self, sample):
+        data_x_raw, data_y_raw = sample[:2]
+        data_x = data_x_raw.copy()
+        data_y = data_y_raw.copy()
+        assert(data_x.shape[0] == 309)
+        assert(data_y.shape[0] == 65)
+        data_x[0:30] = (data_x[0:30] - 0)   / (0.0238) * 2 - 1 # Q
+        data_x[30:60] = (data_x[30:60] - 159) / (323 - 159) * 2 - 1 # T
+        data_x[60:90] = (data_x[60:90] + 2.13e-6) / (2.13e-6*2) * 2 - 1 # dqls
+        data_x[90:120] = (data_x[90:120] + 3.89e-3) / (3.89e-3*2) * 2 - 1 # dTls
+        data_x[120]    = (data_x[120] - 0)     / (1412 - 0) # solin
+        data_x[121]    = (data_x[121] - 59928) / (105782 - 59928) # ps
+        data_x[122+0:122+30] = (data_x[122+0:122+30] + 3.11e-6) / (3.11e-6*2) * 2 - 1
+        data_x[122+30:122+60] = (data_x[122+30:122+60] + 3.63)    / (3.63*2) * 2    - 1
+        # data_x[60:61]    =  data_x[60:61,:,:] / (2.12e-6) * 2 - 1
+        
+        data_x[122+60:122+61]    = (data_x[122+60:122+61] - 0) / (1412 - 0)
+        data_x[122+61:122+62]    = (data_x[122+61:122+62] - 0) / (1412 - 0)
+        data_x[122+62:122+63]    = (data_x[122+62:122+63] - 0) / (1412 - 0)
+        data_x[122+63:122+64]    = (data_x[122+63:122+64] - 0) / (1412 - 0)
+        data_x[122+64:122+65]    = (data_x[122+64:122+65] - 0) / (1412 - 0)    
+        data_x[187:187+30] = (data_x[187:187+30] - 0) / (0.0238) * 2 -1  # Q
+        data_x[187+30:187+60] = (data_x[187+30:187+60] - 159) / (323 - 159) * 2 - 1 # T
+        data_x[187+60:187+90] = (data_x[187+60:187+90] + 2.13e-6) / (2.13e-6*2) * 2 - 1 # dqls
+        data_x[187+90:187+120] = (data_x[187+90:187+120] + 3.89e-3) / (3.89e-3*2) * 2 - 1 # dTls
+        data_x[187+120]    = (data_x[187+120] - 0)     / (1412 - 0) # solin
+        data_x[187+121]    = (data_x[187+121] - 59928) / (105782 - 59928) # ps
+
+
+        data_y[0:30] = (data_y[0:30] + 3.11e-6) / (3.11e-6*2) * 2 - 1
+        data_y[30:60] = (data_y[30:60] + 3.63)    / (3.63*2) * 2    - 1
+        # data_y[60:61]    =  data_y[60:61,:,:] / (2.12e-6) * 2 - 1
+        
+        data_y[60:61]    = (data_y[60:61] - 0) / (1412 - 0)
+        data_y[61:62]    = (data_y[61:62] - 0) / (1412 - 0)
+        data_y[62:63]    = (data_y[62:63] - 0) / (1412 - 0)
+        data_y[63:64]    = (data_y[63:64] - 0) / (1412 - 0)
+        data_y[64:65]    = (data_y[64:65] - 0) / (1412 - 0)    
+        
+
+        if self.include_raw:
+            res = [data_x, data_y, data_x_raw, data_y_raw]
+        else:
+            res = [data_x, data_y]
+        res.extend(sample[2:])
+        return res
+
 
 class MinMaxTransformLegacy:
     def __init__(self, include_raw=False):

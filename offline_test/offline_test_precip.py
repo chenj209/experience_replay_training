@@ -268,7 +268,7 @@ def prep_dataloaders(
         region_mask1d=region_mask
         )
     testloader = data.DataLoader(testing_set, shuffle=False,
-                                 batch_size=16,
+                                 batch_size=8,
                                  num_workers=16,
                                  collate_fn=filter_collate,
                                  pin_memory=True)
@@ -380,7 +380,7 @@ if __name__ == "__main__":
     all_files.sort()
     # testing data starts from 35040
     # all files are formatted in name 00010.npy, find idx where name is 35040
-    test_files = all_files[1:]
+    test_files = all_files[1:4400]
 
     # input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
         # col_names, prev_ex_vars, col_names_x, col_names_y, int(args.multistep)
