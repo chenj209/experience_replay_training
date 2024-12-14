@@ -125,8 +125,6 @@ def main(args):
         ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y)),
         ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_y)),
     ]
-    data_means = dict(np.load(args.data_means))
-    data_stds = dict(np.load(args.data_stds))
         
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -134,6 +132,8 @@ def main(args):
         multistep_col_names_x.extend(col_names_prev)
     multistep_col_names_x.extend(col_names_x)
     if args.norm_type == "std":
+        data_means = dict(np.load(args.data_means))
+        data_stds = dict(np.load(args.data_stds))
         traintransform = transforms.Compose([
             #RegionMaskTransform(region_mask),
             StandardizeTransformNext(

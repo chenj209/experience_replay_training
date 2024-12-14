@@ -125,40 +125,52 @@ def main(args):
         ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y)),
         ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_y)),
     ]
-    data_means = dict(np.load(args.data_means))
-    data_stds = dict(np.load(args.data_stds))
         
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
         multistep_col_names_x.extend(col_names_x)
         multistep_col_names_x.extend(col_names_prev)
     multistep_col_names_x.extend(col_names_x)
-    traintransform = transforms.Compose([
-        #RegionMaskTransform(region_mask),
-        StandardizeTransformNext(
-            data_means,
-            data_stds,
-            multistep_col_names_x,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True
-            ),
-        FlattenSpatialTransformNext()
-        ])
-    testtransform = transforms.Compose([
-        #RegionMaskTransform(region_mask),
-        StandardizeTransform(
-            data_means,
-            data_stds,
-            multistep_col_names_x,
-            col_names_y,
-            col_names,
-            normalize_input=True,
-            normalize_output=True
-            ),
-        FlattenSpatialTransform()
-        ])
+    if args.norm_type == "std":
+        data_means = dict(np.load(args.data_means))
+        data_stds = dict(np.load(args.data_stds))
+        traintransform = transforms.Compose([
+            #RegionMaskTransform(region_mask),
+            StandardizeTransformNext(
+                data_means,
+                data_stds,
+                multistep_col_names_x,
+                col_names_y,
+                col_names,
+                normalize_input=True,
+                normalize_output=True
+                ),
+            FlattenSpatialTransformNext()
+            ])
+        testtransform = transforms.Compose([
+            #RegionMaskTransform(region_mask),
+            StandardizeTransform(
+                data_means,
+                data_stds,
+                multistep_col_names_x,
+                col_names_y,
+                col_names,
+                normalize_input=True,
+                normalize_output=True
+                ),
+            FlattenSpatialTransform()
+            ])
+    elif args.norm_type == "minmax_legacy":
+        traintransform = transforms.Compose([
+            MinMaxTransformLegacy2step(),
+            FlattenSpatialTransformNext()
+            ])
+        testtransform = transforms.Compose([
+            MinMaxTransformLegacy2step(),
+            FlattenSpatialTransform()
+            ])
+    else:
+        raise Exception(f"Norm type {args.norm_type} is not supported")
 
 
     training_set = DatasetDisk(
@@ -494,6 +506,7 @@ if __name__ == '__main__':
     parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
         input variables")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
+    parser.add_argument("--norm_type", type=str, help="choose from [std, minmax_legacy], default to std", default="std")
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--buffer_size", default=288, type=int)

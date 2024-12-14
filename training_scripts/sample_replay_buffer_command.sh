@@ -3,7 +3,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQT.py  
     --data_dir /data/nncam_data/image_set/ \
     --ex_data_dir /data/chenj209/ex_dataset/ \
     --checkpoint /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT_minmax/ \
-    --
+    --norm_type minmax_legacy \
     --multistep 1 \
     --sample_stride 1 \
     --input_vars QL T_nn_in dqvls_nn_in dTls_nn_in SOLIN SPPS \
