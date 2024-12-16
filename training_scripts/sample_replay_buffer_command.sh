@@ -7,14 +7,14 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python train_time_model_replay_buffer_noprevQT.py  
     --multistep 1 \
     --sample_stride 1 \
     --input_vars QL T_nn_in dqvls_nn_in dTls_nn_in SOLIN SPPS \
-    --output_vars qtend_check stend_check SOLL SOLS SOLSD SOLLD FSDS \
-    --input_vars_prev qtend_check stend_check SOLL SOLS SOLSD SOLLD FSDS \
+    --output_vars qtend_check stend_check SOLL SOLS SOLSD SOLLD \
+    --input_vars_prev qtend_check stend_check SOLL SOLS SOLSD SOLLD \
     --train_batch 24 \
     --epoch 50 \
     --lr_strategy coslr \
     --manualSeed 1117 \
     --buffer_size 0 \
-    --noFSDS \ 
+    --noFSDS \
     --workers 24 
 #sample_train_test
 : <<'sample_train_test'

@@ -417,17 +417,21 @@ def main(args):
                 #pred_2step = model_preds["0_29"][batch[0].size(0):].detach().cpu().numpy()
                 #print(f"1 step 029 r2: {r2_score(pred_1step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[:batch[0].size(0),:,:30].flatten())}")
                 #print(f"2 step 029 r2: {r2_score(pred_2step.flatten(), batch_targets['0_29'].detach().cpu().numpy()[batch[0].size(0):,:,:30].flatten())}")
-            next_x, next_y = batch[2:4]
-            next_x = next_x.numpy()
-            next_y = next_y.numpy()
-            exp = np.concatenate([
-                model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
-                model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
-                model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
-            ],axis=2)
-            next_x[:,:,122:122+65] = exp
-            print(f"store start: {time.time() - store_start}")
-            replay_buffer.store(next_x, next_y, tar_idx)
+            if args.buffer_size > 0:
+                next_x, next_y = batch[2:4]
+                next_x = next_x.numpy()
+                next_y = next_y.numpy()
+                exp = np.concatenate([
+                    model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
+                    model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
+                    model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
+                ],axis=2)
+                if args.noFSDS:
+                    next_x[:,:,122:122+64] = exp
+                else:
+                    next_x[:,:,122:122+65] = exp
+                print(f"store start: {time.time() - store_start}")
+                replay_buffer.store(next_x, next_y, tar_idx)
 
             current_iters += 1
             print('training- epoch:{}/{} | iters:{}/{}| lr:{:.6f} | \
@@ -515,7 +519,7 @@ if __name__ == '__main__':
     ])
     parser.add_argument("--input_vars_prev", type=str, nargs="*", default=[],
                         help="additional variables to use as inputs in the previous \
-                        timesteps besides vars in input_vars and output_vars")
+                        timesteps besides vars in input_vars")
     parser.add_argument("--output_vars", type=str, nargs="*", default=["qtend_check"])
     parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
         input variables")
@@ -524,6 +528,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--buffer_size", default=288, type=int)
+    parser.add_argument("--mixing_ratio", default=1.0, type=float)
     parser.add_argument("--noFSDS", action="store_true", help="whether to use previous FSDS as input")
     args = parser.parse_args()
     print(args)
