@@ -29,7 +29,7 @@ from dataloader_replay_buffer import DatasetDisk, filter_collate
 from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
-from preprocess import FlattenSpatialTransform, StandardizeTransform 
+from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 
