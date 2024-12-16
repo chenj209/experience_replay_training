@@ -29,7 +29,7 @@ from dataloader_replay_buffer import DatasetDisk, filter_collate
 from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
-from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step
+from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step, MinMaxTransformLegacy2stepNoFSDS
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 
@@ -161,14 +161,24 @@ def main(args):
             FlattenSpatialTransform()
             ])
     elif args.norm_type == "minmax_legacy":
-        traintransform = transforms.Compose([
-            MinMaxTransformLegacy2step(),
-            FlattenSpatialTransformNext()
-            ])
-        testtransform = transforms.Compose([
-            MinMaxTransformLegacy2step(),
-            FlattenSpatialTransform()
-            ])
+        if args.noFSDS:
+            traintransform = transforms.Compose([
+                MinMaxTransformLegacy2stepNoFSDS(),
+                FlattenSpatialTransformNext()
+                ])
+            testtransform = transforms.Compose([
+                MinMaxTransformLegacy2stepNoFSDS(),
+                FlattenSpatialTransform()
+                ])
+        else:
+            traintransform = transforms.Compose([
+                MinMaxTransformLegacy2step(),
+                FlattenSpatialTransformNext()
+                ])
+            testtransform = transforms.Compose([
+                MinMaxTransformLegacy2step(),
+                FlattenSpatialTransform()
+                ])
     else:
         raise Exception(f"Norm type {args.norm_type} is not supported")
 
@@ -226,7 +236,10 @@ def main(args):
                 +int(args.multistep)*(cal_input_size(prev_input_indices))
     all_models['0_29'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     all_models['30_59'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
-    all_models['61_65'] = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
+    if not args.noFSDS:
+        all_models['61_65'] = models.ResMLP(input_size, 5, args.node_size, args.activation, args.num_blocks)
+    else:
+        all_models['61_65'] = models.ResMLP(input_size, 4, args.node_size, args.activation, args.num_blocks)
 
     print('Total params: %.2f' % (sum(p.numel() for p in all_models["0_29"].parameters())))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -347,14 +360,14 @@ def main(args):
                 batch_targets = {
                     "0_29": batch_target[:,:,:30],
                     "30_59": batch_target[:,:,30:60],
-                    "61_65": batch_target[:,:,60:65]
+                    "61_65": batch_target[:,:,60:]
                 }
             else:
                 batch_input = batch[0]
                 batch_targets = {
                     "0_29": batch[1][:,:,:30],
                     "30_59": batch[1][:,:,30:60],
-                    "61_65": batch[1][:,:,60:65]
+                    "61_65": batch[1][:,:,60:]
                 }
             print(f"prep data: {time.time() - prep_data_start}")
             train_mses = {}
@@ -508,6 +521,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_means", type=str)
     parser.add_argument("--data_stds", type=str)
     parser.add_argument("--buffer_size", default=288, type=int)
+    parser.add_argument("--noFSDS", action="store_true", help="whether to use previous FSDS as input")
     args = parser.parse_args()
     print(args)
 
