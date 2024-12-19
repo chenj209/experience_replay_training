@@ -13,6 +13,8 @@ from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, Standardi
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
 from dataloader_legacy_format import DatasetDisk, filter_collate
 from debug_utils import print_mean_std_by_var, print_min_max_by_var
+from normalization import inverse_legacy
+from data_shape import to_inference_shape
 # import torch transforms
 
 # data_dir = "/home/users/data/nncam_data/image_set/"
@@ -97,6 +99,8 @@ def test_single_column_multistep0_minmax():
         print("batch items: ", len(batch))
         x, y = batch[:2] # x: (batch, n_samples, n_features)
         x_raw, y_raw = batch[2:4]
+        x_raw = x_raw.reshape(x_raw.shape[0], -1).T
+        y_raw = y_raw.reshape(y_raw.shape[0], -1).T
         print("x shape: ", x.shape)
         print("x_raw shape: ", x_raw.shape)
         print("y_raw shape: ", y_raw.shape)
@@ -106,8 +110,6 @@ def test_single_column_multistep0_minmax():
         print(idx, x.size(), y.size(), x_raw.size(), y_raw.size(), filenames)
         norm_data_x.append(x.numpy())
         norm_data_y.append(y.numpy())
-        raw_data_x.append(x_raw.numpy())
-        raw_data_y.append(y_raw.numpy())
     norm_data_x = np.concatenate(norm_data_x, axis=0)
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     raw_data_x = np.concatenate(raw_data_x, axis=0)
@@ -153,7 +155,7 @@ def test_single_column_multistep1_minmax():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=144,
+        sample_rate=1000,
         is_train=True,
         transform=transform,
         include_filename=True
@@ -184,6 +186,27 @@ def test_single_column_multistep1_minmax():
     norm_data_y = np.concatenate(norm_data_y, axis=0)
     raw_data_x = np.concatenate(raw_data_x, axis=0)
     raw_data_y = np.concatenate(raw_data_y, axis=0)
+    raw_data_x = to_inference_shape(raw_data_x)
+    raw_data_x = raw_data_x.reshape(-1, raw_data_x.shape[-1])
+    raw_data_y = to_inference_shape(raw_data_y)
+    raw_data_y = raw_data_y.reshape(-1, raw_data_y.shape[-1])
+    print(raw_data_x.shape)
+    print(norm_data_x.shape)
+    print(raw_data_y.shape)
+    print(norm_data_y.shape)
+
+    assert(np.allclose(raw_data_x[:,:30],inverse_legacy["Q"](norm_data_x[:,:30])))
+    assert(np.allclose(raw_data_x[:,30:60], inverse_legacy["T"](norm_data_x[:,30:60])))
+    assert(np.allclose(raw_data_x[:,60:90], inverse_legacy["dqls"](norm_data_x[:,60:90])))
+    assert(np.allclose(raw_data_x[:,90:120], inverse_legacy["dTls"](norm_data_x[:,90:120])))
+    assert(np.allclose(raw_data_x[:,120], inverse_legacy["solin"](norm_data_x[:,120])))
+    assert(np.allclose(raw_data_x[:,121], inverse_legacy["ps"](norm_data_x[:,121])))
+    assert(np.allclose(raw_data_y[:,:30], inverse_legacy["qtend"](norm_data_y[:,:30])))
+    assert(np.allclose(raw_data_y[:,60:65], inverse_legacy["radiation"](norm_data_y[:,60:65])))
+    print(raw_data_y[:,30:60].mean(), inverse_legacy["stend"](norm_data_y[:,30:60]).mean())
+    print(raw_data_y[:,30:60].min(), inverse_legacy["stend"](norm_data_y[:,30:60]).min())
+    print(raw_data_y[:,30:60].max(), inverse_legacy["stend"](norm_data_y[:,30:60]).max())
+    assert(np.allclose(raw_data_y[:,30:60], inverse_legacy["stend"](norm_data_y[:,30:60])))
     np.save("debug_norm_y", norm_data_y)
     np.save("debug_raw_y", raw_data_y)
     print("norm_data_x shape: ", norm_data_x.shape)
@@ -706,7 +729,7 @@ def test_image_multistep1():
     print("qtend_check: ", norm_data_y.mean(), norm_data_y.std())
 
 if __name__ == "__main__":
-    test_single_column_multistep0_minmax()
+    #test_single_column_multistep0_minmax()
     test_single_column_multistep1_minmax()
     #test_single_column_multistep0_ex()
     #test_single_column_multistep1_ex()

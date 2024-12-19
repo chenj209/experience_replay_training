@@ -1,11 +1,27 @@
-from dataloader_utils import get_index_from_colnames
 from logger import debug_print
 import sys
+import os
+sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
+from dataloader_utils import get_index_from_colnames
 
 norm_err_file = open("norm_err_log.txt", 'w')  # flush print output immediately
 
 DEBUG = False
 NORM_THRES = 4
+
+def inverse_61_65(x):
+    return x * (1412 - 0)
+
+inverse_legacy = {}
+inverse_legacy["Q"] = lambda x: (x+1)/2*(0.0238)+0
+inverse_legacy["T"] = lambda x: (x+1)/2*(323-159)+159
+inverse_legacy["dqls"] = lambda x: (x+1)/2*(2.13e-6*2)-2.13e-6
+inverse_legacy["dTls"] = lambda x: (x+1)/2*(3.89e-3*2)-3.89e-3
+inverse_legacy["solin"] = lambda x: x*(1412-0)
+inverse_legacy["ps"] = lambda x: x*(105782-59928) + 59928
+inverse_legacy['qtend']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
+inverse_legacy['stend'] = lambda x: (x+1)/2*(3.63*2)-3.63
+inverse_legacy['radiation'] = lambda x: inverse_61_65(x)
 def normalize_data_var_names2(data, var_names, col_names, data_mean, data_std, err_header="", threshold=NORM_THRES):
     x = data.copy()
     cur_idx = 0
