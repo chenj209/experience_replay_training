@@ -22,7 +22,7 @@ def get_phys_consts(nc_sample_path):
         np.savez(PHYS_CONST_FILENAME, **pconsts)
     return pconsts
 
-def get_thickness_from_ps_1d(ps, hybi, hyai):
+def get_thickness_from_ps_1d(ps, hyai, hybi):
     """
     ps: (N, lon, lat): shape N samples
     """
@@ -36,7 +36,7 @@ def get_thickness_from_ps_1d(ps, hybi, hyai):
     #return thick.reshape(t_shape)
     return thick
 
-def get_thickness_from_ps_2d(ps, hybi, hyai):
+def get_thickness_from_ps_2d(ps, hyai, hybi):
     """
     ps: (N, lon, lat): shape N samples
     """

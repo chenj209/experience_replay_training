@@ -31,7 +31,7 @@ from load_models import load_resmlp_newformat, load_resmlp_newformat2
 from dataloader_legacy_format import DatasetDisk, filter_collate
 from dataloader_utils import gen_multistep_col_indices
 from preprocess import MinMaxTransformLegacy, StandardizeTransform, \
-FlattenSpatialTransform, get_min_max_coords
+FlattenSpatialTransform, get_min_max_coords, MinMaxTransformLegacy2step
 from normalization import get_inverse_newformat, inverse_data_var_names
 # from dataloader_time_embedded import TimeDatasetDisk as DatasetDisk
 from load_models import load_models
@@ -448,10 +448,18 @@ if __name__ == "__main__":
             FlattenSpatialTransform(),
             ])
     elif args.norm_type == "minmax_legacy":
-        transform = Compose([
-            MinMaxTransformLegacy(include_raw=True),
-            FlattenSpatialTransform(),
-            ])
+        if args.multistep == 0:
+            transform = Compose([
+                MinMaxTransformLegacy(include_raw=True),
+                FlattenSpatialTransform(),
+                ])
+        elif args.multistep == 1:
+            transform = Compose([
+                MinMaxTransformLegacy2step(include_raw=True),
+                FlattenSpatialTransform(),
+                ])
+        else:
+            raise ValueError("Invalid multistep")
     else:
         raise ValueError("Invalid norm_type")
             

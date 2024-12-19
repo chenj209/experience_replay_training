@@ -22,7 +22,7 @@ CUDA_VISIABLE_DEVICES=2 python offline_test_newformat.py \
     EP1117_precip_analysis.json
 ai002_test_EP1117_precip_analysis
 
-#:<<'ai002_test_EP1117_precip_analysis'
+:<<'ai002_test_EP1117_precip_analysis'
 CUDA_VISIABLE_DEVICES=0,1,2,3 python offline_test_precip.py \
     --output_type 0_29 \
     --norm_type std \
@@ -36,4 +36,33 @@ CUDA_VISIABLE_DEVICES=0,1,2,3 python offline_test_precip.py \
     --no_prevQT \
     /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT/0_29_checkpoint_best_loss.pth.tar \
     NoEP1117_precip_analysis.json
+ai002_test_EP1117_precip_analysis
+:<<'ai002_test_EP1117_precip_analysis'
+CUDA_VISIABLE_DEVICES=0,1,2,3 python offline_test_precip.py \
+    --output_type 0_29 \
+    --norm_type minmax_legacy \
+    --start_ts 35040 \
+    --sample_rate 1 \
+    --multistep 1 \
+    --inverse_output \
+    --data_means ../consts/all_means.npz \
+    --data_stds ../consts/all_stds.npz \
+    --legacy_order \
+    --no_prevQT \
+    /share3/chenj209/ckpts_sampled12/conv_mem/noreplay_buffer309_v2_seed1117_full_noprevQT_minmax/0_29_checkpoint_best_loss.pth.tar \
+    NoEP1117_minmax_precip_analysis.json
+ai002_test_EP1117_precip_analysis
+#:<<'ai002_test_EP1117_precip_analysis'
+CUDA_VISIABLE_DEVICES=0,1,2,3 python offline_test_precip.py \
+    --output_type 0_29 \
+    --norm_type minmax_legacy \
+    --start_ts 35040 \
+    --sample_rate 1 \
+    --multistep 0 \
+    --inverse_output \
+    --data_means ../consts/all_means.npz \
+    --data_stds ../consts/all_stds.npz \
+    --legacy_order \
+    /temp_share/nncam-cases/smart_test/ckpts/ckpts_50epochs/0_29_resnet_output30_nodesize512_num_blocks7_actrelu_bs1024_scheduler_coslr_lr0.001_ep50_noise0.0_wd0_dropout0/checkpoint.pth.tar \
+    nncam_precip_analysis.json
 #ai002_test_EP1117_precip_analysis

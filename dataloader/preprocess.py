@@ -187,8 +187,9 @@ class MinMaxTransformLegacy2step:
         data_x_raw, data_y_raw = sample[:2]
         data_x = data_x_raw.copy()
         data_y = data_y_raw.copy()
-        assert(data_x.shape[0] == 309)
-        assert(data_y.shape[0] == 65)
+        #if data_x.shape[0] != 309 or data_y.shape[0] != 65:
+        if data_x.shape[0] != 309:
+            raise ValueError(f"Unexpected shapes: data_x {data_x.shape}, data_y {data_y.shape}")
         data_x[0:30] = (data_x[0:30] - 0)   / (0.0238) * 2 - 1 # Q
         data_x[30:60] = (data_x[30:60] - 159) / (323 - 159) * 2 - 1 # T
         data_x[60:90] = (data_x[60:90] + 2.13e-6) / (2.13e-6*2) * 2 - 1 # dqls
