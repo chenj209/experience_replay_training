@@ -29,7 +29,7 @@ from dataloader_replay_buffer import DatasetDisk, filter_collate
 from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
-from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step
+from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2stepNext
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 from normalization import inverse_legacy
@@ -197,11 +197,11 @@ def main(args):
             ])
     elif args.norm_type == "minmax_legacy":
         traintransform = transforms.Compose([
-            MinMaxTransformLegacy2step(),
+            MinMaxTransformLegacy2stepNext(),
             FlattenSpatialTransformNext()
             ])
         testtransform = transforms.Compose([
-            MinMaxTransformLegacy2step(),
+            MinMaxTransformLegacy2stepNext(),
             FlattenSpatialTransform()
             ])
     else:
@@ -484,8 +484,10 @@ def main(args):
             #print("Q mean: ", Q.mean(), "Q_prev mean: ", Q_prev.mean())
             #print("qtend_prev mean: ", qtend_prev.mean(), "dqls mean: ", dqls.mean())
             assert(np.allclose(Q, Q_prev + (qtend_prev+dqls)*1800, atol=1e-4, rtol=1e-4))
+            #assert(np.allclose(Q, Q_prev + (qtend_prev+dqls)*1800))
             #print("stend_prev mean: ", stend_prev.mean(), "dTls mean: ", dTls.mean())
             assert(np.allclose(T, T_prev + (stend_prev/1004.64+dTls)*1800, atol=1e-4, rtol=1e-4))
+            #assert(np.allclose(T, T_prev + (stend_prev/1004.64+dTls)*1800))
             # replace qtend_prev and stend_prev with exp value
             exp = np.concatenate([
                 model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),

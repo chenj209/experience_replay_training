@@ -179,6 +179,65 @@ class MinMaxTransformLegacy2stepNoFSDS:
         res.extend(sample[2:])
         return res
 
+class MinMaxTransformLegacy2stepNext:
+    def __init__(self, include_raw=False):
+        """
+        Takes a mask and applies it to the data.
+
+        mask: mask to apply to the data, shape (lat, lon)
+        include_raw: whether to include the raw input data in the output as the third element
+        """
+        self.include_raw = include_raw
+    
+    def __call__(self, sample):
+        data_sets = [[*sample[:2]], [*sample[2:4]]] # current inputs and next inputs
+        res = []
+
+        #data_x_raw, data_y_raw = sample[:2]
+        for data_x_raw, data_y_raw in data_sets:
+            data_x = data_x_raw.copy()
+            data_y = data_y_raw.copy()
+            #if data_x.shape[0] != 309 or data_y.shape[0] != 65:
+            if data_x.shape[0] != 309:
+                raise ValueError(f"Unexpected shapes: data_x {data_x.shape}, data_y {data_y.shape}")
+            data_x[ 0:30]  = (data_x[ 0:30] - 0) /np.float64(0.0119) - 1
+            data_x[30:60]  = (data_x[30:60] - np.float64(159)) / np.float64(82) - 1
+            data_x[60:90 ] = (data_x[60:90]) / np.float64(2.13e-6)
+            data_x[90:120] = data_x[90:120]/np.float64(3.89e-3)
+            data_x[120]    = (data_x[120] - 0)/ np.float64(1412 - 0)
+            data_x[121]    = (data_x[121] - np.float64(59928)) / np.float64(105782 - 59928)
+            data_x[122+0:122+30] = data_x[122+0:122+30] / np.float64(3.11e-6)
+            data_x[122+30:122+60] = data_x[122+30:122+60] / np.float64(3.63)
+            # data_x[60:61]    =  data_x[60:61,:,:] / (2.12e-6) * 2 - 1
+            
+            data_x[122+60:122+61]    = (data_x[122+60:122+61] - 0) / np.float64(1412 - 0)
+            data_x[122+61:122+62]    = (data_x[122+61:122+62] - 0) / np.float64(1412 - 0)
+            data_x[122+62:122+63]    = (data_x[122+62:122+63] - 0) / np.float64(1412 - 0)
+            data_x[122+63:122+64]    = (data_x[122+63:122+64] - 0) / np.float64(1412 - 0)
+            data_x[122+64:122+65]    = (data_x[122+64:122+65] - 0) / np.float64(1412 - 0)
+            data_x[187:187+30] = data_x[187:187+30] / np.float64(0.0119) -1  # Q
+            data_x[187+30:187+60] = (data_x[187+30:187+60] - np.float64(159)) / np.float64(82) - 1 # T
+            data_x[187+60:187+90] = data_x[187+60:187+90] / np.float64(2.13e-6) # dqls
+            data_x[187+90:187+120] = data_x[187+90:187+120] / np.float64(3.89e-3) # dTls
+            data_x[187+120]    = (data_x[187+120] - 0)     / np.float64(1412 - 0) # solin
+            data_x[187+121]    = (data_x[187+121] - np.float64(59928)) / np.float64(105782 - 59928) # ps
+
+
+            data_y[0:30] = data_y[0:30] / np.float64(3.11e-6)
+            data_y[30:60] = data_y[30:60] / np.float64(3.63)
+            # data_y[60:61]    =  data_y[60:61,:,:] / (2.12e-6) * 2 - 1
+            
+            data_y[60:61]    = (data_y[60:61] - 0) / np.float64(1412 - 0)
+            data_y[61:62]    = (data_y[61:62] - 0) / np.float64(1412 - 0)
+            data_y[62:63]    = (data_y[62:63] - 0) / np.float64(1412 - 0)
+            data_y[63:64]    = (data_y[63:64] - 0) / np.float64(1412 - 0)
+            data_y[64:65]    = (data_y[64:65] - 0) / np.float64(1412 - 0)    
+            res.extend([x,y])
+        
+
+        res.extend(sample[4:])
+        return res
+
 class MinMaxTransformLegacy2step:
     def __init__(self, include_raw=False):
         """

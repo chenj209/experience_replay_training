@@ -155,7 +155,7 @@ def test_single_column_multistep1_minmax():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_rate=1000,
+        sample_rate=144,
         is_train=True,
         transform=transform,
         include_filename=True
