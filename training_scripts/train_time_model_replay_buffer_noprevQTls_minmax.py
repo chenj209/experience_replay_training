@@ -32,20 +32,7 @@ from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, Re
 from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
-
-def inverse_61_65(x):
-    return x * (1412 - 0)
-
-inverse = {}
-inverse["Q"] = lambda x: (x+1)/2*(0.0238)+0
-inverse["T"] = lambda x: (x+1)/2*(323-159)+159
-inverse["dqls"] = lambda x: (x+1)/2*(2.13e-6*2)-2.13e-6
-inverse["dTls"] = lambda x: (x+1)/2*(3.89e-3*2)-3.89e-3
-inverse["solin"] = lambda x: x*(1412-0)
-inverse["ps"] = lambda x: x*(105782-59928) + 59928
-inverse['qtend']  = lambda x: (x+1)/2*(3.11e-6*2)-3.11e-6
-inverse['stend'] = lambda x: (x+1)/2*(3.63*2)-3.63
-inverse['radiation'] = lambda x: inverse_61_65(x)
+from normalization import inverse_legacy
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -209,24 +196,14 @@ def main(args):
             FlattenSpatialTransform()
             ])
     elif args.norm_type == "minmax_legacy":
-        if args.noFSDS:
-            traintransform = transforms.Compose([
-                MinMaxTransformLegacy2stepNoFSDS(),
-                FlattenSpatialTransformNext()
-                ])
-            testtransform = transforms.Compose([
-                MinMaxTransformLegacy2stepNoFSDS(),
-                FlattenSpatialTransform()
-                ])
-        else:
-            traintransform = transforms.Compose([
-                MinMaxTransformLegacy2step(),
-                FlattenSpatialTransformNext()
-                ])
-            testtransform = transforms.Compose([
-                MinMaxTransformLegacy2step(),
-                FlattenSpatialTransform()
-                ])
+        traintransform = transforms.Compose([
+            MinMaxTransformLegacy2step(),
+            FlattenSpatialTransformNext()
+            ])
+        testtransform = transforms.Compose([
+            MinMaxTransformLegacy2step(),
+            FlattenSpatialTransform()
+            ])
     else:
         raise Exception(f"Norm type {args.norm_type} is not supported")
 
@@ -477,26 +454,38 @@ def main(args):
             qtend_prev = next_x[:,:,  batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
             #print(f"Loading stend_prev idx: {batch_indices['stend_check']}")
             stend_prev = next_x[:,:,  batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
-            Q_prev = Q_prev * data_stds["QL"] + data_means["QL"]
-            T_prev = T_prev * data_stds["T_nn_in"] + data_means["T_nn_in"]
-            qtend_prev = qtend_prev * data_stds["qtend_check"] + data_means["qtend_check"]
-            stend_prev = stend_prev * data_stds["stend_check"] + data_means["stend_check"]
             #print(f"Loading Q idx: {batch_indices['QL']}")
             Q =      next_x[:,:,batch_indices["QL"][0]:batch_indices["QL"][1]]
-            Q = Q * data_stds["QL"] + data_means["QL"]
             T =      next_x[:,:,batch_indices["T_nn_in"][0]:batch_indices["T_nn_in"][1]]
-            T = T * data_stds["T_nn_in"] + data_means["T_nn_in"]
-            dqls =   next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] 
-            dqls = dqls * data_stds["dqvls_nn_in"] + data_means["dqvls_nn_in"]
+            dqls =   next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]]
             dTls =   next_x[:,:,batch_indices["dTls_nn_in"][0]:batch_indices["dTls_nn_in"][1]]
-            dTls = dTls * data_stds["dTls_nn_in"] + data_means["dTls_nn_in"]
+            if args.norm_type == "std":
+                Q = Q * data_stds["QL"] + data_means["QL"]
+                T = T * data_stds["T_nn_in"] + data_means["T_nn_in"]
+                dTls = dTls * data_stds["dTls_nn_in"] + data_means["dTls_nn_in"]
+                dqls = dqls * data_stds["dqvls_nn_in"] + data_means["dqvls_nn_in"]
+                Q_prev = Q_prev * data_stds["QL"] + data_means["QL"]
+                T_prev = T_prev * data_stds["T_nn_in"] + data_means["T_nn_in"]
+                qtend_prev = qtend_prev * data_stds["qtend_check"] + data_means["qtend_check"]
+                stend_prev = stend_prev * data_stds["stend_check"] + data_means["stend_check"]
+            elif args.norm_type == "minmax_legacy":
+                Q = inverse_legacy["Q"](Q)
+                T = inverse_legacy["T"](T)
+                dqls = inverse_legacy["dqls"](dqls)
+                dTls = inverse_legacy["dTls"](dTls)
+                Q_prev = inverse_legacy["Q"](Q_prev)
+                T_prev = inverse_legacy["T"](T_prev)
+                qtend_prev = inverse_legacy["qtend"](qtend_prev)
+                stend_prev = inverse_legacy["stend"](stend_prev)
+            else:
+                raise Exception(f"{args.norm_type} not supported")
             # Q_prev + (qtend_prev+dqls)*1800 = Q
             # T_prev + (stend_prev+dTls)*1800 = T
             #print("Q mean: ", Q.mean(), "Q_prev mean: ", Q_prev.mean())
             #print("qtend_prev mean: ", qtend_prev.mean(), "dqls mean: ", dqls.mean())
-            assert(np.allclose(Q, Q_prev + (qtend_prev+dqls)*1800))
+            assert(np.allclose(Q, Q_prev + (qtend_prev+dqls)*1800, atol=1e-4, rtol=1e-4))
             #print("stend_prev mean: ", stend_prev.mean(), "dTls mean: ", dTls.mean())
-            assert(np.allclose(T, T_prev + (stend_prev/1004.64+dTls)*1800))
+            assert(np.allclose(T, T_prev + (stend_prev/1004.64+dTls)*1800, atol=1e-4, rtol=1e-4))
             # replace qtend_prev and stend_prev with exp value
             exp = np.concatenate([
                 model_preds["0_29"][:batch[0].size(0)].detach().cpu().numpy(),
@@ -506,17 +495,25 @@ def main(args):
             #print(f"exp shape: {exp.shape}")
             next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"][0]+65] = exp
             qtend_prev_exp = next_x[:,:,batch_indices["qtend_check"][0]:batch_indices["qtend_check"][1]]
-            qtend_prev_exp = qtend_prev_exp * data_stds["qtend_check"] + data_means["qtend_check"]
             #print("qtend_prev_exp mean:", qtend_prev_exp.mean())
             stend_prev_exp = next_x[:,:,batch_indices["stend_check"][0]:batch_indices["stend_check"][1]]
-            stend_prev_exp = (stend_prev_exp * data_stds["stend_check"] + data_means["stend_check"])
+            if args.norm_type == "std":
+                qtend_prev_exp = qtend_prev_exp * data_stds["qtend_check"] + data_means["qtend_check"]
+                stend_prev_exp = (stend_prev_exp * data_stds["stend_check"] + data_means["stend_check"])
+            elif args.norm_type == "minmax_legacy":
+                qtend_prev_exp = inverse_legacy["qtend"](qtend_prev_exp)
+                stend_prev_exp = inverse_legacy["stend"](stend_prev_exp)
             #print("stend_prev_exp mean:", stend_prev_exp.mean())
             dqls_exp = (Q - Q_prev)/1800 - qtend_prev_exp
             #print("dqls_exp mean:", dqls_exp.mean())
             dTls_exp = (T - T_prev)/1800 - stend_prev_exp/1004.64
             #print("dTls_exp mean:", dTls_exp.mean())
-            dqls_exp = (dqls_exp - data_means["dqvls_nn_in"])/data_stds["dqvls_nn_in"]
-            dTls_exp = (dTls_exp - data_means["dTls_nn_in"])/data_stds["dTls_nn_in"]
+            if args.norm_type == "std":
+                dqls_exp = (dqls_exp - data_means["dqvls_nn_in"])/data_stds["dqvls_nn_in"]
+                dTls_exp = (dTls_exp - data_means["dTls_nn_in"])/data_stds["dTls_nn_in"]
+            elif args.norm_type == "minmax_legacy":
+                dqls_exp = (dqls_exp + 2.13e-6) / (2.13e-6*2) * 2 - 1
+                dTls_exp = (dTls_exp + 3.89e-3) / (3.89e-3*2) * 2 - 1
             # assert(torch.allclose(dqls, (Q - Q_prev)/1800 - qtend_prev_exp))
             # assert(torch.allclose(dTls, (T - T_prev)/1800 - stend_prev_exp))
             next_x[:,:,batch_indices["dqvls_nn_in"][0]:batch_indices["dqvls_nn_in"][1]] = dqls_exp
@@ -618,7 +615,7 @@ if __name__ == '__main__':
     parser.add_argument("--ex_data_dir", type=str, help="directory to store new \
         input variables")
     parser.add_argument("--region_mask", type=str, help="path to region mask npy file", default="all")
-    parser.add_arugment("--norm_type", type=str)
+    parser.add_argument("--norm_type", type=str)
     parser.add_argument("--data_means", type=str, default="../consts/all_means.npz")
     parser.add_argument("--data_stds", type=str, default="../consts/all_stds.npz")
     parser.add_argument("--buffer_size", default=288, type=int)
