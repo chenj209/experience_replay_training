@@ -232,7 +232,7 @@ class MinMaxTransformLegacy2stepNext:
             data_y[62:63]    = (data_y[62:63] - 0) / np.float64(1412 - 0)
             data_y[63:64]    = (data_y[63:64] - 0) / np.float64(1412 - 0)
             data_y[64:65]    = (data_y[64:65] - 0) / np.float64(1412 - 0)    
-            res.extend([x,y])
+            res.extend([data_x,data_y])
         
 
         res.extend(sample[4:])

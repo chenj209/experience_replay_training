@@ -29,7 +29,7 @@ from dataloader_replay_buffer import DatasetDisk, filter_collate
 from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
-from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2stepNext
+from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2stepNext, MinMaxTransformLegacy2step
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, \
     gen_col_indices
 from normalization import inverse_legacy
@@ -201,7 +201,7 @@ def main(args):
             FlattenSpatialTransformNext()
             ])
         testtransform = transforms.Compose([
-            MinMaxTransformLegacy2stepNext(),
+            MinMaxTransformLegacy2step(),
             FlattenSpatialTransform()
             ])
     else:
