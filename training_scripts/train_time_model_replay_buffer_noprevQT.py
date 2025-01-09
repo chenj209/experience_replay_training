@@ -162,6 +162,7 @@ def main(args):
             ])
     elif args.norm_type == "minmax_legacy":
         if args.noFSDS:
+            raise Exception("not implemented")
             traintransform = transforms.Compose([
                 MinMaxTransformLegacy2stepNoFSDS(),
                 FlattenSpatialTransformNext()
@@ -348,9 +349,9 @@ def main(args):
             if replay_buffer.size >= buffer_sample_size:
                 sampled_replay = replay_buffer.sample(buffer_sample_size)
                 sr_input, sr_target = sampled_replay[:2]
-                sr_input = torch.from_numpy(sr_input[:,:,60])
+                sr_input = torch.from_numpy(sr_input[:,:,60:])
                 sr_target = torch.from_numpy(sr_target)
-                batch_input = torch.cat([batch[0][:,:,:60], sr_input], dim=0)
+                batch_input = torch.cat([batch[0][:,:,60:], sr_input], dim=0)
                 #batch_input = torch.from_numpy(np.concatenate([batch[0], sr_input], axis=0)) 
                 #batch_targets = {
                 #    "0_29": torch.from_numpy(np.concatenate([batch[1][:,:,:30], sr_target[:,:,:30]], axis=0)),
@@ -364,7 +365,7 @@ def main(args):
                     "61_65": batch_target[:,:,60:]
                 }
             else:
-                batch_input = batch[0][:,:,:60]
+                batch_input = batch[0][:,:,60:]
                 batch_targets = {
                     "0_29": batch[1][:,:,:30],
                     "30_59": batch[1][:,:,30:60],
