@@ -92,7 +92,7 @@ def main(args):
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
     all_files = glob.glob(args.data_dir+'/*.npz')
     all_files.sort()
-    all_files = all_files[:35040]
+    all_files = all_files[:args.end_ts]
 
     test_idx = np.arange(len(all_files))[-(len(all_files)//10):]
     train_files = [all_files[i] for i in range(len(all_files)) if i not in test_idx]
@@ -531,6 +531,7 @@ if __name__ == '__main__':
     parser.add_argument("--buffer_size", default=288, type=int)
     parser.add_argument("--mixing_ratio", default=1.0, type=float)
     parser.add_argument("--noFSDS", action="store_true", help="whether to use previous FSDS as input")
+    parser.add_argument("--end_ts", default=35040, type=int)
     args = parser.parse_args()
     print(args)
 
