@@ -133,13 +133,17 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
                 curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
             else:
                 if args.norm_type == "std":
-                    inverse_newformat = 
-                    curr_preds["0_29"].append(all_models["0_29"](curr_points_x).detach().cpu().numpy())
-                    curr_preds["30_59"].append(all_models["30_59"](curr_points_x).detach().cpu().numpy())
-                    curr_preds["61_65"].append(all_models["61_65"](curr_points_x).detach().cpu().numpy())
-                    curr_gt["0_29"].append(curr_points_y[:, :30].cpu().numpy())
-                    curr_gt["30_59"].append(curr_points_y[:, 30:60].cpu().numpy())
-                    curr_gt["61_65"].append(curr_points_y[:, 60:65].cpu().numpy())
+                    current_inverse = get_inverse_newformat(col_names, data_means, data_stds)
+                elif args.norm_type == "minmax_legacy":
+                    current_inverse = inverse
+                else:
+                    raise ValueError(f"Unknown norm_type: {args.norm_type}")
+                curr_preds["0_29"].append(current_inverse["0_29"](all_models["0_29"](curr_points_x).detach().cpu().numpy()))
+                curr_preds["30_59"].append(current_inverse["30_59"](all_models["30_59"](curr_points_x).detach().cpu().numpy()))
+                curr_preds["61_65"].append(current_inverse["61_65"](all_models["61_65"](curr_points_x).detach().cpu().numpy()))
+                curr_gt["0_29"].append(current_inverse["0_29"](curr_points_y[:, :30].cpu().numpy()))
+                curr_gt["30_59"].append(current_inverse["30_59"](curr_points_y[:, 30:60].cpu().numpy()))
+                curr_gt["61_65"].append(current_inverse["61_65"](curr_points_y[:, 60:65].cpu().numpy()))
 
 
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
@@ -243,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument("--no_prevQT", action="store_true")
     parser.add_argument("--no_prevQTLS", action="store_true")
     parser.add_argument("--legacy_order", action="store_true")
+    parser.add_argument("--inverse_output", action="store_true")
     args = parser.parse_args()
     print(args)
     if args.train_configs is not None:
