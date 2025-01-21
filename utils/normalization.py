@@ -145,8 +145,9 @@ def get_inverse():
 
 def get_inverse_newformat(col_names, data_mean, data_std):
     inverse = {}
-    inverse['0_29'] = lambda y: inverse_data_var_names(y, "qtend_check", col_names, data_mean, data_std)
-    inverse['30_59'] = lambda y: inverse_data_var_names(y, "stend_check", col_names, data_mean, data_std)
+    inverse['0_29'] = lambda y: inverse_data_var_names(y, ["qtend_check"], col_names, data_mean, data_std)
+    inverse['30_59'] = lambda y: inverse_data_var_names(y, ["stend_check"], col_names, data_mean, data_std)
+    inverse['61_65'] = lambda y: inverse_data_var_names(y, ["SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"], col_names, data_mean, data_std)
     return inverse
 
 def normalization(data_x, data_y):
