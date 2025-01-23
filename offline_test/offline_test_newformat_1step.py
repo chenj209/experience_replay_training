@@ -148,7 +148,9 @@ def offline_test(args, all_models, testloader, get_thickness, silent=False, save
 
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}", end='\r')
         #print(f"testing {iter}/{len(testloader)}, r2: {r2_score(points_y.flatten(), y1.flatten())}")
-        print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_points_y[:,:30].flatten(), curr_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 029 r2: {r2_score(curr_gt['0_29'][-1].flatten(), curr_preds['0_29'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 3059 r2: {r2_score(curr_gt['30_59'][-1].flatten(), curr_preds['30_59'][-1].flatten())}")
+        print(f"testing {iter}/{len(testloader)}, 3059 r2: {r2_score(curr_gt['61_65'][-1].flatten(), curr_preds['61_65'][-1].flatten())}")
         print(f"testing {iter}/{len(testloader)}, filename: {filenames}")
         # print(f"filename: {batch[-1]}, Q lev 0 mean std: {x_raw[0,0].mean()}, {x_raw[0,0].std()}")
     print(f"Best loss: {best_loss}, filenames: {best_filenames}")

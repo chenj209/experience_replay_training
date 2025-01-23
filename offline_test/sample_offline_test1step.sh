@@ -98,10 +98,11 @@ python offline_test_newformat_1step.py \
     --multistep 1 \
     --no_prevQT \
     --legacy_order \
+    --inverse_output \
     --norm_type minmax_legacy \
     er_minmax_sample2_rbs288.json
 ai002_test
-#:<<'ai002_test'
+:<<'ai002_test'
 python offline_test_newformat_1step.py \
     --model029 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v3_seed1117_sample2_noprevQT_std_mix1.0/0_29_checkpoint_best_loss.pth.tar \
     --model3059 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v3_seed1117_sample2_noprevQT_std_mix1.0/30_59_checkpoint_best_loss.pth.tar \
@@ -112,6 +113,22 @@ python offline_test_newformat_1step.py \
     --multistep 1 \
     --no_prevQT \
     --legacy_order \
+    --inverse_output \ 
     --norm_type std \
     er_std_sample2_rbs288.json
+ai002_test
+#:<<'ai002_test'
+python offline_test_newformat_1step.py \
+    --model029 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v3_seed1117_sample2_noprevQT_minmax_mix1.0_rbs24/0_29_checkpoint_best_loss.pth.tar \
+    --model3059 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v3_seed1117_sample2_noprevQT_minmax_mix1.0_rbs24/30_59_checkpoint_best_loss.pth.tar \
+    --model6165 /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v3_seed1117_sample2_noprevQT_minmax_mix1.0_rbs24/61_65_checkpoint_best_loss.pth.tar \
+    --train_configs /share3/chenj209/ckpts_sampled12/conv_mem/replay_buffer309_v2_seed1117_full_noprevQT/configs.txt \
+    --start_ts 35040 \
+    --sample_rate 12 \
+    --multistep 1 \
+    --no_prevQT \
+    --legacy_order \
+    --inverse_output \
+    --norm_type minmax_legacy \
+    er_minmax_sample2_rbs24.json
 #ai002_test
