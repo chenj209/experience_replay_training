@@ -42,17 +42,33 @@ def process_sample(args):
 
 
 class ReplayBuffer():
-    def __init__(self, data_loader, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=300, weighted=False, workers=4) -> None:
+    def __init__(self, data_loader, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=300, weighted=False, workers=4, sample_stride=1, log_file_name="replay_buffer.log") -> None:
         self.ptr = 0
         self.size = 0
         self.input_shape = inp_shape
         self.max_size = max_size
         self.weighted = weighted
         self.data_loader = data_loader
-        self.sample_stride = 1
+        self.sample_stride = sample_stride
         self.workers = workers
         self.dataset_max_idx = data_loader.size-1
         self.buffer = {}
+        
+        # Initialize log file
+        self.log_file = open(log_file_name, "w")
+        self.log_file.write("Initializing ReplayBuffer\n")
+        self.log_file.write(f"Max size: {max_size}\n")
+        self.log_file.write(f"Input shape: {inp_shape}\n")
+        self.log_file.write(f"Target shape: {tar_shape}\n")
+        self.log_file.write(f"Weighted: {weighted}\n")
+        self.log_file.write(f"Workers: {workers}\n")
+        self.log_file.write(f"Sample stride: {self.sample_stride}\n")
+        # Initialize column headers for logging
+        self.log_file.write("\n")
+        self.log_file.write(f"{'R2_0-29':>10} {'R2_30-59':>10} {'R2_61-65':>10}\n")
+        self.log_file.write("-" * 32 + "\n")
+        self.log_file.flush()
+        
         if max_size > 0:
             self.buffer['inp'] = np.zeros((max_size, *inp_shape), dtype=np.float32)
             self.buffer['target'] = np.zeros((max_size, *tar_shape), dtype=np.float32)
@@ -63,6 +79,14 @@ class ReplayBuffer():
             self.buffer['target_idx'] = np.zeros((max_size, 1), dtype=np.uint32)
             if weighted:
                 self.buffer['counter'] = np.zeros((max_size, 1), dtype=np.uint32)
+    
+    def close_log_file(self):
+        self.log_file.close()
+    
+    def log(self, r2_029, r2_3059, r2_6165):
+        message = f"{r2_029:10.6f} {r2_3059:10.6f} {r2_6165:10.6f}"
+        self.log_file.write(message + "\n")
+        self.log_file.flush()
             
 
     def store(self, inp_data, tar_data, tar_idx, counter=None):

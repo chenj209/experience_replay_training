@@ -321,7 +321,15 @@ def main(args):
     current_iters = 0+args.start_epoch*len(trainloader)
     all_lrs = {model_type: None for model_type in MODEL_TYPES}
 
-    replay_buffer = ReplayBuffer(training_set, inp_shape=[96*144, 309], tar_shape=[96*144,65], max_size=args.buffer_size, weighted=False, workers=1)
+    replay_buffer = ReplayBuffer(
+        training_set, 
+        inp_shape=[96*144, 309], 
+        tar_shape=[96*144,65], 
+        max_size=args.buffer_size, 
+        weighted=False, 
+        workers=1, 
+        sample_stride=args.sample_stride, 
+        log_file_name=f"{args.checkpoint}/replay_buffer_size{args.buffer_size}.log")
     for epoch in range(args.start_epoch,args.epoch):
         print(f"here_start {epoch}, {args.epoch}")
         """
@@ -427,6 +435,11 @@ def main(args):
                     model_preds["30_59"][:batch[0].size(0)].detach().cpu().numpy(),
                     model_preds["61_65"][:batch[0].size(0)].detach().cpu().numpy(),
                 ],axis=2)
+                # compute error distribution here
+                r2_029 = r2_score(next_y[:,:,:30].flatten(), exp[:,:,:30].flatten())
+                r2_3059 = r2_score(next_y[:,:,30:60].flatten(), exp[:,:,30:60].flatten())
+                r2_6165 = r2_score(next_y[:,:,60:65].flatten(), exp[:,:,60:65].flatten())
+                replay_buffer.log(r2_029, r2_3059, r2_6165)
                 if args.noFSDS:
                     next_x[:,:,122:122+64] = exp
                 else:
@@ -498,6 +511,7 @@ def main(args):
 
         
         print("here", epoch, args.epoch)
+    replay_buffer.close_log_file()
 
 
     for model_type in MODEL_TYPES:
