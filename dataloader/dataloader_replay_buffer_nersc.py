@@ -93,6 +93,7 @@ class DatasetDisk(data.Dataset):
         self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npy"))
         self.file_names = []
         if self.multistep > 0:
+            # print(f"self.all_files: {self.all_files}")
             for i,file_name in enumerate(self.all_files):
                 cur_idx = filename_to_idx(file_name, suffix="\.npy")
                 missing_flag = False
