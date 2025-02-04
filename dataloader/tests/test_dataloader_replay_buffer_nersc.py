@@ -60,7 +60,7 @@ def test_single_column_multistep1_nersc():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_stride=12,
+        sample_stride=2,
         is_train=True,
         transform=transform,
         include_filename=True,
@@ -90,6 +90,8 @@ def test_single_column_multistep1_nersc():
         print("y_next shape: ", y_next.shape)
         x = x.reshape(-1, x.shape[-1]) # x: (batch * n_samples, n_features)
         y = y.reshape(-1, y.shape[-1])
+        x_next = x_next.reshape(-1, x_next.shape[-1])
+        y_next = y_next.reshape(-1, y_next.shape[-1])
         filenames = batch[-1]
         dl_idx = batch[-2]
         print(idx, x.size(), y.size(), x_next.size(), y_next.size(), filenames, dl_idx)
