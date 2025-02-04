@@ -44,7 +44,7 @@ class DatasetDisk(data.Dataset):
         include_idx=False,
         region_mask1d=None,
         region_mask2d=None,
-        ex_dir="ex_data"):
+        next_data=True):
         """
         Args:
             curr_input_indices (tuple): 
@@ -58,6 +58,7 @@ class DatasetDisk(data.Dataset):
             prev_input_indices (_type_): same as curr_input_indices
             output_indices (_type_): same as curr_input_indices
         """
+        self.next_data = next_data
         ### load the data ###
         all_files = file_names[:]
         # self.data_std = data_std
@@ -132,7 +133,7 @@ class DatasetDisk(data.Dataset):
         if region_mask2d:
             self.region_mask2d = region_slice2d(region_mask2d)
 
-        self.ex_dir = ex_dir
+        # self.ex_dir = ex_dir
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -268,6 +269,8 @@ class DatasetDisk(data.Dataset):
             file_names.append(prev_file)
 
         x = np.concatenate([*prev_inputs, tx], axis=0)
+        if not self.next_data:
+            return x, y, file_names[::-1]
 
         # load next data and next data up to self.multistep
         next_fileidx = target_fileidx + 1
@@ -313,8 +316,12 @@ class DatasetDisk(data.Dataset):
         'Generates one sample of data'
         #x, y, file_names = self.load_data(index)
         strided_index = raw_index * self.sample_stride
-        x, y, next_x, next_y, file_names = self.load_data(strided_index)
-        sample = [x, y, next_x, next_y]
+        if not self.next_data:
+            x, y, file_names = self.load_data(strided_index)
+            sample = [x, y]
+        else:
+            x, y, next_x, next_y, file_names = self.load_data(strided_index)
+            sample = [x, y, next_x, next_y]
         if self.include_idx:
             sample.append(np.array([strided_index]))
         if self.include_filename:

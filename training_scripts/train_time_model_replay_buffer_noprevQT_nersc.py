@@ -25,8 +25,8 @@ import tools
 from data_shape import to_inference_shape, inverse_to_inference_shape
 sys.path.append(os.path.join(sys.path[0], "..", "dataloader"))
 #from dataloader_newformat import DatasetDisk, filter_collate
-from dataloader_replay_buffer import DatasetDisk, filter_collate
-from dataloader_stride import DatasetDisk as TestDatasetDisk
+from dataloader_replay_buffer_nersc import DatasetDisk, filter_collate
+# from dataloader_stride import DatasetDisk as TestDatasetDisk
 from replay_buffer import ReplayBuffer
 from preprocess import FlattenSpatialTransformNext, StandardizeTransformNext, RegionMaskTransform
 from preprocess import FlattenSpatialTransform, StandardizeTransform, MinMaxTransformLegacy2step, MinMaxTransformLegacy2stepNext
@@ -59,28 +59,6 @@ def cal_input_size(col_names):
 
 MODEL_TYPES = ['0_29', '30_59', '61_65']
 
-COL_NAMES_LEGACY = {
-    "X": [
-        *[f"QL_lev{i}" for i in range(30)],
-        *[f"T_nn_in_lev{i}" for i in range(30)],
-        *[f"dqvls_nn_in_lev{i}" for i in range(30)],
-        *[f"dTls_nn_in_lev{i}" for i in range(30)],
-        "SOLIN",
-        "SPPS"
-    ],
-    "Y": [
-        *[f"qtend_check_lev{i}" for i in range(30)],
-        *[f"stend_check_lev{i}" for i in range(30)],
-        "UNKNOWN",
-        "SOLL", "SOLS", "SOLSD", "SOLLD", "FSDS"
-    ],
-    "EX": [*[f"UL_lev{i}" for i in range(30)],
-           *[f"VL_lev{i}" for i in range(30)],
-           *[f"CLOUD_lev{i}" for i in range(30)], 
-           "CAPE", "FLNS", "FLNT", "SPPRECC", "LWUP"]
-}
-
-
 def main(args):
     data_dir = args.data_dir
     if not os.path.isdir(data_dir):
@@ -90,7 +68,7 @@ def main(args):
         data_dir = "/data/nncam_data/image_set/"
     #################### 屏蔽掉一些可能存在异常的数据集 ###############################
     #all_files = glob.glob(args.data_dir+'/*')[::13]#[::7]
-    all_files = glob.glob(args.data_dir+'/*.npz')
+    all_files = glob.glob(args.data_dir+'/*.npy')
     all_files.sort()
     all_files = all_files[:args.end_ts]
 
@@ -107,24 +85,9 @@ def main(args):
     col_names_x = args.input_vars
     col_names_y = args.output_vars
     col_names_prev = args.input_vars_prev
-    input_indices = [
-        # input indices can only come from X and EX
-        # Y contains output variables which is not available at current step
-        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
-        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x))
-    ]
-    
-    prev_input_indices = [
-        #  prev_input indices can come from X, Y and EX
-        ("X", gen_col_indices(COL_NAMES_LEGACY["X"], col_names_x)),
-        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_x + col_names_prev)),
-        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_prev)),
-    ]
-    output_indices = [
-        # output indices can only come from Y and EX
-        ("Y", gen_col_indices(COL_NAMES_LEGACY["Y"], col_names_y)),
-        ("EX", gen_col_indices(COL_NAMES_LEGACY["EX"], col_names_y)),
-    ]
+    # col_names_x = ["QL", "T_nn_in", "dqvls_nn_in", "dTls_nn_in", "SOLIN", "SPPS"]
+    input_indices, prev_input_indices, output_indices = gen_multistep_col_indices(
+        col_names, col_names_prev, col_names_x, col_names_y, 1)
         
     multistep_col_names_x = []
     for i in range(int(args.multistep)):
@@ -196,7 +159,7 @@ def main(args):
         transform=traintransform,
         include_filename=True,
         include_idx=True,
-        ex_dir=args.ex_data_dir
+        next_data=True
     )
         # region_mask1d=None if args.region_mask=="all"
                         #    else np.load(args.region_mask))
@@ -207,7 +170,7 @@ def main(args):
                                   collate_fn=filter_collate,
                                   pin_memory=True)
 
-    testing_set = TestDatasetDisk(
+    testing_set = DatasetDisk(
         test_files,
         input_indices,
         prev_input_indices,
@@ -217,7 +180,7 @@ def main(args):
         is_train=False,
         transform=testtransform,
         include_filename=True,
-        ex_dir=args.ex_data_dir
+        next_data=False
     )
         # region_mask1d=None if args.region_mask=="all"
         #                   else np.load(args.region_mask))
@@ -233,8 +196,9 @@ def main(args):
 
     # define model
     all_models = {}
-    input_size = cal_input_size(input_indices)\
-                +int(args.multistep)*(cal_input_size(prev_input_indices)) - 60 # remove QT
+    input_size = len(input_indices)\
+                +int(args.multistep)*(len(prev_input_indices)) - 60 # remove QT
+    print(f"input_size: {input_size}")
     all_models['0_29'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     all_models['30_59'] = models.ResMLP(input_size, 30, args.node_size, args.activation, args.num_blocks)
     if not args.noFSDS:
