@@ -14,7 +14,7 @@ from tqdm.autonotebook import tqdm
 import torch
 from sklearn.metrics import r2_score
 
-from preprocess import FlattenSpatialTransform, MinMaxTransformLegacy, StandardizeTransformNext
+from preprocess import FlattenSpatialTransformNext, MinMaxTransformLegacy, StandardizeTransformNext
 from dataloader_utils import gen_multistep_col_indices, get_index_from_colnames, gen_col_indices
 from dataloader_replay_buffer_nersc import DatasetDisk, filter_collate
 from debug_utils import print_mean_std_by_var, print_min_max_by_var
@@ -52,7 +52,7 @@ def test_single_column_multistep1_nersc():
             normalize_input=True,
             normalize_output=True
             ),
-        FlattenSpatialTransform()
+        FlattenSpatialTransformNext()
         ])
     training_set = DatasetDisk(
         file_names,
@@ -60,7 +60,7 @@ def test_single_column_multistep1_nersc():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_stride=12,
+        sample_stride=1,
         is_train=True,
         transform=transform,
         include_filename=True,
@@ -68,7 +68,7 @@ def test_single_column_multistep1_nersc():
         )
     
 
-    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=2, num_workers=1, collate_fn=filter_collate)
+    trainloader = data.DataLoader(training_set, shuffle=True, batch_size=1, num_workers=1, collate_fn=filter_collate)
 
     norm_data_x = []
     norm_data_y = []
