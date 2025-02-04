@@ -81,6 +81,10 @@ def test_single_column_multistep1_nersc():
         print("batch items: ", len(batch))
         x, y = batch[:2] # x: (batch, n_samples, n_features)
         x_next, y_next = batch[2:4]
+        # check X data is equal to X_next previous X
+        assert np.allclose(x[:,:,122+65:], x_next[:, :, :122]), "X data is not equal to X_next previous X"
+        # check Y data is equal to Y_next previous Y
+        assert np.allclose(y[:,:,:], x_next[:,:,122:122+65]), "Y data is not equal to Y_next previous Y"
         print("x shape: ", x.shape, ", filenames: ", batch[-1])
         print("x_next shape: ", x_next.shape)
         print("y_next shape: ", y_next.shape)
