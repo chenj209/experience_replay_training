@@ -60,7 +60,7 @@ def test_single_column_multistep1_nersc():
         prev_input_indices,
         output_indices,
         multistep=1,
-        sample_stride=1,
+        sample_stride=12,
         is_train=True,
         transform=transform,
         include_filename=True,
