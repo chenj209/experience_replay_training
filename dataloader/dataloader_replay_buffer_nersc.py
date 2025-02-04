@@ -89,16 +89,16 @@ class DatasetDisk(data.Dataset):
         self.multistep = multistep
         self.sample_stride = sample_stride
         self.all_files = all_files[:]
-        self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npz"))
+        self.all_files.sort(key=lambda fn: filename_to_idx(fn, suffix="\.npy"))
         self.file_names = []
         if self.multistep > 0:
             for i,file_name in enumerate(self.all_files):
-                cur_idx = filename_to_idx(file_name, suffix="\.npz")
+                cur_idx = filename_to_idx(file_name, suffix="\.npy")
                 missing_flag = False
                 for p in range(self.multistep, 0, -1):
                     prev_idx = cur_idx - p
                     tokens = file_name.split("/")
-                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npz")])
+                    prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npy")])
                     if prev_file_name not in self.all_files:
                         print(f"Missing {prev_file_name} for {file_name}")
                         missing_flag = True
@@ -106,7 +106,7 @@ class DatasetDisk(data.Dataset):
                 if i != len(self.all_files):
                     next_idx = cur_idx + 1
                     tokens = file_name.split("/")
-                    next_file_name = "/".join(tokens[:-1]+[idx_to_filename(next_idx, suffix=".npz")])
+                    next_file_name = "/".join(tokens[:-1]+[idx_to_filename(next_idx, suffix=".npy")])
                     if next_file_name not in self.all_files:
                         print(f"Missing next {next_file_name} for {file_name}")
                         missing_flag = True
