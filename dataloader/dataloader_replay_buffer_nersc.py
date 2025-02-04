@@ -101,7 +101,7 @@ class DatasetDisk(data.Dataset):
                     tokens = file_name.split("/")
                     prev_file_name = "/".join(tokens[:-1]+[idx_to_filename(prev_idx, suffix=".npy")])
                     if prev_file_name not in self.all_files:
-                        print(f"Missing {prev_file_name} for {file_name}")
+                        print(f"Missing {prev_file_name} for {file_name} 1")
                         missing_flag = True
                         break
                 if i != len(self.all_files):
@@ -109,7 +109,7 @@ class DatasetDisk(data.Dataset):
                     tokens = file_name.split("/")
                     next_file_name = "/".join(tokens[:-1]+[idx_to_filename(next_idx, suffix=".npy")])
                     if next_file_name not in self.all_files:
-                        print(f"Missing next {next_file_name} for {file_name}")
+                        print(f"Missing next {next_file_name} for {file_name} 2")
                         missing_flag = True
                 if not missing_flag:
                     self.file_names.append(file_name)
